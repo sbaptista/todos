@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import TodoPanel from './TodoPanel'
 import TodoForm from './TodoForm'
+import ProductConfigPanel from './ProductConfigPanel'
 
 export type Status = 'open' | 'in_progress' | 'on_hold' | 'done'
 
@@ -54,6 +55,7 @@ export default function TodoView({ productId }: { productId: string }) {
 
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null)
   const [showNewTodo, setShowNewTodo] = useState(false)
+  const [showProductConfig, setShowProductConfig] = useState(false)
 
   useEffect(() => {
     async function fetchData() {
@@ -125,6 +127,24 @@ export default function TodoView({ productId }: { productId: string }) {
         <Link href="/dashboard" className="text-sm text-zinc-500 hover:text-zinc-800 transition-colors">
           ← Products
         </Link>
+        {!isAll && (() => {
+          const currentProduct = products.find(p => p.id === productId)
+          return currentProduct ? (
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-medium text-zinc-800">{currentProduct.name}</span>
+              <button
+                onClick={() => setShowProductConfig(true)}
+                className="text-zinc-400 hover:text-zinc-700 transition-colors"
+                aria-label="Product settings"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+              </button>
+            </div>
+          ) : null
+        })()}
         <button
           onClick={() => setShowNewTodo(true)}
           className="text-sm bg-zinc-900 text-white px-3 py-1.5 rounded hover:bg-zinc-700 transition-colors"
@@ -264,6 +284,18 @@ export default function TodoView({ productId }: { productId: string }) {
           }}
         />
       )}
+
+      {showProductConfig && !isAll && (() => {
+        const currentProduct = products.find(p => p.id === productId)
+        return currentProduct ? (
+          <ProductConfigPanel
+            productId={productId}
+            productName={currentProduct.name}
+            productIcon={currentProduct.icon}
+            onClose={() => setShowProductConfig(false)}
+          />
+        ) : null
+      })()}
     </div>
   )
 }
