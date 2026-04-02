@@ -124,8 +124,7 @@ export default function TodoView({ productId }: { productId: string }) {
     if (filterStatus !== 'all' && t.status !== filterStatus) return false
     if (filterGroup !== 'all' && t.group_id !== filterGroup) return false
     if (filterCategory !== 'all' && t.category_id !== filterCategory) return false
-    if (filterPriority === 'p1' && t.priority_value !== 1) return false
-    if (filterPriority === 'none' && t.priority_value != null) return false
+    if (filterPriority !== 'all' && String(t.priority_value) !== filterPriority) return false
     return true
   })
 
@@ -204,8 +203,9 @@ export default function TodoView({ productId }: { productId: string }) {
           className="text-sm border border-zinc-200 rounded px-2 py-1.5 bg-white"
         >
           <option value="all">All priorities</option>
-          <option value="p1">P1 only</option>
-          <option value="none">No priority</option>
+          {priorities.map((p) => (
+            <option key={p.value} value={String(p.value)}>{p.label}</option>
+          ))}
         </select>
 
         <span className="ml-auto text-xs text-zinc-400">
