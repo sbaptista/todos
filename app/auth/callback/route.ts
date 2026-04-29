@@ -4,7 +4,9 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const type = searchParams.get('type')
 
+  // Handle OTP verification callbacks (email links)
   if (code) {
     const supabase = await createClient()
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
@@ -24,6 +26,14 @@ export async function GET(request: NextRequest) {
 
       // Known user — send to dashboard
       return NextResponse.redirect(`${origin}/dashboard`)
+    }
+  }
+
+  // If it's an OTP type from email link, redirect to verify page
+  if (type === 'otp') {
+    const email = searchParams.get('email')
+    if (email) {
+      return NextResponse.redirect(`${origin}/auth/verify-otp?email=${encodeURIComponent(email)}`)
     }
   }
 
