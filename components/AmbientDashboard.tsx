@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import AddProductModal from './AddProductModal'
 
@@ -381,7 +382,7 @@ export default function AmbientDashboard() {
           color: 'var(--muted)',
           letterSpacing: '0.05em',
         }}>
-          TODOS v0.2.19
+          TODOS v0.2.20
         </span>
       </div>
 
