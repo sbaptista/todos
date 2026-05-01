@@ -171,15 +171,23 @@ function VerifyOtpContent() {
           ← Back to login
         </button>
 
-        <p style={{
-          marginTop: 'var(--sp-lg)',
-          textAlign: 'center',
-          fontSize: 'var(--fs-version)',
-          color: 'var(--muted)',
-        }}>
-          TODOS v0.2.15
-        </p>
+      </div>
 
+      {/* Bottom bar — matches ambient dashboard */}
+      <div style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        padding: 'calc(12px + var(--sab)) 20px 12px',
+      }}>
+        <span style={{
+          fontSize: 'var(--fs-xs)',
+          color: 'var(--muted)',
+          letterSpacing: '0.05em',
+        }}>
+          TODOS v0.2.23
+        </span>
       </div>
     </div>
   )
