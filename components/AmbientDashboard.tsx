@@ -180,12 +180,15 @@ export default function AmbientDashboard() {
     if (!text || !selectedId || submitting) return
     setSubmitting(true)
     setInput('')
+    setSpeech({ text: 'Processing…' })
 
     const res = await orbConverse({ input: text, productId: selectedId, dryRun })
     setSpeech({ text: res.speech, autoFade: res.refresh ? 4000 : undefined })
 
     if (res.refresh) {
-      await refetchTodos()
+      if (!res.mutatedProductId || res.mutatedProductId === selectedId) {
+        await refetchTodos()
+      }
       setPulse(true)
       setTimeout(() => setPulse(false), 420)
     }
@@ -342,6 +345,11 @@ export default function AmbientDashboard() {
                 d="M 24 82 A 58 58 0 0 1 140 82"
                 fill="none"
               />
+              <path
+                id="todos-orb-state-arc"
+                d="M 24 82 A 58 58 0 0 0 140 82"
+                fill="none"
+              />
             </defs>
             <text
               fontFamily="var(--font-ui)"
@@ -356,6 +364,18 @@ export default function AmbientDashboard() {
                   const raw = (selected?.code ?? selected?.name ?? '').toUpperCase()
                   return raw.length > 10 ? `${raw.slice(0, 9)}…` : raw
                 })()}
+              </textPath>
+            </text>
+            <text
+              fontFamily="var(--font-ui)"
+              fontSize="11"
+              fontWeight={600}
+              letterSpacing="3"
+              fill={style.labelColor}
+              style={{ textTransform: 'uppercase', transition: 'fill 0.8s' }}
+            >
+              <textPath href="#todos-orb-state-arc" startOffset="50%" textAnchor="middle">
+                {urgency.toUpperCase()}
               </textPath>
             </text>
           </svg>
@@ -605,7 +625,7 @@ export default function AmbientDashboard() {
           color: 'var(--muted)',
           letterSpacing: '0.05em',
         }}>
-          TODOS v0.2.24
+          TODOS v0.2.25
         </span>
       </div>
 

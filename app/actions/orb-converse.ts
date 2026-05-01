@@ -9,8 +9,9 @@ import { createClient } from '@/lib/supabase/server'
 
 export type OrbResponse = {
   speech: string
-  // when an action mutates the DB, UI should refetch the current product's todos
+  // when an action mutates the DB, UI should refetch todos for the affected product
   refresh?: boolean
+  mutatedProductId?: string
   // optional structured result for query intents (renderable as fragments later)
   results?: Array<{ code: string; title: string; priority_value: number | null }>
   // for debugging — only populated when dryRun=true
@@ -85,9 +86,14 @@ const TOOLS: Anthropic.Tool[] = [
       properties: {
         code: { type: 'string', description: 'Todo code like TODOS-23.' },
         title_match: { type: 'string', description: 'Fuzzy title match if no code given.' },
-        new_status: { type: 'string', enum: ['open', 'done'] },
+        new_status: { type: 'string', enum: ['open', 'in_progress', 'on_hold', 'done'] },
         new_priority: { type: 'integer', description: '1-4' },
         new_title: { type: 'string' },
+        description: { type: 'string', description: 'Longer detail about the todo.' },
+        resolution_notes: { type: 'string', description: 'What was done to resolve this. Populate when marking done.' },
+        group_name: { type: 'string', description: 'Group name, resolved within the todo\'s product.' },
+        category_name: { type: 'string', description: 'Category name, resolved within the todo\'s product.' },
+        urls: { type: 'array', items: { type: 'string' }, description: 'Reference URLs.' },
       },
     },
   },
@@ -97,8 +103,8 @@ const TOOLS: Anthropic.Tool[] = [
 // Backlog context — serialized into system prompt for Claude to reason over
 // ──────────────────────────────────────────────────────────────────────────
 
-type Product = { id: string; name: string; code: string | null }
-type TodoRow = {
+type Product  = { id: string; name: string; code: string | null }
+type TodoRow  = {
   id: string
   todo_number: number
   title: string
@@ -106,15 +112,21 @@ type TodoRow = {
   priority_value: number | null
   product_id: string
 }
+type GroupRow    = { id: string; name: string; product_id: string }
+type CategoryRow = { id: string; name: string; product_id: string }
 
 async function buildContext(supabase: Awaited<ReturnType<typeof createClient>>, currentProductId: string) {
-  const [{ data: products }, { data: todos }] = await Promise.all([
+  const [{ data: products }, { data: todos }, { data: groups }, { data: categories }] = await Promise.all([
     supabase.from('products').select('id, name, code').order('sort_order'),
     supabase.from('todos').select('id, todo_number, title, status, priority_value, product_id').is('deleted_at', null),
+    supabase.from('groups').select('id, name, product_id'),
+    supabase.from('categories').select('id, name, product_id'),
   ])
 
-  const productList = (products ?? []) as Product[]
-  const todoList = (todos ?? []) as TodoRow[]
+  const productList  = (products   ?? []) as Product[]
+  const todoList     = (todos      ?? []) as TodoRow[]
+  const groupList    = (groups     ?? []) as GroupRow[]
+  const categoryList = (categories ?? []) as CategoryRow[]
   const current = productList.find(p => p.id === currentProductId)
 
   const byProduct = productList.map(p => {
@@ -125,7 +137,7 @@ async function buildContext(supabase: Awaited<ReturnType<typeof createClient>>, 
     return `${p.code ?? p.name}:\n${productTodos || '  (none open)'}`
   }).join('\n\n')
 
-  return { productList, todoList, current, contextString: byProduct }
+  return { productList, todoList, groupList, categoryList, current, contextString: byProduct }
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -174,6 +186,8 @@ type ToolContext = {
   supabase: Awaited<ReturnType<typeof createClient>>
   products: Product[]
   todos: TodoRow[]
+  groups: GroupRow[]
+  categories: CategoryRow[]
   currentProductId: string
 }
 
@@ -199,7 +213,7 @@ async function executeTool(name: string, input: any, ctx: ToolContext): Promise<
       .single()
 
     if (error) return JSON.stringify({ error: error.message })
-    return JSON.stringify({ ok: true, code: `${product.code ?? product.name}-${data.todo_number}` })
+    return JSON.stringify({ ok: true, code: `${product.code ?? product.name}-${data.todo_number}`, product_id: product.id })
   }
 
   if (name === 'query_todos') {
@@ -245,15 +259,34 @@ async function executeTool(name: string, input: any, ctx: ToolContext): Promise<
     if (input.new_status) {
       update.status = input.new_status
       if (input.new_status === 'done') update.closed_at = new Date().toISOString()
+      else update.closed_at = null
     }
     if (input.new_priority !== undefined) update.priority_value = input.new_priority
-    if (input.new_title) update.title = input.new_title
+    if (input.new_title)        update.title            = input.new_title
+    if (input.description      !== undefined) update.description      = input.description || null
+    if (input.resolution_notes !== undefined) update.resolution_notes = input.resolution_notes || null
+    if (Array.isArray(input.urls)) update.urls = input.urls
+
+    if (input.group_name) {
+      const g = ctx.groups.find(
+        gr => gr.product_id === target.product_id &&
+              gr.name.toLowerCase() === String(input.group_name).toLowerCase()
+      )
+      update.group_id = g?.id ?? null
+    }
+    if (input.category_name) {
+      const c = ctx.categories.find(
+        ca => ca.product_id === target.product_id &&
+              ca.name.toLowerCase() === String(input.category_name).toLowerCase()
+      )
+      update.category_id = c?.id ?? null
+    }
 
     const { error } = await ctx.supabase.from('todos').update(update).eq('id', target.id)
     if (error) return JSON.stringify({ error: error.message })
 
     const p = ctx.products.find(pp => pp.id === target.product_id)
-    return JSON.stringify({ ok: true, code: `${p?.code ?? p?.name}-${target.todo_number}` })
+    return JSON.stringify({ ok: true, code: `${p?.code ?? p?.name}-${target.todo_number}`, product_id: target.product_id })
   }
 
   return JSON.stringify({ error: `unknown tool: ${name}` })
@@ -307,6 +340,7 @@ export async function orbConverse(req: OrbRequest): Promise<OrbResponse> {
 
     const debugToolCalls: Array<{ name: string; input: unknown }> = []
     let refresh = false
+    let mutatedProductId: string | undefined
     let queryResults: OrbResponse['results']
 
     // Up to 3 turns of tool use
@@ -325,9 +359,17 @@ export async function orbConverse(req: OrbRequest): Promise<OrbResponse> {
           supabase,
           products: ctx.productList,
           todos: ctx.todoList,
+          groups: ctx.groupList,
+          categories: ctx.categoryList,
           currentProductId: req.productId,
         })
-        if (block.name === 'create_todo' || block.name === 'update_todo') refresh = true
+        if (block.name === 'create_todo' || block.name === 'update_todo') {
+          refresh = true
+          try {
+            const parsed = JSON.parse(result)
+            if (parsed.product_id) mutatedProductId = parsed.product_id
+          } catch {}
+        }
         if (block.name === 'query_todos') {
           try { queryResults = JSON.parse(result).returned } catch {}
         }
@@ -348,7 +390,7 @@ export async function orbConverse(req: OrbRequest): Promise<OrbResponse> {
     const speechBlock = response.content.find(b => b.type === 'text') as Anthropic.TextBlock | undefined
     const speech = speechBlock?.text.trim() ?? '...'
 
-    return { speech, refresh, results: queryResults }
+    return { speech, refresh, mutatedProductId, results: queryResults }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'unknown error'
     console.error('[orbConverse]', msg)
