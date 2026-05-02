@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { OrbResponse } from '@/app/actions/orb-converse'
 import TodoPanel from './TodoPanel'
@@ -32,12 +32,21 @@ export default function QueryResultsModal({
   onClose: () => void
 }) {
   const supabase = useMemo(() => createClient(), [])
+  const [copied, setCopied] = useState(false)
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null)
   const [groups, setGroups] = useState<Group[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [priorities, setPriorities] = useState<Priority[]>([])
   const [items, setItems] = useState<ResultItem[]>(results)
+
+  const handleCopy = useCallback(() => {
+    const text = items.map(it => `${it.code} ${it.title}`).join('\n')
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    })
+  }, [items])
 
   async function openTodo(item: ResultItem) {
     const [todoRes, groupRes, catRes, prodRes, priRes] = await Promise.all([
@@ -108,6 +117,32 @@ export default function QueryResultsModal({
           }}>
             {queryLabel}
           </p>
+          <button
+            onClick={handleCopy}
+            aria-label="Copy list"
+            title="Copy list"
+            style={{
+              background: 'none',
+              border: 'none',
+              color: copied ? 'var(--success)' : 'var(--muted)',
+              cursor: 'pointer',
+              padding: '4px',
+              lineHeight: 1,
+              flexShrink: 0,
+              transition: 'color var(--transition)',
+            }}
+          >
+            {copied ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            )}
+          </button>
           <button
             onClick={onClose}
             aria-label="Close"
