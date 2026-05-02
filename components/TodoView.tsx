@@ -70,6 +70,9 @@ export default function TodoView({ productId }: { productId: string }) {
   const [showProductConfig, setShowProductConfig]  = useState(false)
   const [hoveredId,         setHoveredId]          = useState<string | null>(null)
   const [showDone,          setShowDone]           = useState(false)
+  const [selectMode,        setSelectMode]         = useState(false)
+  const [selectedIds,       setSelectedIds]        = useState<string[]>([])
+  const [confirmBulkDelete, setConfirmBulkDelete]  = useState(false)
 
   const fetchTodos = useCallback(async () => {
     let todoQuery = supabase
@@ -140,6 +143,44 @@ export default function TodoView({ productId }: { productId: string }) {
       setTodos(prev => prev.map(t => t.id === todo.id ? updated : t))
       if (selectedTodo?.id === todo.id) setSelectedTodo(updated)
     }
+  }
+
+  function toggleSelectMode() {
+    setSelectMode(m => !m)
+    setSelectedIds([])
+    setConfirmBulkDelete(false)
+    setSelectedTodo(null)
+  }
+
+  function toggleId(id: string) {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  function toggleSelectAll() {
+    const all = [...filtered, ...(showDone ? doneTodos : [])].map(t => t.id)
+    const allSelected = all.every(id => selectedIds.includes(id))
+    setSelectedIds(allSelected ? [] : all)
+  }
+
+  async function handleBulkMarkDone() {
+    if (selectedIds.length === 0) return
+    await supabase.from('todos').update({
+      status: 'done',
+      closed_at: new Date().toISOString(),
+    }).in('id', selectedIds)
+    await fetchTodos()
+    setSelectedIds([])
+    setSelectMode(false)
+  }
+
+  async function handleBulkDelete() {
+    if (selectedIds.length === 0) return
+    await supabase.from('todos').delete().in('id', selectedIds)
+    setTodos(prev => prev.filter(t => !selectedIds.includes(t.id)))
+    if (selectedTodo && selectedIds.includes(selectedTodo.id)) setSelectedTodo(null)
+    setSelectedIds([])
+    setConfirmBulkDelete(false)
+    setSelectMode(false)
   }
 
   const priorityMap    = useMemo(() => new Map(priorities.map(p => [p.value, p.label])), [priorities])
@@ -324,6 +365,23 @@ export default function TodoView({ productId }: { productId: string }) {
             </button>
           )}
 
+          {/* Select mode toggle */}
+          <button
+            onClick={toggleSelectMode}
+            style={{
+              background: selectMode ? 'var(--pill-active-bg)' : 'transparent',
+              border: `1px solid ${selectMode ? 'var(--pill-active-border)' : 'var(--border)'}`,
+              borderRadius: 'var(--r)',
+              padding: '5px 10px',
+              fontSize: 'var(--fs-sm)',
+              color: selectMode ? 'var(--pill-active-color)' : 'var(--muted)',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-ui)',
+            }}
+          >
+            Select
+          </button>
+
           {/* New todo */}
           <button
             onClick={() => setShowNewTodo(true)}
@@ -410,45 +468,72 @@ export default function TodoView({ productId }: { productId: string }) {
         ) : (
           <div style={s.listCard}>
             {filtered.map((todo, i) => {
-              const isHovered  = hoveredId === todo.id
-              const isSelected = selectedTodo?.id === todo.id
-              const isDone     = todo.status === 'done'
-              const todoRef    = productCodeMap.get(todo.product_id) && todo.todo_number != null
+              const isHovered   = hoveredId === todo.id
+              const isSelected  = selectedTodo?.id === todo.id
+              const isChecked   = selectedIds.includes(todo.id)
+              const isDone      = todo.status === 'done'
+              const todoRef     = productCodeMap.get(todo.product_id) && todo.todo_number != null
                 ? `${productCodeMap.get(todo.product_id)}-${todo.todo_number}`
                 : null
 
               return (
                 <div
                   key={todo.id}
-                  onClick={() => setSelectedTodo(todo)}
+                  onClick={() => selectMode ? toggleId(todo.id) : setSelectedTodo(todo)}
                   onMouseEnter={() => setHoveredId(todo.id)}
                   onMouseLeave={() => setHoveredId(null)}
                   tabIndex={0}
                   role="button"
                   aria-label={`${todo.title}, ${todo.status}`}
-                  onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setSelectedTodo(todo)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ')
+                      selectMode ? toggleId(todo.id) : setSelectedTodo(todo)
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 'var(--sp-md)',
                     padding: 'var(--sp-md) var(--sp-lg)',
                     borderTop: i > 0 ? '1px solid var(--border)' : 'none',
-                    background: isSelected
+                    background: isChecked
                       ? 'var(--pill-active-bg)'
-                      : isHovered ? 'var(--bg3)' : 'transparent',
+                      : isSelected
+                        ? 'var(--pill-active-bg)'
+                        : isHovered ? 'var(--bg3)' : 'transparent',
                     cursor: 'pointer',
                     transition: 'background var(--transition)',
                   }}
                 >
-                  {/* Status bar */}
-                  <div style={{
-                    width: '3px',
-                    alignSelf: 'stretch',
-                    borderRadius: '2px',
-                    flexShrink: 0,
-                    background: STATUS_COLOR[todo.status],
-                    opacity: isDone ? 0.4 : 1,
-                  }} />
+                  {/* Checkbox (select mode) or status bar */}
+                  {selectMode ? (
+                    <div style={{
+                      flexShrink: 0,
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      border: `1.5px solid ${isChecked ? 'var(--pill-active-color)' : 'var(--border)'}`,
+                      background: isChecked ? 'var(--pill-active-bg)' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all var(--transition)',
+                    }}>
+                      {isChecked && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M2 5l2.5 2.5L8 3" stroke="var(--pill-active-color)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{
+                      width: '3px',
+                      alignSelf: 'stretch',
+                      borderRadius: '2px',
+                      flexShrink: 0,
+                      background: STATUS_COLOR[todo.status],
+                      opacity: isDone ? 0.4 : 1,
+                    }} />
+                  )}
 
                   {/* Priority dot */}
                   <div style={{
@@ -486,32 +571,34 @@ export default function TodoView({ productId }: { productId: string }) {
                     )}
                   </div>
 
-                  {/* Done toggle */}
-                  <button
-                    onClick={e => handleToggleDone(e, todo)}
-                    style={{
-                      flexShrink: 0,
-                      width: '20px',
-                      height: '20px',
-                      minHeight: '20px',
-                      borderRadius: '50%',
-                      border: `1.5px solid ${isDone ? 'var(--status-done)' : 'var(--border)'}`,
-                      background: isDone ? 'var(--status-done)' : 'transparent',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all var(--transition)',
-                      opacity: isHovered || isSelected || isDone ? 1 : 0,
-                    }}
-                    aria-label={isDone ? 'Mark open' : 'Mark done'}
-                  >
-                    {isDone && (
-                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 5l2.5 2.5L8 3" stroke="var(--bg2)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </button>
+                  {/* Done toggle — hidden in select mode */}
+                  {!selectMode && (
+                    <button
+                      onClick={e => handleToggleDone(e, todo)}
+                      style={{
+                        flexShrink: 0,
+                        width: '20px',
+                        height: '20px',
+                        minHeight: '20px',
+                        borderRadius: '50%',
+                        border: `1.5px solid ${isDone ? 'var(--status-done)' : 'var(--border)'}`,
+                        background: isDone ? 'var(--status-done)' : 'transparent',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all var(--transition)',
+                        opacity: isHovered || isSelected || isDone ? 1 : 0,
+                      }}
+                      aria-label={isDone ? 'Mark open' : 'Mark done'}
+                    >
+                      {isDone && (
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                          <path d="M2 5l2.5 2.5L8 3" stroke="var(--bg2)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -552,6 +639,7 @@ export default function TodoView({ productId }: { productId: string }) {
                 {doneTodos.map((todo, i) => {
                   const isHovered  = hoveredId === todo.id
                   const isSelected = selectedTodo?.id === todo.id
+                  const isChecked  = selectedIds.includes(todo.id)
                   const todoRef    = productCodeMap.get(todo.product_id) && todo.todo_number != null
                     ? `${productCodeMap.get(todo.product_id)}-${todo.todo_number}`
                     : null
@@ -559,34 +647,60 @@ export default function TodoView({ productId }: { productId: string }) {
                   return (
                     <div
                       key={todo.id}
-                      onClick={() => setSelectedTodo(todo)}
+                      onClick={() => selectMode ? toggleId(todo.id) : setSelectedTodo(todo)}
                       onMouseEnter={() => setHoveredId(todo.id)}
                       onMouseLeave={() => setHoveredId(null)}
                       tabIndex={0}
                       role="button"
                       aria-label={`${todo.title}, done`}
-                      onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setSelectedTodo(todo)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ')
+                          selectMode ? toggleId(todo.id) : setSelectedTodo(todo)
+                      }}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: 'var(--sp-md)',
                         padding: 'var(--sp-sm) var(--sp-lg)',
                         borderTop: i > 0 ? '1px solid var(--border)' : 'none',
-                        background: isSelected
+                        background: isChecked
                           ? 'var(--pill-active-bg)'
-                          : isHovered ? 'var(--bg3)' : 'transparent',
+                          : isSelected
+                            ? 'var(--pill-active-bg)'
+                            : isHovered ? 'var(--bg3)' : 'transparent',
                         cursor: 'pointer',
                         transition: 'background var(--transition)',
                       }}
                     >
-                      <div style={{
-                        width: '3px',
-                        alignSelf: 'stretch',
-                        borderRadius: '2px',
-                        flexShrink: 0,
-                        background: STATUS_COLOR['done'],
-                        opacity: 0.3,
-                      }} />
+                      {selectMode ? (
+                        <div style={{
+                          flexShrink: 0,
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          border: `1.5px solid ${isChecked ? 'var(--pill-active-color)' : 'var(--border)'}`,
+                          background: isChecked ? 'var(--pill-active-bg)' : 'transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all var(--transition)',
+                        }}>
+                          {isChecked && (
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                              <path d="M2 5l2.5 2.5L8 3" stroke="var(--pill-active-color)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          )}
+                        </div>
+                      ) : (
+                        <div style={{
+                          width: '3px',
+                          alignSelf: 'stretch',
+                          borderRadius: '2px',
+                          flexShrink: 0,
+                          background: STATUS_COLOR['done'],
+                          opacity: 0.3,
+                        }} />
+                      )}
                       <div style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{
@@ -605,28 +719,30 @@ export default function TodoView({ productId }: { productId: string }) {
                           </p>
                         )}
                       </div>
-                      <button
-                        onClick={e => handleToggleDone(e, todo)}
-                        style={{
-                          flexShrink: 0,
-                          width: '20px',
-                          height: '20px',
-                          minHeight: '20px',
-                          borderRadius: '50%',
-                          border: '1.5px solid var(--status-done)',
-                          background: 'var(--status-done)',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          opacity: isHovered || isSelected ? 1 : 0.5,
-                        }}
-                        aria-label="Mark open"
-                      >
-                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                          <path d="M2 5l2.5 2.5L8 3" stroke="var(--bg2)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                      </button>
+                      {!selectMode && (
+                        <button
+                          onClick={e => handleToggleDone(e, todo)}
+                          style={{
+                            flexShrink: 0,
+                            width: '20px',
+                            height: '20px',
+                            minHeight: '20px',
+                            borderRadius: '50%',
+                            border: '1.5px solid var(--status-done)',
+                            background: 'var(--status-done)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            opacity: isHovered || isSelected ? 1 : 0.5,
+                          }}
+                          aria-label="Mark open"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                            <path d="M2 5l2.5 2.5L8 3" stroke="var(--bg2)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   )
                 })}
@@ -678,6 +794,133 @@ export default function TodoView({ productId }: { productId: string }) {
           productIcon={currentProduct.icon}
           onClose={() => setShowProductConfig(false)}
         />
+      )}
+
+      {/* Bulk action bar */}
+      {selectMode && (
+        <div style={{
+          position: 'fixed',
+          bottom: 'calc(var(--sab) + 44px)',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'var(--bg2)',
+          border: '1px solid var(--border)',
+          borderRadius: 'var(--r-xl)',
+          padding: '10px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--sp-md)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+          zIndex: 20,
+          fontFamily: 'var(--font-ui)',
+          fontSize: 'var(--fs-sm)',
+          whiteSpace: 'nowrap',
+        }}>
+          {confirmBulkDelete ? (
+            <>
+              <span style={{ color: 'var(--error)' }}>
+                Delete {selectedIds.length} todo{selectedIds.length !== 1 ? 's' : ''}?
+              </span>
+              <button
+                onClick={handleBulkDelete}
+                style={{
+                  background: 'var(--error)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 'var(--r)',
+                  padding: '5px 12px',
+                  fontSize: 'var(--fs-sm)',
+                  fontFamily: 'var(--font-ui)',
+                  cursor: 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setConfirmBulkDelete(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--muted)',
+                  fontSize: 'var(--fs-sm)',
+                  fontFamily: 'var(--font-ui)',
+                  cursor: 'pointer',
+                  padding: '5px 4px',
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <>
+              <span style={{ color: 'var(--text2)', minWidth: '72px' }}>
+                {selectedIds.length} selected
+              </span>
+              <button
+                onClick={toggleSelectAll}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--muted)',
+                  fontSize: 'var(--fs-sm)',
+                  fontFamily: 'var(--font-ui)',
+                  cursor: 'pointer',
+                  padding: '5px 4px',
+                }}
+              >
+                {[...filtered, ...(showDone ? doneTodos : [])].every(t => selectedIds.includes(t.id))
+                  ? 'Deselect all'
+                  : 'Select all'}
+              </button>
+              <button
+                onClick={handleBulkMarkDone}
+                disabled={selectedIds.length === 0}
+                style={{
+                  background: selectedIds.length > 0 ? 'var(--pill-active-bg)' : 'transparent',
+                  border: `1px solid ${selectedIds.length > 0 ? 'var(--pill-active-border)' : 'var(--border)'}`,
+                  borderRadius: 'var(--r)',
+                  padding: '5px 12px',
+                  fontSize: 'var(--fs-sm)',
+                  fontFamily: 'var(--font-ui)',
+                  color: selectedIds.length > 0 ? 'var(--pill-active-color)' : 'var(--muted)',
+                  cursor: selectedIds.length > 0 ? 'pointer' : 'default',
+                }}
+              >
+                Mark done
+              </button>
+              <button
+                onClick={() => setConfirmBulkDelete(true)}
+                disabled={selectedIds.length === 0}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: selectedIds.length > 0 ? 'var(--error)' : 'var(--muted)',
+                  fontSize: 'var(--fs-sm)',
+                  fontFamily: 'var(--font-ui)',
+                  cursor: selectedIds.length > 0 ? 'pointer' : 'default',
+                  padding: '5px 4px',
+                }}
+              >
+                Delete
+              </button>
+              <button
+                onClick={toggleSelectMode}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--muted)',
+                  fontSize: 'var(--fs-sm)',
+                  fontFamily: 'var(--font-ui)',
+                  cursor: 'pointer',
+                  padding: '5px 4px',
+                }}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
       )}
 
       {/* Version */}

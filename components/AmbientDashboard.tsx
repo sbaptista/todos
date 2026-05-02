@@ -81,7 +81,6 @@ const SOLAR_FLARES = [
   { angle: 340, width: 26, height: 34, dur: 15, delay: 13.2 },
 ]
 
-const INPUT_PLACEHOLDER = "Do work, 'Explain' or '?'"
 const SS_INPUT  = 'todos_orb_input'
 const SS_SPEECH = 'todos_orb_speech'
 
@@ -108,6 +107,7 @@ export default function AmbientDashboard() {
   const [queryResults, setQueryResults]   = useState<OrbResponse['results']>(undefined)
   const [queryLabel, setQueryLabel]       = useState('')
   const [showQueryResults, setShowQueryResults] = useState(false)
+  const [inputFocused, setInputFocused]         = useState(false)
   const autoFadeRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Restore input and speech from sessionStorage on mount
@@ -539,6 +539,39 @@ export default function AmbientDashboard() {
 
       {/* Input */}
       <form onSubmit={handleSubmit} style={{ width: '420px', maxWidth: '90vw', position: 'relative' }}>
+        {!input && !inputFocused && (
+          <div style={{
+            position: 'absolute',
+            top: '13px',
+            left: '20px',
+            pointerEvents: 'none',
+            fontFamily: 'var(--font-ui)',
+            fontSize: 'var(--fs-input)',
+            color: 'var(--muted)',
+            lineHeight: 1.5,
+            zIndex: 1,
+            userSelect: 'none',
+            whiteSpace: 'nowrap',
+          }}>
+            {'Type '}
+            <span style={{
+              background: 'var(--bg3)',
+              border: '1px solid var(--border)',
+              borderRadius: '4px',
+              padding: '1px 5px',
+              color: 'var(--text)',
+              fontFamily: 'monospace',
+              fontSize: '0.85em',
+            }}>hint</span>
+            {' or '}
+            <svg style={{ display: 'inline-block', verticalAlign: 'middle', marginBottom: '1px' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            {' for help.'}
+          </div>
+        )}
         <textarea
           ref={inputRef}
           rows={2}
@@ -550,7 +583,6 @@ export default function AmbientDashboard() {
               handleSubmit()
             }
           }}
-          placeholder={INPUT_PLACEHOLDER}
           disabled={submitting}
           style={{
             width: '100%',
@@ -571,6 +603,7 @@ export default function AmbientDashboard() {
           }}
           onFocus={e => {
             e.target.style.borderColor = 'var(--border-focus)'
+            setInputFocused(true)
             setInput('')
             setSpeech(null)
             setQueryResults(undefined)
@@ -578,7 +611,10 @@ export default function AmbientDashboard() {
             sessionStorage.removeItem(SS_INPUT)
             sessionStorage.removeItem(SS_SPEECH)
           }}
-          onBlur={e => { e.target.style.borderColor = 'var(--border)' }}
+          onBlur={e => {
+            e.target.style.borderColor = 'var(--border)'
+            setInputFocused(false)
+          }}
         />
         <button
           type="submit"
@@ -674,7 +710,7 @@ export default function AmbientDashboard() {
         </button>
       </div>
 
-      {/* Top right — settings + sign out */}
+      {/* Top right — help + settings + sign out */}
       <div style={{
         position: 'fixed',
         top: 'calc(var(--sp-lg) + var(--sat))',
@@ -683,39 +719,45 @@ export default function AmbientDashboard() {
         alignItems: 'center',
         gap: 'var(--sp-md)',
       }}>
+        {/* Help */}
+        <button
+          onClick={() => setShowHelp(true)}
+          aria-label="Help"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px', display: 'flex', alignItems: 'center', lineHeight: 1 }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </button>
+
+        {/* Settings */}
         <Link
           href="/settings"
           aria-label="Settings"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            color: 'var(--muted)',
-            padding: '4px',
-            lineHeight: 1,
-          }}
+          style={{ display: 'flex', alignItems: 'center', color: 'var(--muted)', padding: '4px', lineHeight: 1 }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
         </Link>
+
+        {/* Sign out */}
         <button
           onClick={async () => {
             await supabase.auth.signOut()
             router.push('/auth/login')
           }}
-          style={{
-            fontFamily: 'var(--font-ui)',
-            fontSize: 'var(--fs-xs)',
-            color: 'var(--muted)',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '4px 0',
-            letterSpacing: '0.04em',
-          }}
+          aria-label="Sign out"
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px', display: 'flex', alignItems: 'center', lineHeight: 1 }}
         >
-          sign out
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
         </button>
       </div>
 
