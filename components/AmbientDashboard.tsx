@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import AddProductModal from './AddProductModal'
 import QueryResultsModal from './QueryResultsModal'
 import OrbHelp from './OrbHelp'
+import OrbConversation, { type ConversationMessage } from './OrbConversation'
 import { OrbDevPanel, type MoodOverride } from './OrbDevPanel'
 import { orbConverse, type OrbResponse } from '@/app/actions/orb-converse'
 import { useVisibilityRefetch } from '@/lib/hooks/useVisibilityRefetch'
@@ -16,828 +17,739 @@ type Product = { id: string; name: string; code: string | null; description: str
 type Todo    = { id: string; title: string; status: string; priority_value: number | null }
 type Urgency = 'calm' | 'active' | 'urgent'
 
-const LAST_PRODUCT_KEY = 'todos_last_product_id'
+const LAST_PRODUCT_KEY  = 'todos_last_product_id'
+const SS_INPUT          = 'todos_orb_input'
+const SS_CONVERSATION   = 'todos_orb_conversation'
+const INACTIVITY_MS     = 5 * 60 * 1000
+
+function genId() {
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+}
 
 function computeUrgency(todos: Todo[]): Urgency {
-  const open = todos.filter(t => t.status !== 'done')
-  if (open.some(t => t.priority_value === 1)) return 'urgent'
-  if (open.length > 5) return 'active'
-  return 'calm'
+    const open = todos.filter(t => t.status !== 'done')
+    if (open.some(t => t.priority_value === 1)) return 'urgent'
+    if (open.length > 5) return 'active'
+    return 'calm'
 }
 
 const ORB_SPEED: Record<Urgency, string> = {
-  calm:   '5.5s',
-  active: '3.5s',
-  urgent: '3.5s',
+    calm:   '5.5s',
+    active: '3.5s',
+    urgent: '3.5s',
 }
 
-// Glow size (extra inset beyond sphere) and blur — grows with urgency
 const ORB_GLOW: Record<Urgency, { inset: string; blur: string }> = {
-  calm:   { inset: '-16px', blur: '20px' },
-  active: { inset: '-28px', blur: '28px' },
-  urgent: { inset: '-44px', blur: '38px' },
+    calm:   { inset: '-16px', blur: '20px' },
+    active: { inset: '-28px', blur: '28px' },
+    urgent: { inset: '-44px', blur: '38px' },
 }
 
 const ORB_STYLE: Record<Urgency, {
-  orbMid: string; orbLo: string; glow: string; countColor: string; labelColor: string
+    orbMid: string; orbLo: string; glow: string; countColor: string; labelColor: string
 }> = {
-  calm: {
-    orbMid: '#d4e4d4', orbLo: '#b8d0b8',
-    glow: 'rgba(80,130,80,0.22)',
-    countColor: '#2d5a2d', labelColor: '#7a9e7a',
-  },
-  active: {
-    orbMid: '#e4daf4', orbLo: '#d0c4ee',
-    glow: 'rgba(130,90,200,0.28)',
-    countColor: '#5a3090', labelColor: '#9a7ac8',
-  },
-  urgent: {
-    orbMid: '#f8ead8', orbLo: '#f0d4b0',
-    glow: 'rgba(230,130,55,0.48)',
-    countColor: '#a05010', labelColor: '#c88040',
-  },
+    calm: {
+        orbMid: '#d4e4d4', orbLo: '#b8d0b8',
+        glow: 'rgba(80,130,80,0.22)',
+        countColor: '#2d5a2d', labelColor: '#7a9e7a',
+    },
+    active: {
+        orbMid: '#e4daf4', orbLo: '#d0c4ee',
+        glow: 'rgba(130,90,200,0.28)',
+        countColor: '#5a3090', labelColor: '#9a7ac8',
+    },
+    urgent: {
+        orbMid: '#f8ead8', orbLo: '#f0d4b0',
+        glow: 'rgba(230,130,55,0.48)',
+        countColor: '#a05010', labelColor: '#c88040',
+    },
 }
 
 const ORB_ANIMATION: Record<Urgency, string> = {
-  calm:   'todos-orb-calm',
-  active: 'todos-orb-active',
-  urgent: 'todos-orb-urgent',
+    calm:   'todos-orb-calm',
+    active: 'todos-orb-active',
+    urgent: 'todos-orb-urgent',
 }
 
-// Solar flares — many wispy eruptions, slow cycles, mostly dormant
 const SOLAR_FLARES = [
-  { angle: 14,  width: 24, height: 32, dur: 14, delay: 0    },
-  { angle: 41,  width: 18, height: 24, dur: 16, delay: 5.2  },
-  { angle: 68,  width: 28, height: 36, dur: 13, delay: 9.6  },
-  { angle: 96,  width: 20, height: 28, dur: 17, delay: 2.4  },
-  { angle: 124, width: 26, height: 34, dur: 15, delay: 11.3 },
-  { angle: 152, width: 22, height: 30, dur: 14, delay: 7.0  },
-  { angle: 178, width: 30, height: 38, dur: 16, delay: 4.0  },
-  { angle: 206, width: 18, height: 26, dur: 18, delay: 12.4 },
-  { angle: 232, width: 24, height: 32, dur: 13, delay: 6.2  },
-  { angle: 258, width: 20, height: 28, dur: 15, delay: 10.0 },
-  { angle: 284, width: 28, height: 36, dur: 14, delay: 1.7  },
-  { angle: 312, width: 22, height: 30, dur: 17, delay: 8.5  },
-  { angle: 340, width: 26, height: 34, dur: 15, delay: 13.2 },
+    { angle: 14,  width: 24, height: 32, dur: 14, delay: 0    },
+    { angle: 41,  width: 18, height: 24, dur: 16, delay: 5.2  },
+    { angle: 68,  width: 28, height: 36, dur: 13, delay: 9.6  },
+    { angle: 96,  width: 20, height: 28, dur: 17, delay: 2.4  },
+    { angle: 124, width: 26, height: 34, dur: 15, delay: 11.3 },
+    { angle: 152, width: 22, height: 30, dur: 14, delay: 7.0  },
+    { angle: 178, width: 30, height: 38, dur: 16, delay: 4.0  },
+    { angle: 206, width: 18, height: 26, dur: 18, delay: 12.4 },
+    { angle: 232, width: 24, height: 32, dur: 13, delay: 6.2  },
+    { angle: 258, width: 20, height: 28, dur: 15, delay: 10.0 },
+    { angle: 284, width: 28, height: 36, dur: 14, delay: 1.7  },
+    { angle: 312, width: 22, height: 30, dur: 17, delay: 8.5  },
+    { angle: 340, width: 26, height: 34, dur: 15, delay: 13.2 },
 ]
 
-const SS_INPUT  = 'todos_orb_input'
-const SS_SPEECH = 'todos_orb_speech'
-
 export default function AmbientDashboard() {
-  const router = useRouter()
-  const supabase = useMemo(() => createClient(), [])
-  const inputRef = useRef<HTMLTextAreaElement>(null)
+    const router   = useRouter()
+    const supabase = useMemo(() => createClient(), [])
 
-  const [products, setProducts]           = useState<Product[]>([])
-  const [selectedId, setSelectedId]       = useState<string | null>(null)
-  const [todos, setTodos]                 = useState<Todo[]>([])
-  const [input, setInput]                 = useState('')
-  const [loading, setLoading]             = useState(true)
-  const [submitting, setSubmitting]       = useState(false)
-  const [showAddProduct, setShowAddProduct] = useState(false)
-  const [showEditProduct, setShowEditProduct] = useState(false)
-  const [pulse, setPulse]                 = useState(false)
-  const [moodOverride, setMoodOverride]   = useState<MoodOverride>(null)
-  const [dryRun, setDryRun]               = useState(false)
-  const [speech, setSpeech]               = useState<{ text: string; autoFade?: number } | null>(null)
-  const [speechVisible, setSpeechVisible] = useState(false)
-  const [speechText, setSpeechText]       = useState('')
-  const [showHelp, setShowHelp]           = useState(false)
-  const [queryResults, setQueryResults]   = useState<OrbResponse['results']>(undefined)
-  const [queryLabel, setQueryLabel]       = useState('')
-  const [showQueryResults, setShowQueryResults] = useState(false)
-  const [inputFocused, setInputFocused]         = useState(false)
-  const autoFadeRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const [products, setProducts]               = useState<Product[]>([])
+    const [selectedId, setSelectedId]           = useState<string | null>(null)
+    const [todos, setTodos]                     = useState<Todo[]>([])
+    const [input, setInput]                     = useState('')
+    const [loading, setLoading]                 = useState(true)
+    const [submitting, setSubmitting]           = useState(false)
+    const [showAddProduct, setShowAddProduct]   = useState(false)
+    const [showEditProduct, setShowEditProduct] = useState(false)
+    const [pulse, setPulse]                     = useState(false)
+    const [moodOverride, setMoodOverride]       = useState<MoodOverride>(null)
+    const [dryRun, setDryRun]                   = useState(false)
+    const [showHelp, setShowHelp]               = useState(false)
+    const [messages, setMessages]               = useState<ConversationMessage[]>([])
+    const [conversationActive, setConversationActive] = useState(false)
+    const [queryResults, setQueryResults]       = useState<OrbResponse['results']>(undefined)
+    const [queryLabel, setQueryLabel]           = useState('')
+    const [showQueryResults, setShowQueryResults] = useState(false)
 
-  // Restore input and speech from sessionStorage on mount
-  useEffect(() => {
-    const savedInput  = sessionStorage.getItem(SS_INPUT)
-    const savedSpeech = sessionStorage.getItem(SS_SPEECH)
-    if (savedInput)  setInput(savedInput)
-    if (savedSpeech) setSpeech({ text: savedSpeech })
-  }, [])
+    const inactivityRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const prevSelectedId   = useRef<string | null>(null)
 
-  // Persist speechText to sessionStorage whenever it changes
-  useEffect(() => {
-    if (speechText) sessionStorage.setItem(SS_SPEECH, speechText)
-    else            sessionStorage.removeItem(SS_SPEECH)
-  }, [speechText])
+    function resetInactivity() {
+        if (inactivityRef.current) clearTimeout(inactivityRef.current)
+        inactivityRef.current = setTimeout(() => {
+            setMessages([])
+            setConversationActive(false)
+            sessionStorage.removeItem(SS_CONVERSATION)
+        }, INACTIVITY_MS)
+    }
 
-  // Speech: fade in on new value, fade out when cleared. Keep last text during fade-out.
-  useEffect(() => {
-    if (speech) {
-      setSpeechText(speech.text)
-      setSpeechVisible(true)
-      if (speech.autoFade) {
-        autoFadeRef.current = setTimeout(() => setSpeech(null), speech.autoFade)
-        return () => {
-          if (autoFadeRef.current) clearTimeout(autoFadeRef.current)
-          autoFadeRef.current = null
+    function addOrbMessage(text: string) {
+        setMessages(prev => [...prev, { id: genId(), type: 'orb', text }])
+        setConversationActive(true)
+        resetInactivity()
+    }
+
+    // Restore input and conversation from sessionStorage on mount
+    useEffect(() => {
+        const savedInput = sessionStorage.getItem(SS_INPUT)
+        const savedConvo = sessionStorage.getItem(SS_CONVERSATION)
+        if (savedInput) setInput(savedInput)
+        if (savedConvo) {
+            try {
+                const msgs = JSON.parse(savedConvo) as ConversationMessage[]
+                if (msgs.length > 0) {
+                    setMessages(msgs)
+                    setConversationActive(true)
+                }
+            } catch { /* ignore corrupted storage */ }
         }
-      }
-    } else {
-      setSpeechVisible(false)
-      // clear text after fade-out completes
-      const t = setTimeout(() => setSpeechText(''), 500)
-      return () => clearTimeout(t)
-    }
-  }, [speech])
+    }, [])
 
-  // Load products, restore last selected
-  useEffect(() => {
-    async function load() {
-      const { data } = await supabase.from('projects').select('id, name, code, description').order('sort_order')
-      const list = (data ?? []) as Product[]
-      setProducts(list)
-      if (list.length > 0) {
-        const last = localStorage.getItem(LAST_PRODUCT_KEY)
-        const found = list.find(p => p.id === last)
-        setSelectedId(found ? found.id : list[0].id)
-      }
-      setLoading(false)
-    }
-    load()
-  }, [supabase])
+    // Persist conversation to sessionStorage
+    useEffect(() => {
+        if (messages.length > 0) {
+            sessionStorage.setItem(SS_CONVERSATION, JSON.stringify(messages))
+        } else {
+            sessionStorage.removeItem(SS_CONVERSATION)
+        }
+    }, [messages])
 
-  const fetchTodos = useCallback(async () => {
-    if (!selectedId) return
-    const { data } = await supabase
-      .from('todos')
-      .select('id, title, status, priority_value')
-      .eq('product_id', selectedId)
-      .is('deleted_at', null)
-    setTodos((data ?? []) as Todo[])
-  }, [selectedId, supabase])
-
-  useVisibilityRefetch(fetchTodos)
-
-  // Fetch todos when product changes; subscribe to realtime updates
-  useEffect(() => {
-    if (!selectedId) return
-
-    fetchTodos()
-    localStorage.setItem(LAST_PRODUCT_KEY, selectedId)
-
-    const channel = supabase
-      .channel(`todos:${selectedId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'todos', filter: `product_id=eq.${selectedId}` },
-        () => fetchTodos(),
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [selectedId, supabase, fetchTodos])
-
-  const openTodos = todos.filter(t => t.status !== 'done')
-  const urgency   = moodOverride ?? computeUrgency(todos)
-  const style     = ORB_STYLE[urgency]
-  const speed     = ORB_SPEED[urgency]
-  const selected  = products.find(p => p.id === selectedId)
-
-  // Global keyboard shortcuts
-  useEffect(() => {
-    const HINT_KEY = 'todos_keyboard_hint_shown'
-    let hintShown = !!localStorage.getItem(HINT_KEY)
-
-    function onKey(e: KeyboardEvent) {
-      const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)
-
-      if (e.key === '?' && !inInput) {
-        e.preventDefault()
-        setShowHelp(s => !s)
-        return
-      }
-      if (e.key === 'Escape') {
-        setShowHelp(false)
-        return
-      }
-      if (e.key === 'Tab' && !hintShown) {
-        hintShown = true
-        localStorage.setItem(HINT_KEY, '1')
-        setSpeech({ text: 'Keyboard mode — Tab to navigate, arrows to switch products, ? for help.' })
-        return
-      }
-      if (!inInput && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
-        e.preventDefault()
-        setSelectedId(current => {
-          if (!current || products.length <= 1) return current
-          const idx = products.findIndex(p => p.id === current)
-          if (idx === -1) return current
-          const next = e.key === 'ArrowLeft'
-            ? (idx - 1 + products.length) % products.length
-            : (idx + 1) % products.length
-          return products[next].id
-        })
-      }
-    }
-
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [products])
-
-  async function handleSubmit(e?: React.FormEvent) {
-    e?.preventDefault()
-    const text = input.trim()
-    if (!text || !selectedId || submitting) return
-    if (text === '?') {
-      setShowHelp(true)
-      setInput('')
-      return
-    }
-    if (text.toLowerCase() === 'hint') {
-      setInput('')
-      setSpeech({ text: 'TODOS tracks your project backlogs. Type plain English — create todos, ask what\'s open, update priorities, or mark things done. Try: "What\'s urgent in HELM?" or "Add a bug to TODOS, high priority". Type ? for full help.' })
-      return
-    }
-    if (text.toLowerCase() === 'explain') {
-      setSpeech({ text: 'Create, query, update, delete, or archive todos.\nTap the orb to list. Type \'?\' for more.' })
-      return
-    }
-    if (autoFadeRef.current) {
-      clearTimeout(autoFadeRef.current)
-      autoFadeRef.current = null
-    }
-    setSubmitting(true)
-    setSpeech({ text: 'Processing…' })
-
-    try {
-      const res = await orbConverse({ input: text, productId: selectedId, dryRun })
-      setSpeech({ text: res.speech })
-
-      if (res.results && res.results.length > 0) {
-        setQueryResults(res.results)
-        setQueryLabel(res.queryLabel ?? text)
-      } else {
-        setQueryResults(undefined)
-      }
-
-      if (res.refresh) {
-        setPulse(true)
-        setTimeout(() => setPulse(false), 420)
-      }
-    } catch {
-      setSpeech({ text: 'Something went wrong. Try again?' })
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  if (loading) return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--bg)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-    }}>
-      <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>Loading…</p>
-    </div>
-  )
-
-  if (products.length === 0) return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--bg)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '16px',
-    }}>
-      <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text2)' }}>No projects yet.</p>
-      <Link href="/dashboard/classic" style={{
-        fontSize: 'var(--fs-sm)',
-        color: 'var(--pill-active-color)',
-        textDecoration: 'underline',
-        textUnderlineOffset: '3px',
-      }}>
-        Go to classic view to create one
-      </Link>
-    </div>
-  )
-
-  return (
-    <div
-      id="main-content"
-      style={{
-        minHeight: '100vh',
-        background: 'var(--bg)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '44px',
-        paddingTop: 'var(--sat)',
-        paddingBottom: 'calc(var(--sp-3xl) + var(--sab))',
-        fontFamily: 'var(--font-ui)',
-        WebkitFontSmoothing: 'antialiased',
-      }}
-    >
-
-      {/* Orb */}
-      <div
-        onClick={() => selectedId && router.push(`/dashboard/${selectedId}`)}
-        style={{
-          position: 'relative',
-          width: '240px',
-          height: '240px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          transform: pulse ? 'scale(1.06)' : 'scale(1)',
-          transition: 'transform 0.42s cubic-bezier(0.34, 1.56, 0.64, 1)',
-        }}
-        aria-label={`${openTodos.length} open todos — tap to view list`}
-        role="button"
-        tabIndex={0}
-        onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && selectedId && router.push(`/dashboard/${selectedId}`)}
-      >
-        {/* Glow */}
-        <div data-todos-glow style={{
-          position: 'absolute',
-          inset: ORB_GLOW[urgency].inset,
-          borderRadius: '50%',
-          background: `radial-gradient(circle at 40% 35%, ${style.glow}, transparent 70%)`,
-          filter: `blur(${ORB_GLOW[urgency].blur})`,
-          animation: `todos-glow-${urgency} ${speed} ease-in-out infinite`,
-          transition: 'inset 0.8s, filter 0.8s, background 0.8s',
-        }} />
-
-        {/* Solar flares (urgent only) — render behind sphere so they emerge from the edge */}
-        {urgency === 'urgent' && SOLAR_FLARES.map((f, i) => (
-          <div
-            key={i}
-            aria-hidden
-            style={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              width: 0,
-              height: 0,
-              transform: `rotate(${f.angle}deg)`,
-              pointerEvents: 'none',
-            }}
-          >
-            <div
-              data-todos-flare
-              style={{
-                position: 'absolute',
-                bottom: '82px',
-                left: `${-f.width / 2}px`,
-                width: `${f.width}px`,
-                height: `${f.height}px`,
-                background: `radial-gradient(ellipse 70% 100% at 50% 100%,
-                  rgba(255, 235, 180, 0.95) 0%,
-                  rgba(255, 185, 90, 0.6) 30%,
-                  rgba(255, 140, 60, 0.28) 60%,
-                  transparent 95%)`,
-                borderRadius: '50% 50% 50% 50%',
-                transformOrigin: 'bottom center',
-                animation: `todos-flare-rise ${f.dur}s ease-in-out infinite`,
-                animationDelay: `${f.delay}s`,
-                filter: 'blur(6px)',
-                mixBlendMode: 'screen',
-              }}
-            />
-          </div>
-        ))}
-
-        {/* Sphere */}
-        <div data-todos-orb style={{
-          position: 'relative',
-          width: '164px',
-          height: '164px',
-          borderRadius: '50%',
-          background: `radial-gradient(circle at 36% 30%, #ffffff, ${style.orbMid} 45%, ${style.orbLo} 82%)`,
-          boxShadow: `0 8px 32px ${style.glow}, 0 2px 8px rgba(0,0,0,0.06), inset 0 -4px 12px rgba(0,0,0,0.04), inset 0 2px 8px rgba(255,255,255,0.9)`,
-          animation: `${ORB_ANIMATION[urgency]} ${speed} ease-in-out infinite`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column',
-          gap: '2px',
-          transition: 'background 0.8s, box-shadow 0.8s',
-        }}>
-          {/* Product name — curved along the inside top of the sphere */}
-          <svg
-            width="164"
-            height="164"
-            viewBox="0 0 164 164"
-            style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
-            aria-hidden
-          >
-            <defs>
-              <path
-                id="todos-orb-name-arc"
-                d="M 24 82 A 58 58 0 0 1 140 82"
-                fill="none"
-              />
-              <path
-                id="todos-orb-state-arc"
-                d="M 24 82 A 58 58 0 0 0 140 82"
-                fill="none"
-              />
-            </defs>
-            <text
-              fontFamily="var(--font-ui)"
-              fontSize="11"
-              fontWeight={600}
-              letterSpacing="3"
-              fill={style.labelColor}
-              style={{ textTransform: 'uppercase', transition: 'fill 0.8s' }}
-            >
-              <textPath href="#todos-orb-name-arc" startOffset="50%" textAnchor="middle">
-                {(() => {
-                  const raw = (selected?.code ?? selected?.name ?? '').toUpperCase()
-                  return raw.length > 10 ? `${raw.slice(0, 9)}…` : raw
-                })()}
-              </textPath>
-            </text>
-            <text
-              fontFamily="var(--font-ui)"
-              fontSize="11"
-              fontWeight={600}
-              letterSpacing="3"
-              fill={style.labelColor}
-              style={{ textTransform: 'uppercase', transition: 'fill 0.8s' }}
-            >
-              <textPath href="#todos-orb-state-arc" startOffset="50%" textAnchor="middle">
-                {urgency.toUpperCase()}
-              </textPath>
-            </text>
-          </svg>
-          <span style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 'var(--fs-orb)',
-            fontWeight: 300,
-            color: style.countColor,
-            letterSpacing: '-1px',
-            lineHeight: 1,
-            transition: 'color 0.8s',
-          }}>
-            {openTodos.length}
-          </span>
-          <span style={{
-            fontFamily: 'var(--font-ui)',
-            fontSize: 'var(--fs-xs)',
-            fontWeight: 400,
-            letterSpacing: '0.14em',
-            textTransform: 'uppercase',
-            color: style.labelColor,
-            transition: 'color 0.8s',
-          }}>
-            open
-          </span>
-        </div>
-      </div>
-
-      {/* Speech panel — appears only when there's something to say */}
-      {speechText && (
-        <div
-          aria-live="polite"
-          style={{
-            width: '420px',
-            maxWidth: '90vw',
-            background: 'var(--bg2)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--r-lg)',
-            boxShadow: 'var(--shadow-sm)',
-            padding: 'var(--sp-md) var(--sp-xl)',
-            fontFamily: 'var(--font-ui)',
-            fontSize: 'var(--fs-base)',
-            fontWeight: 400,
-            lineHeight: 1.5,
-            color: 'var(--text2)',
-            whiteSpace: 'pre-wrap',
-            overflowY: 'auto',
-            height: '96px',
-            opacity: speechVisible ? 1 : 0,
-            transform: speechVisible ? 'translateY(0)' : 'translateY(-6px)',
-            transition: 'opacity 280ms ease-out, transform 280ms ease-out',
-          }}
-        >
-          {speechText}
-        </div>
-      )}
-
-      {/* Show list button — appears when query returned results */}
-      {queryResults && queryResults.length > 0 && !showQueryResults && (
-        <button
-          onClick={() => setShowQueryResults(true)}
-          style={{
-            fontFamily: 'var(--font-ui)',
-            fontSize: 'var(--fs-xs)',
-            fontWeight: 500,
-            letterSpacing: '0.06em',
-            padding: '7px 20px',
-            borderRadius: '20px',
-            border: '1px solid var(--pill-active-border)',
-            color: 'var(--pill-active-color)',
-            background: 'var(--pill-active-bg)',
-            cursor: 'pointer',
-            transition: 'all var(--transition)',
-            marginTop: '-24px',
-          }}
-        >
-          Show list · {queryResults.length}
-        </button>
-      )}
-
-      {/* Input */}
-      <form onSubmit={handleSubmit} style={{ width: '420px', maxWidth: '90vw', position: 'relative' }}>
-        {!input && !inputFocused && (
-          <div style={{
-            position: 'absolute',
-            top: '13px',
-            left: '20px',
-            pointerEvents: 'none',
-            fontFamily: 'var(--font-ui)',
-            fontSize: 'var(--fs-input)',
-            color: 'var(--muted)',
-            lineHeight: 1.5,
-            zIndex: 1,
-            userSelect: 'none',
-            whiteSpace: 'nowrap',
-          }}>
-            {'Type '}
-            <span style={{
-              background: 'var(--bg3)',
-              border: '1px solid var(--border)',
-              borderRadius: '4px',
-              padding: '1px 5px',
-              color: 'var(--text)',
-              fontFamily: 'monospace',
-              fontSize: '0.85em',
-            }}>hint</span>
-            {' or '}
-            <svg style={{ display: 'inline-block', verticalAlign: 'middle', marginBottom: '1px' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-            {' for help.'}
-          </div>
-        )}
-        <textarea
-          ref={inputRef}
-          rows={2}
-          value={input}
-          onChange={e => { setInput(e.target.value); sessionStorage.setItem(SS_INPUT, e.target.value) }}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              handleSubmit()
+    // Reset conversation on product switch (not on initial mount)
+    useEffect(() => {
+        if (prevSelectedId.current !== null && prevSelectedId.current !== selectedId) {
+            setMessages([])
+            setConversationActive(false)
+            sessionStorage.removeItem(SS_CONVERSATION)
+            if (inactivityRef.current) {
+                clearTimeout(inactivityRef.current)
+                inactivityRef.current = null
             }
-          }}
-          disabled={submitting}
-          style={{
-            width: '100%',
-            fontFamily: 'var(--font-ui)',
-            fontSize: 'var(--fs-input)',
-            background: 'var(--bg2)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--r-xl)',
-            padding: '12px 50px 12px 20px',
-            color: 'var(--text)',
-            outline: 'none',
-            boxShadow: 'var(--shadow-sm)',
-            WebkitAppearance: 'none',
-            appearance: 'none',
-            resize: 'none',
-            lineHeight: 1.5,
-            overflowY: 'auto',
-          }}
-          onFocus={e => {
-            e.target.style.borderColor = 'var(--border-focus)'
-            setInputFocused(true)
+        }
+        prevSelectedId.current = selectedId
+    }, [selectedId])
+
+    // Clean up inactivity timer on unmount
+    useEffect(() => {
+        return () => { if (inactivityRef.current) clearTimeout(inactivityRef.current) }
+    }, [])
+
+    // Load products, restore last selected
+    useEffect(() => {
+        async function load() {
+            const { data } = await supabase.from('projects').select('id, name, code, description').order('sort_order')
+            const list = (data ?? []) as Product[]
+            setProducts(list)
+            if (list.length > 0) {
+                const last  = localStorage.getItem(LAST_PRODUCT_KEY)
+                const found = list.find(p => p.id === last)
+                setSelectedId(found ? found.id : list[0].id)
+            }
+            setLoading(false)
+        }
+        load()
+    }, [supabase])
+
+    const fetchTodos = useCallback(async () => {
+        if (!selectedId) return
+        const { data } = await supabase
+            .from('todos')
+            .select('id, title, status, priority_value')
+            .eq('product_id', selectedId)
+            .is('deleted_at', null)
+        setTodos((data ?? []) as Todo[])
+    }, [selectedId, supabase])
+
+    useVisibilityRefetch(fetchTodos)
+
+    useEffect(() => {
+        if (!selectedId) return
+
+        fetchTodos()
+        localStorage.setItem(LAST_PRODUCT_KEY, selectedId)
+
+        const channel = supabase
+            .channel(`todos:${selectedId}`)
+            .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'todos', filter: `product_id=eq.${selectedId}` },
+                () => fetchTodos(),
+            )
+            .subscribe()
+
+        return () => { supabase.removeChannel(channel) }
+    }, [selectedId, supabase, fetchTodos])
+
+    const openTodos = todos.filter(t => t.status !== 'done')
+    const urgency   = moodOverride ?? computeUrgency(todos)
+    const style     = ORB_STYLE[urgency]
+    const speed     = ORB_SPEED[urgency]
+    const selected  = products.find(p => p.id === selectedId)
+
+    // Global keyboard shortcuts
+    useEffect(() => {
+        const HINT_KEY = 'todos_keyboard_hint_shown'
+        let hintShown  = !!localStorage.getItem(HINT_KEY)
+
+        function onKey(e: KeyboardEvent) {
+            const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)
+
+            if (e.key === '?' && !inInput) {
+                e.preventDefault()
+                setShowHelp(s => !s)
+                return
+            }
+            if (e.key === 'Escape') {
+                setShowHelp(false)
+                return
+            }
+            if (e.key === 'Tab' && !hintShown) {
+                hintShown = true
+                localStorage.setItem(HINT_KEY, '1')
+                addOrbMessage('Keyboard mode — Tab to navigate, arrows to switch products, ? for help.')
+                return
+            }
+            if (!inInput && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                e.preventDefault()
+                setSelectedId(current => {
+                    if (!current || products.length <= 1) return current
+                    const idx  = products.findIndex(p => p.id === current)
+                    if (idx === -1) return current
+                    const next = e.key === 'ArrowLeft'
+                        ? (idx - 1 + products.length) % products.length
+                        : (idx + 1) % products.length
+                    return products[next].id
+                })
+            }
+        }
+
+        window.addEventListener('keydown', onKey)
+        return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [products])
+
+    async function handleSubmit(e?: React.FormEvent) {
+        e?.preventDefault()
+        const text = input.trim()
+        if (!text || !selectedId || submitting) return
+
+        if (text === '?') {
+            setShowHelp(true)
             setInput('')
-            setSpeech(null)
-            setQueryResults(undefined)
-            setShowQueryResults(false)
+            return
+        }
+
+        if (text.toLowerCase() === 'hint') {
+            setInput('')
             sessionStorage.removeItem(SS_INPUT)
-            sessionStorage.removeItem(SS_SPEECH)
-          }}
-          onBlur={e => {
-            e.target.style.borderColor = 'var(--border)'
-            setInputFocused(false)
-          }}
-        />
-        <button
-          type="submit"
-          disabled={!input.trim() || submitting}
-          style={{
-            position: 'absolute',
-            right: '12px',
-            bottom: '12px',
-            background: 'none',
-            border: 'none',
-            cursor: input.trim() ? 'pointer' : 'default',
-            color: input.trim() ? 'var(--pill-active-color)' : 'var(--muted)',
-            fontSize: '16px',
-            padding: '4px',
-            lineHeight: 1,
-            transition: 'color 0.15s',
-          }}
-          aria-label="Submit"
-        >
-          ↵
-        </button>
-      </form>
+            setMessages(prev => [
+                ...prev,
+                { id: genId(), type: 'user', text },
+                { id: genId(), type: 'orb', text: 'TODOS tracks your project backlogs. Type plain English — create todos, ask what\'s open, update priorities, or mark things done. Try: "What\'s urgent in HELM?" or "Add a bug to TODOS, high priority". Type ? for full help.' },
+            ])
+            setConversationActive(true)
+            resetInactivity()
+            return
+        }
 
-      {/* Product pills */}
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '420px' }}>
-        {products.map(p => (
-          <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <button
-              onClick={() => setSelectedId(p.id)}
-              style={{
-                fontFamily: 'var(--font-ui)',
-                fontSize: 'var(--fs-xs)',
-                fontWeight: 500,
-                letterSpacing: '0.07em',
-                padding: '7px 16px',
-                borderRadius: '20px',
-                border: `1px solid ${p.id === selectedId ? 'var(--pill-active-border)' : 'var(--border)'}`,
-                color: p.id === selectedId ? 'var(--pill-active-color)' : 'var(--muted)',
-                background: p.id === selectedId ? 'var(--pill-active-bg)' : 'transparent',
-                cursor: 'pointer',
-                transition: 'all var(--transition)',
-              }}
-            >
-              {p.code ?? p.name}
-            </button>
-            {p.id === selectedId && (
-              <button
-                onClick={() => setShowEditProduct(true)}
-                aria-label={`Edit ${p.name}`}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  border: '1px solid var(--border)',
-                  background: 'transparent',
-                  color: 'var(--muted)',
-                  cursor: 'pointer',
-                  padding: 0,
-                  flexShrink: 0,
-                  transition: 'all var(--transition)',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--text3)'; e.currentTarget.style.color = 'var(--text2)' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)' }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-              </button>
-            )}
-          </div>
-        ))}
-        <button
-          onClick={() => setShowAddProduct(true)}
-          style={{
-            fontFamily: 'var(--font-ui)',
-            fontSize: 'var(--fs-xs)',
-            fontWeight: 500,
-            letterSpacing: '0.07em',
-            padding: '7px 16px',
-            borderRadius: '20px',
-            border: '1px dashed var(--border)',
-            color: 'var(--muted)',
-            background: 'none',
-            cursor: 'pointer',
-            transition: 'all var(--transition)',
-          }}
-        >
-          + project
-        </button>
-      </div>
+        if (text.toLowerCase() === 'explain') {
+            setInput('')
+            sessionStorage.removeItem(SS_INPUT)
+            setMessages(prev => [
+                ...prev,
+                { id: genId(), type: 'user', text },
+                { id: genId(), type: 'orb', text: 'Create, query, update, delete, or archive todos.\nTap the orb to list. Type \'?\' for more.' },
+            ])
+            setConversationActive(true)
+            resetInactivity()
+            return
+        }
 
-      {/* Top right — help + settings + sign out */}
-      <div style={{
-        position: 'fixed',
-        top: 'calc(var(--sp-lg) + var(--sat))',
-        right: 'var(--sp-lg)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--sp-md)',
-      }}>
-        {/* Help */}
-        <button
-          onClick={() => setShowHelp(true)}
-          aria-label="Help"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px', display: 'flex', alignItems: 'center', lineHeight: 1 }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-            <line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-        </button>
+        const processingId = genId()
+        setMessages(prev => [
+            ...prev,
+            { id: genId(), type: 'user', text },
+            { id: processingId, type: 'orb', text: 'Processing…' },
+        ])
+        setConversationActive(true)
+        setInput('')
+        sessionStorage.removeItem(SS_INPUT)
+        setSubmitting(true)
+        resetInactivity()
 
-        {/* Settings */}
-        <Link
-          href="/settings"
-          aria-label="Settings"
-          style={{ display: 'flex', alignItems: 'center', color: 'var(--muted)', padding: '4px', lineHeight: 1 }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-          </svg>
-        </Link>
+        try {
+            const res = await orbConverse({ input: text, productId: selectedId, dryRun })
+            setMessages(prev => prev.map(m => m.id === processingId
+                ? {
+                    id: processingId,
+                    type: 'orb' as const,
+                    text: res.speech,
+                    results: res.results?.length ? res.results : undefined,
+                    queryLabel: res.queryLabel ?? text,
+                }
+                : m
+            ))
+            if (res.refresh) {
+                setPulse(true)
+                setTimeout(() => setPulse(false), 420)
+            }
+        } catch {
+            setMessages(prev => prev.map(m => m.id === processingId
+                ? { ...m, text: 'Something went wrong. Try again?' }
+                : m
+            ))
+        } finally {
+            setSubmitting(false)
+        }
+    }
 
-        {/* Sign out */}
-        <button
-          onClick={async () => {
-            await supabase.auth.signOut()
-            router.push('/auth/login')
-          }}
-          aria-label="Sign out"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px', display: 'flex', alignItems: 'center', lineHeight: 1 }}
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/>
-            <line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-        </button>
-      </div>
+    function handleShowResults(results: NonNullable<OrbResponse['results']>, label: string) {
+        setQueryResults(results)
+        setQueryLabel(label)
+        setShowQueryResults(true)
+    }
 
-      {/* Bottom bar */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: 'calc(12px + var(--sab)) 20px 12px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <span style={{
-          fontSize: 'var(--fs-xs)',
-          color: 'var(--muted)',
-          letterSpacing: '0.05em',
+    const orbScale     = conversationActive ? (pulse ? 0.60 : 0.57) : (pulse ? 1.06 : 1)
+    const orbWrapperH  = conversationActive ? '140px' : '240px'
+
+    if (loading) return (
+        <div style={{
+            minHeight: '100vh',
+            background: 'var(--bg)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
         }}>
-          TODOS {VERSION}
-        </span>
-      </div>
+            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>Loading…</p>
+        </div>
+    )
 
-      {showHelp && <OrbHelp onClose={() => setShowHelp(false)} />}
+    if (products.length === 0) return (
+        <div style={{
+            minHeight: '100vh',
+            background: 'var(--bg)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+        }}>
+            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text2)' }}>No projects yet.</p>
+            <Link href="/dashboard/classic" style={{
+                fontSize: 'var(--fs-sm)',
+                color: 'var(--pill-active-color)',
+                textDecoration: 'underline',
+                textUnderlineOffset: '3px',
+            }}>
+                Go to classic view to create one
+            </Link>
+        </div>
+    )
 
-      {showQueryResults && queryResults && queryResults.length > 0 && (
-        <QueryResultsModal
-          results={queryResults}
-          queryLabel={queryLabel}
-          onClose={() => setShowQueryResults(false)}
-        />
-      )}
+    return (
+        <div
+            id="main-content"
+            style={{
+                minHeight: '100vh',
+                background: 'var(--bg)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: conversationActive ? '20px' : '44px',
+                paddingTop: 'var(--sat)',
+                paddingBottom: 'calc(var(--sp-3xl) + var(--sab))',
+                fontFamily: 'var(--font-ui)',
+                WebkitFontSmoothing: 'antialiased',
+            }}
+        >
 
-      <OrbDevPanel
-        override={moodOverride}
-        onChange={setMoodOverride}
-        onSpeak={setSpeech}
-        dryRun={dryRun}
-        onDryRunChange={setDryRun}
-      />
+            {/* Orb wrapper — height contracts when conversation is active */}
+            <div style={{
+                height: orbWrapperH,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'visible',
+                flexShrink: 0,
+                transition: 'height 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            }}>
+                <div
+                    onClick={() => selectedId && router.push(`/dashboard/${selectedId}`)}
+                    style={{
+                        position: 'relative',
+                        width: '240px',
+                        height: '240px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transform: `scale(${orbScale})`,
+                        transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    }}
+                    aria-label={`${openTodos.length} open todos — tap to view list`}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && selectedId && router.push(`/dashboard/${selectedId}`)}
+                >
+                    {/* Glow */}
+                    <div data-todos-glow style={{
+                        position: 'absolute',
+                        inset: ORB_GLOW[urgency].inset,
+                        borderRadius: '50%',
+                        background: `radial-gradient(circle at 40% 35%, ${style.glow}, transparent 70%)`,
+                        filter: `blur(${ORB_GLOW[urgency].blur})`,
+                        animation: `todos-glow-${urgency} ${speed} ease-in-out infinite`,
+                        transition: 'inset 0.8s, filter 0.8s, background 0.8s',
+                    }} />
 
-      {showAddProduct && (
-        <AddProductModal
-          onClose={() => setShowAddProduct(false)}
-          onCreated={project => {
-            setProducts(prev => [...prev, project])
-            setSelectedId(project.id)
-            setShowAddProduct(false)
-          }}
-        />
-      )}
+                    {/* Solar flares (urgent only) */}
+                    {urgency === 'urgent' && SOLAR_FLARES.map((f, i) => (
+                        <div
+                            key={i}
+                            aria-hidden
+                            style={{
+                                position: 'absolute',
+                                top: '50%',
+                                left: '50%',
+                                width: 0,
+                                height: 0,
+                                transform: `rotate(${f.angle}deg)`,
+                                pointerEvents: 'none',
+                            }}
+                        >
+                            <div
+                                data-todos-flare
+                                style={{
+                                    position: 'absolute',
+                                    bottom: '82px',
+                                    left: `${-f.width / 2}px`,
+                                    width: `${f.width}px`,
+                                    height: `${f.height}px`,
+                                    background: `radial-gradient(ellipse 70% 100% at 50% 100%,
+                    rgba(255, 235, 180, 0.95) 0%,
+                    rgba(255, 185, 90, 0.6) 30%,
+                    rgba(255, 140, 60, 0.28) 60%,
+                    transparent 95%)`,
+                                    borderRadius: '50% 50% 50% 50%',
+                                    transformOrigin: 'bottom center',
+                                    animation: `todos-flare-rise ${f.dur}s ease-in-out infinite`,
+                                    animationDelay: `${f.delay}s`,
+                                    filter: 'blur(6px)',
+                                    mixBlendMode: 'screen',
+                                }}
+                            />
+                        </div>
+                    ))}
 
-      {showEditProduct && selected && (
-        <AddProductModal
-          project={selected}
-          onClose={() => setShowEditProduct(false)}
-          onUpdated={updated => {
-            setProducts(prev => prev.map(p => p.id === updated.id ? updated : p))
-            setShowEditProduct(false)
-          }}
-          onDeleted={id => {
-            setProducts(prev => prev.filter(p => p.id !== id))
-            setSelectedId(prev => prev === id ? (products.find(p => p.id !== id)?.id ?? null) : prev)
-            setShowEditProduct(false)
-          }}
-        />
-      )}
+                    {/* Sphere */}
+                    <div data-todos-orb style={{
+                        position: 'relative',
+                        width: '164px',
+                        height: '164px',
+                        borderRadius: '50%',
+                        background: `radial-gradient(circle at 36% 30%, #ffffff, ${style.orbMid} 45%, ${style.orbLo} 82%)`,
+                        boxShadow: `0 8px 32px ${style.glow}, 0 2px 8px rgba(0,0,0,0.06), inset 0 -4px 12px rgba(0,0,0,0.04), inset 0 2px 8px rgba(255,255,255,0.9)`,
+                        animation: `${ORB_ANIMATION[urgency]} ${speed} ease-in-out infinite`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'column',
+                        gap: '2px',
+                        transition: 'background 0.8s, box-shadow 0.8s',
+                    }}>
+                        <svg
+                            width="164"
+                            height="164"
+                            viewBox="0 0 164 164"
+                            style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
+                            aria-hidden
+                        >
+                            <defs>
+                                <path id="todos-orb-name-arc"  d="M 24 82 A 58 58 0 0 1 140 82" fill="none" />
+                                <path id="todos-orb-state-arc" d="M 24 82 A 58 58 0 0 0 140 82" fill="none" />
+                            </defs>
+                            <text
+                                fontFamily="var(--font-ui)"
+                                fontSize="11"
+                                fontWeight={600}
+                                letterSpacing="3"
+                                fill={style.labelColor}
+                                style={{ textTransform: 'uppercase', transition: 'fill 0.8s' }}
+                            >
+                                <textPath href="#todos-orb-name-arc" startOffset="50%" textAnchor="middle">
+                                    {(() => {
+                                        const raw = (selected?.code ?? selected?.name ?? '').toUpperCase()
+                                        return raw.length > 10 ? `${raw.slice(0, 9)}…` : raw
+                                    })()}
+                                </textPath>
+                            </text>
+                            <text
+                                fontFamily="var(--font-ui)"
+                                fontSize="11"
+                                fontWeight={600}
+                                letterSpacing="3"
+                                fill={style.labelColor}
+                                style={{ textTransform: 'uppercase', transition: 'fill 0.8s' }}
+                            >
+                                <textPath href="#todos-orb-state-arc" startOffset="50%" textAnchor="middle">
+                                    {urgency.toUpperCase()}
+                                </textPath>
+                            </text>
+                        </svg>
+                        <span style={{
+                            fontFamily: 'var(--font-display)',
+                            fontSize: 'var(--fs-orb)',
+                            fontWeight: 300,
+                            color: style.countColor,
+                            letterSpacing: '-1px',
+                            lineHeight: 1,
+                            transition: 'color 0.8s',
+                        }}>
+                            {openTodos.length}
+                        </span>
+                        <span style={{
+                            fontFamily: 'var(--font-ui)',
+                            fontSize: 'var(--fs-xs)',
+                            fontWeight: 400,
+                            letterSpacing: '0.14em',
+                            textTransform: 'uppercase',
+                            color: style.labelColor,
+                            transition: 'color 0.8s',
+                        }}>
+                            open
+                        </span>
+                    </div>
+                </div>
+            </div>
 
-      <style>{`
-        /* Calm: gentle breath, perfect circle, soft glow */
+            {/* Conversation — thread + input unified */}
+            <OrbConversation
+                messages={messages}
+                input={input}
+                submitting={submitting}
+                onInputChange={v => { setInput(v); sessionStorage.setItem(SS_INPUT, v) }}
+                onSubmit={handleSubmit}
+                onShowResults={handleShowResults}
+            />
+
+            {/* Product pills */}
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '420px' }}>
+                {products.map(p => (
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                            onClick={() => setSelectedId(p.id)}
+                            style={{
+                                fontFamily: 'var(--font-ui)',
+                                fontSize: 'var(--fs-xs)',
+                                fontWeight: 500,
+                                letterSpacing: '0.07em',
+                                padding: '7px 16px',
+                                borderRadius: '20px',
+                                border: `1px solid ${p.id === selectedId ? 'var(--pill-active-border)' : 'var(--border)'}`,
+                                color: p.id === selectedId ? 'var(--pill-active-color)' : 'var(--muted)',
+                                background: p.id === selectedId ? 'var(--pill-active-bg)' : 'transparent',
+                                cursor: 'pointer',
+                                transition: 'all var(--transition)',
+                            }}
+                        >
+                            {p.code ?? p.name}
+                        </button>
+                        {p.id === selectedId && (
+                            <button
+                                onClick={() => setShowEditProduct(true)}
+                                aria-label={`Edit ${p.name}`}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '50%',
+                                    border: '1px solid var(--border)',
+                                    background: 'transparent',
+                                    color: 'var(--muted)',
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    flexShrink: 0,
+                                    transition: 'all var(--transition)',
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--text3)'; e.currentTarget.style.color = 'var(--text2)' }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)' }}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                        )}
+                    </div>
+                ))}
+                <button
+                    onClick={() => setShowAddProduct(true)}
+                    style={{
+                        fontFamily: 'var(--font-ui)',
+                        fontSize: 'var(--fs-xs)',
+                        fontWeight: 500,
+                        letterSpacing: '0.07em',
+                        padding: '7px 16px',
+                        borderRadius: '20px',
+                        border: '1px dashed var(--border)',
+                        color: 'var(--muted)',
+                        background: 'none',
+                        cursor: 'pointer',
+                        transition: 'all var(--transition)',
+                    }}
+                >
+                    + project
+                </button>
+            </div>
+
+            {/* Top right — help + settings + sign out */}
+            <div style={{
+                position: 'fixed',
+                top: 'calc(var(--sp-lg) + var(--sat))',
+                right: 'var(--sp-lg)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--sp-md)',
+            }}>
+                <button
+                    onClick={() => setShowHelp(true)}
+                    aria-label="Help"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px', display: 'flex', alignItems: 'center', lineHeight: 1 }}
+                >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                </button>
+                <Link
+                    href="/settings"
+                    aria-label="Settings"
+                    style={{ display: 'flex', alignItems: 'center', color: 'var(--muted)', padding: '4px', lineHeight: 1 }}
+                >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </Link>
+                <button
+                    onClick={async () => {
+                        await supabase.auth.signOut()
+                        router.push('/auth/login')
+                    }}
+                    aria-label="Sign out"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px', display: 'flex', alignItems: 'center', lineHeight: 1 }}
+                >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16 17 21 12 16 7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
+                    </svg>
+                </button>
+            </div>
+
+            {/* Bottom bar */}
+            <div style={{
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                padding: 'calc(12px + var(--sab)) 20px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+            }}>
+                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', letterSpacing: '0.05em' }}>
+                    TODOS {VERSION}
+                </span>
+            </div>
+
+            {showHelp && <OrbHelp onClose={() => setShowHelp(false)} />}
+
+            {showQueryResults && queryResults && queryResults.length > 0 && (
+                <QueryResultsModal
+                    results={queryResults}
+                    queryLabel={queryLabel}
+                    onClose={() => setShowQueryResults(false)}
+                />
+            )}
+
+            <OrbDevPanel
+                override={moodOverride}
+                onChange={setMoodOverride}
+                onSpeak={speech => { if (speech) addOrbMessage(speech.text) }}
+                dryRun={dryRun}
+                onDryRunChange={setDryRun}
+            />
+
+            {showAddProduct && (
+                <AddProductModal
+                    onClose={() => setShowAddProduct(false)}
+                    onCreated={project => {
+                        setProducts(prev => [...prev, project])
+                        setSelectedId(project.id)
+                        setShowAddProduct(false)
+                    }}
+                />
+            )}
+
+            {showEditProduct && selected && (
+                <AddProductModal
+                    project={selected}
+                    onClose={() => setShowEditProduct(false)}
+                    onUpdated={updated => {
+                        setProducts(prev => prev.map(p => p.id === updated.id ? updated : p))
+                        setShowEditProduct(false)
+                    }}
+                    onDeleted={id => {
+                        setProducts(prev => prev.filter(p => p.id !== id))
+                        setSelectedId(prev => prev === id ? (products.find(p => p.id !== id)?.id ?? null) : prev)
+                        setShowEditProduct(false)
+                    }}
+                />
+            )}
+
+            <style>{`
         @keyframes todos-orb-calm {
           0%, 100% { transform: scale(1);     border-radius: 50%; }
           50%      { transform: scale(1.025); border-radius: 50%; }
@@ -846,8 +758,6 @@ export default function AmbientDashboard() {
           0%, 100% { transform: scale(1);    opacity: 0.85; }
           50%      { transform: scale(1.05); opacity: 1; }
         }
-
-        /* Active: faster breath, edges begin to soften, glow blooms */
         @keyframes todos-orb-active {
           0%, 100% { transform: scale(1);     border-radius: 50% 50% 50% 50%; }
           33%      { transform: scale(1.04);  border-radius: 48% 52% 51% 49%; }
@@ -857,8 +767,6 @@ export default function AmbientDashboard() {
           0%, 100% { transform: scale(1);    opacity: 0.8; }
           50%      { transform: scale(1.12); opacity: 1; }
         }
-
-        /* Urgent: warm energetic pulse — no warping, flares carry the urgency signal */
         @keyframes todos-orb-urgent {
           0%, 100% { transform: scale(1);     border-radius: 50%; }
           50%      { transform: scale(1.045); border-radius: 50%; }
@@ -867,8 +775,6 @@ export default function AmbientDashboard() {
           0%, 100% { transform: scale(1);    opacity: 0.75; }
           50%      { transform: scale(1.18); opacity: 1; }
         }
-
-        /* Solar flares: long dormant, slow swell, billow, dissipate as wisps */
         @keyframes todos-flare-rise {
           0%, 55%  { transform: scaleY(0)    scaleX(0.5) skewX(0deg);   opacity: 0;    }
           68%      { transform: scaleY(0.5)  scaleX(1)   skewX(-2deg);  opacity: 0.85; }
@@ -877,8 +783,6 @@ export default function AmbientDashboard() {
           96%      { transform: scaleY(1.3)  scaleX(0.3) skewX(3deg);   opacity: 0.15; }
           100%     { transform: scaleY(1.4)  scaleX(0.1) skewX(0deg);   opacity: 0;    }
         }
-
-        /* Accessibility: honor reduced-motion — keep mood signal via glow size & color, drop kinesis */
         @media (prefers-reduced-motion: reduce) {
           [data-todos-orb], [data-todos-glow], [data-todos-flare] {
             animation: none !important;
@@ -886,6 +790,6 @@ export default function AmbientDashboard() {
           [data-todos-flare] { opacity: 0; }
         }
       `}</style>
-    </div>
-  )
+        </div>
+    )
 }
