@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import AddProductModal from './AddProductModal'
+import QueryResultsModal from './QueryResultsModal'
 import OrbHelp from './OrbHelp'
 import { OrbDevPanel, type MoodOverride } from './OrbDevPanel'
-import { orbConverse } from '@/app/actions/orb-converse'
+import { orbConverse, type OrbResponse } from '@/app/actions/orb-converse'
 import { useVisibilityRefetch } from '@/lib/hooks/useVisibilityRefetch'
 import { VERSION } from '@/lib/version'
 
@@ -104,6 +105,9 @@ export default function AmbientDashboard() {
   const [speechVisible, setSpeechVisible] = useState(false)
   const [speechText, setSpeechText]       = useState('')
   const [showHelp, setShowHelp]           = useState(false)
+  const [queryResults, setQueryResults]   = useState<OrbResponse['results']>(undefined)
+  const [queryLabel, setQueryLabel]       = useState('')
+  const [showQueryResults, setShowQueryResults] = useState(false)
   const autoFadeRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Restore input and speech from sessionStorage on mount
@@ -255,6 +259,13 @@ export default function AmbientDashboard() {
 
     const res = await orbConverse({ input: text, productId: selectedId, dryRun })
     setSpeech({ text: res.speech })
+
+    if (res.results && res.results.length > 0) {
+      setQueryResults(res.results)
+      setQueryLabel(res.queryLabel ?? text)
+    } else {
+      setQueryResults(undefined)
+    }
 
     if (res.refresh) {
       setPulse(true)
@@ -503,6 +514,29 @@ export default function AmbientDashboard() {
         </div>
       )}
 
+      {/* Show list button — appears when query returned results */}
+      {queryResults && queryResults.length > 0 && !showQueryResults && (
+        <button
+          onClick={() => setShowQueryResults(true)}
+          style={{
+            fontFamily: 'var(--font-ui)',
+            fontSize: 'var(--fs-xs)',
+            fontWeight: 500,
+            letterSpacing: '0.06em',
+            padding: '7px 20px',
+            borderRadius: '20px',
+            border: '1px solid var(--pill-active-border)',
+            color: 'var(--pill-active-color)',
+            background: 'var(--pill-active-bg)',
+            cursor: 'pointer',
+            transition: 'all var(--transition)',
+            marginTop: '-24px',
+          }}
+        >
+          Show list · {queryResults.length}
+        </button>
+      )}
+
       {/* Input */}
       <form onSubmit={handleSubmit} style={{ width: '420px', maxWidth: '90vw', position: 'relative' }}>
         <textarea
@@ -539,6 +573,8 @@ export default function AmbientDashboard() {
             e.target.style.borderColor = 'var(--border-focus)'
             setInput('')
             setSpeech(null)
+            setQueryResults(undefined)
+            setShowQueryResults(false)
             sessionStorage.removeItem(SS_INPUT)
             sessionStorage.removeItem(SS_SPEECH)
           }}
@@ -682,6 +718,14 @@ export default function AmbientDashboard() {
       </div>
 
       {showHelp && <OrbHelp onClose={() => setShowHelp(false)} />}
+
+      {showQueryResults && queryResults && queryResults.length > 0 && (
+        <QueryResultsModal
+          results={queryResults}
+          queryLabel={queryLabel}
+          onClose={() => setShowQueryResults(false)}
+        />
+      )}
 
       <OrbDevPanel
         override={moodOverride}

@@ -12,8 +12,9 @@ export type OrbResponse = {
   // when an action mutates the DB, UI should refetch todos for the affected product
   refresh?: boolean
   mutatedProductId?: string
-  // optional structured result for query intents (renderable as fragments later)
-  results?: Array<{ code: string; title: string; priority_value: number | null }>
+  // optional structured result for query intents (renderable as fragment view)
+  results?: Array<{ id: string; code: string; title: string; status: string; priority_value: number | null }>
+  queryLabel?: string
   // for debugging — only populated when dryRun=true
   debug?: {
     toolCalls: Array<{ name: string; input: unknown }>
@@ -243,7 +244,7 @@ async function executeTool(name: string, input: any, ctx: ToolContext): Promise<
     const max = input.max_results ?? 5
     const formatted = results.slice(0, max).map(t => {
       const p = ctx.products.find(pp => pp.id === t.product_id)
-      return { code: `${p?.code ?? p?.name}-${t.todo_number}`, title: t.title, priority_value: t.priority_value }
+      return { id: t.id, code: `${p?.code ?? p?.name}-${t.todo_number}`, title: t.title, status: t.status, priority_value: t.priority_value }
     })
     return JSON.stringify({ count: results.length, returned: formatted })
   }
@@ -350,6 +351,7 @@ export async function orbConverse(req: OrbRequest): Promise<OrbResponse> {
     let refresh = false
     let mutatedProductId: string | undefined
     let queryResults: OrbResponse['results']
+    let queryLabel: string | undefined
 
     // Up to 3 turns of tool use
     for (let turn = 0; turn < 3; turn++) {
@@ -379,7 +381,10 @@ export async function orbConverse(req: OrbRequest): Promise<OrbResponse> {
           } catch {}
         }
         if (block.name === 'query_todos') {
-          try { queryResults = JSON.parse(result).returned } catch {}
+          try {
+            queryResults = JSON.parse(result).returned
+            queryLabel = req.input
+          } catch {}
         }
         toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result })
       }
@@ -398,7 +403,7 @@ export async function orbConverse(req: OrbRequest): Promise<OrbResponse> {
     const speechBlock = response.content.find(b => b.type === 'text') as Anthropic.TextBlock | undefined
     const speech = speechBlock?.text.trim() ?? '...'
 
-    return { speech, refresh, mutatedProductId, results: queryResults }
+    return { speech, refresh, mutatedProductId, results: queryResults, queryLabel }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'unknown error'
     console.error('[orbConverse]', msg)
