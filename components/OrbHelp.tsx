@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { VERSION } from '@/lib/version'
 
 type Topic = {
   id: string
@@ -274,12 +275,13 @@ export default function OrbHelp({ onClose }: { onClose: () => void }) {
             padding: '6px 0',
             fontSize: 'var(--fs-sm)',
             fontFamily: 'var(--font-ui)',
+            whiteSpace: 'nowrap',
           }}
           aria-label="Close help"
         >
           ← back
         </button>
-        <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 500, color: 'var(--text2)' }}>
+        <span style={{ flex: 1, textAlign: 'center', fontSize: 'var(--fs-sm)', fontWeight: 500, color: 'var(--text2)' }}>
           Help
         </span>
       </div>
@@ -331,23 +333,12 @@ export default function OrbHelp({ onClose }: { onClose: () => void }) {
           ))}
         </nav>
 
-        {/* Sidebar footer: collapse toggle */}
-        <div style={{ borderTop: '1px solid var(--border)', padding: '8px 0', display: 'flex', justifyContent: sidebarOpen ? 'flex-start' : 'center' }}>
+        {/* Sidebar footer: collapse toggle + version */}
+        <div style={{ borderTop: '1px solid var(--border)', padding: '8px var(--sp-sm)', display: 'flex', alignItems: 'center', gap: 'var(--sp-sm)' }}>
           <button
             onClick={() => setSidebarOpen(s => !s)}
             aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'var(--muted)',
-              padding: sidebarOpen ? '4px var(--sp-lg)' : '4px 0',
-              display: 'flex',
-              alignItems: 'center',
-              lineHeight: 1,
-              width: sidebarOpen ? 'auto' : '100%',
-              justifyContent: 'center',
-            }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px', display: 'flex', alignItems: 'center', lineHeight: 1, flexShrink: 0 }}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               {sidebarOpen ? (
@@ -357,6 +348,11 @@ export default function OrbHelp({ onClose }: { onClose: () => void }) {
               )}
             </svg>
           </button>
+          {sidebarOpen && (
+            <span style={{ fontSize: 'var(--fs-version)', color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+              TODOS {VERSION}
+            </span>
+          )}
         </div>
       </div>
 

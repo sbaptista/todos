@@ -40,6 +40,8 @@ export default async function SettingsLayout({ children }: { children: React.Rea
           ← back
         </Link>
         <span style={{
+          flex: 1,
+          textAlign: 'center',
           fontSize: 'var(--fs-sm)',
           fontWeight: 500,
           color: 'var(--text2)',
