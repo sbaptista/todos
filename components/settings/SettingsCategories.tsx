@@ -10,6 +10,73 @@ type CatForm = { name: string; product_id: string; sort_order: string }
 
 const EMPTY_FORM: CatForm = { name: '', product_id: '', sort_order: '0' }
 
+const inputStyle: React.CSSProperties = {
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--r)',
+  padding: '10px var(--sp-md)',
+  fontSize: 'var(--fs-input)',
+  background: 'var(--bg)',
+  color: 'var(--text)',
+  outline: 'none',
+  boxSizing: 'border-box',
+  width: '100%',
+  transition: 'border-color var(--transition)',
+}
+
+const selectStyle: React.CSSProperties = {
+  ...inputStyle,
+  cursor: 'pointer',
+}
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 'var(--fs-xs)',
+  fontWeight: 'var(--fw-medium)',
+  color: 'var(--text3)',
+  marginBottom: 'var(--sp-xs)',
+}
+
+const primaryBtnStyle = (disabled: boolean): React.CSSProperties => ({
+  background: 'var(--success)',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 'var(--r)',
+  padding: '8px var(--sp-lg)',
+  fontSize: 'var(--fs-sm)',
+  fontWeight: 'var(--fw-medium)',
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.6 : 1,
+})
+
+const cancelBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  fontSize: 'var(--fs-sm)',
+  color: 'var(--muted)',
+  cursor: 'pointer',
+  padding: '8px var(--sp-md)',
+}
+
+const rowActionBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  fontSize: 'var(--fs-xs)',
+  color: 'var(--muted)',
+  cursor: 'pointer',
+  padding: '4px var(--sp-sm)',
+  flexShrink: 0,
+}
+
+const dangerConfirmBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  fontSize: 'var(--fs-sm)',
+  color: 'var(--error)',
+  fontWeight: 'var(--fw-medium)',
+  cursor: 'pointer',
+  padding: '8px var(--sp-md)',
+}
+
 export default function SettingsCategories() {
   const supabase = useMemo(() => createClient(), [])
   const [products, setProducts] = useState<Product[]>([])
@@ -116,7 +183,7 @@ export default function SettingsCategories() {
     setConfirmDeleteId(null)
   }
 
-  function CatForm({
+  function CatFormComp({
     form,
     onChange,
     onSubmit,
@@ -130,48 +197,58 @@ export default function SettingsCategories() {
     submitLabel: string
   }) {
     return (
-      <div className="px-4 py-4 bg-zinc-50 border-b border-zinc-100">
-        <div className="grid grid-cols-2 gap-3 mb-3">
+      <div style={{
+        background: 'var(--bg)',
+        borderBottom: '1px solid var(--border)',
+        padding: 'var(--sp-lg) var(--sp-xl)',
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-md)', marginBottom: 'var(--sp-md)' }}>
           <div>
-            <label className="block text-xs text-zinc-500 mb-1">Name *</label>
+            <label style={labelStyle}>Name *</label>
             <input
-              className="w-full border border-zinc-200 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400"
+              style={inputStyle}
               value={form.name}
               onChange={e => onChange({ ...form, name: e.target.value })}
+              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
               autoFocus
               placeholder="Category name"
             />
           </div>
           <div>
-            <label className="block text-xs text-zinc-500 mb-1">Sort Order</label>
+            <label style={labelStyle}>Sort Order</label>
             <input
               type="number"
-              className="w-full border border-zinc-200 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400"
+              style={inputStyle}
               value={form.sort_order}
               onChange={e => onChange({ ...form, sort_order: e.target.value })}
+              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
           </div>
         </div>
-        <div className="mb-3">
-          <label className="block text-xs text-zinc-500 mb-1">Product</label>
+        <div style={{ marginBottom: 'var(--sp-md)' }}>
+          <label style={labelStyle}>Product</label>
           <select
-            className="w-full border border-zinc-200 rounded px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-zinc-400"
+            style={selectStyle}
             value={form.product_id}
             onChange={e => onChange({ ...form, product_id: e.target.value })}
+            onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
           >
             <option value="">Global</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
-        <div className="flex gap-2">
+        <div style={{ display: 'flex', gap: 'var(--sp-sm)' }}>
           <button
             onClick={onSubmit}
             disabled={saving}
-            className="text-sm bg-zinc-900 text-white px-3 py-1.5 rounded hover:bg-zinc-700 disabled:opacity-50"
+            style={primaryBtnStyle(saving)}
           >
             {saving ? 'Saving…' : submitLabel}
           </button>
-          <button onClick={onCancel} className="text-sm text-zinc-500 hover:text-zinc-800 px-3 py-1.5">
+          <button onClick={onCancel} style={cancelBtnStyle}>
             Cancel
           </button>
         </div>
@@ -179,16 +256,35 @@ export default function SettingsCategories() {
     )
   }
 
-  if (loading) return <div className="p-8 text-sm text-zinc-400">Loading…</div>
+  if (loading) return (
+    <div style={{ padding: 'var(--sp-3xl)', fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>
+      Loading…
+    </div>
+  )
 
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Categories</h2>
+    <div style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-xl)' }}>
+        <h2 style={{
+          fontSize: 'var(--fs-lg)',
+          fontWeight: 'var(--fw-bold)',
+          color: 'var(--text)',
+          margin: 0,
+        }}>
+          Categories
+        </h2>
         {!showAdd && (
           <button
             onClick={startAdd}
-            className="text-sm border border-zinc-200 px-3 py-1.5 rounded text-zinc-600 hover:border-zinc-400 hover:text-zinc-900 transition-colors"
+            style={{
+              background: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--r)',
+              padding: '7px var(--sp-md)',
+              fontSize: 'var(--fs-sm)',
+              color: 'var(--text2)',
+              cursor: 'pointer',
+            }}
           >
             + Add Category
           </button>
@@ -196,14 +292,26 @@ export default function SettingsCategories() {
       </div>
 
       {/* Product scope selector */}
-      <div className="flex gap-2 mb-4 flex-wrap">
+      <div style={{ display: 'flex', gap: 'var(--sp-sm)', marginBottom: 'var(--sp-xl)', flexWrap: 'wrap' }}>
         <button
           onClick={() => setScope('')}
-          className={`text-sm px-3 py-1.5 rounded border transition-colors ${
-            scope === ''
-              ? 'bg-zinc-900 text-white border-zinc-900'
-              : 'border-zinc-200 text-zinc-600 hover:border-zinc-400'
-          }`}
+          style={{
+            fontSize: 'var(--fs-sm)',
+            padding: '6px 14px',
+            borderRadius: '20px',
+            cursor: 'pointer',
+            ...(scope === ''
+              ? {
+                  background: 'var(--pill-active-bg)',
+                  border: '1px solid var(--pill-active-border)',
+                  color: 'var(--pill-active-color)',
+                }
+              : {
+                  border: '1px solid var(--border)',
+                  color: 'var(--text3)',
+                  background: 'transparent',
+                }),
+          }}
         >
           Global
         </button>
@@ -211,22 +319,43 @@ export default function SettingsCategories() {
           <button
             key={p.id}
             onClick={() => setScope(p.id)}
-            className={`text-sm px-3 py-1.5 rounded border transition-colors ${
-              scope === p.id
-                ? 'bg-zinc-900 text-white border-zinc-900'
-                : 'border-zinc-200 text-zinc-600 hover:border-zinc-400'
-            }`}
+            style={{
+              fontSize: 'var(--fs-sm)',
+              padding: '6px 14px',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              ...(scope === p.id
+                ? {
+                    background: 'var(--pill-active-bg)',
+                    border: '1px solid var(--pill-active-border)',
+                    color: 'var(--pill-active-color)',
+                  }
+                : {
+                    border: '1px solid var(--border)',
+                    color: 'var(--text3)',
+                    background: 'transparent',
+                  }),
+            }}
           >
             {p.name}
           </button>
         ))}
       </div>
 
-      {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+      {error && (
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--error)', margin: '0 0 var(--sp-md)' }}>
+          {error}
+        </p>
+      )}
 
-      <div className="bg-white rounded-lg border border-zinc-200 overflow-hidden">
+      <div style={{
+        background: 'var(--bg2)',
+        borderRadius: 'var(--r-lg)',
+        border: '1px solid var(--border)',
+        overflow: 'hidden',
+      }}>
         {showAdd && (
-          <CatForm
+          <CatFormComp
             form={addForm}
             onChange={setAddForm}
             onSubmit={handleAdd}
@@ -236,79 +365,99 @@ export default function SettingsCategories() {
         )}
 
         {displayed.length === 0 && !showAdd ? (
-          <p className="text-sm text-zinc-400 px-4 py-8 text-center">No categories in this scope.</p>
+          <p style={{ padding: 'var(--sp-3xl)', textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>
+            No categories in this scope.
+          </p>
         ) : (
-          <div className="divide-y divide-zinc-100">
-            {displayed.map(c =>
-              editingId === c.id ? (
-                <CatForm
-                  key={c.id}
-                  form={editForm}
-                  onChange={setEditForm}
-                  onSubmit={() => handleSave(c.id)}
-                  onCancel={() => { setEditingId(null); setError('') }}
-                  submitLabel="Save"
-                />
-              ) : confirmDeleteId === c.id ? (
-                <div key={c.id} className="flex items-center gap-3 px-4 py-3 bg-red-50">
-                  <span className="text-sm flex-1">
-                    Delete <strong>{c.name}</strong>?
-                    {(todoCounts[c.id] ?? 0) > 0 && (
-                      <span className="text-zinc-500 ml-1">
-                        Cannot delete — {todoCounts[c.id]} todo{todoCounts[c.id] !== 1 ? 's' : ''} use this category.
-                      </span>
-                    )}
-                  </span>
-                  {(todoCounts[c.id] ?? 0) === 0 ? (
-                    <>
-                      <button
-                        onClick={() => handleDelete(c.id)}
-                        disabled={saving}
-                        className="text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        onClick={() => setConfirmDeleteId(null)}
-                        className="text-sm text-zinc-500 hover:text-zinc-800"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
+          displayed.map(c =>
+            editingId === c.id ? (
+              <CatFormComp
+                key={c.id}
+                form={editForm}
+                onChange={setEditForm}
+                onSubmit={() => handleSave(c.id)}
+                onCancel={() => { setEditingId(null); setError('') }}
+                submitLabel="Save"
+              />
+            ) : confirmDeleteId === c.id ? (
+              <div key={c.id} style={{
+                background: 'rgba(139, 32, 32, 0.05)',
+                padding: '10px var(--sp-xl)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--sp-md)',
+                borderBottom: '1px solid var(--border)',
+              }}>
+                <span style={{ fontSize: 'var(--fs-sm)', flex: 1 }}>
+                  Delete <strong>{c.name}</strong>?
+                  {(todoCounts[c.id] ?? 0) > 0 && (
+                    <span style={{ color: 'var(--muted)', marginLeft: 'var(--sp-xs)' }}>
+                      Cannot delete — {todoCounts[c.id]} todo{todoCounts[c.id] !== 1 ? 's' : ''} use this category.
+                    </span>
+                  )}
+                </span>
+                {(todoCounts[c.id] ?? 0) === 0 ? (
+                  <>
+                    <button
+                      onClick={() => handleDelete(c.id)}
+                      disabled={saving}
+                      style={{ ...dangerConfirmBtnStyle, opacity: saving ? 0.6 : 1 }}
+                    >
+                      Confirm
+                    </button>
                     <button
                       onClick={() => setConfirmDeleteId(null)}
-                      className="text-sm text-zinc-500 hover:text-zinc-800"
+                      style={cancelBtnStyle}
                     >
-                      OK
+                      Cancel
                     </button>
-                  )}
-                </div>
-              ) : (
-                <div key={c.id} className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-50">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-zinc-800">{c.name}</p>
-                    <p className="text-xs text-zinc-400">sort: {c.sort_order}</p>
-                  </div>
-                  <span className="text-xs text-zinc-400 shrink-0">
-                    {todoCounts[c.id] ?? 0} todos
-                  </span>
+                  </>
+                ) : (
                   <button
-                    onClick={() => startEdit(c)}
-                    className="text-xs text-zinc-400 hover:text-zinc-700 shrink-0"
+                    onClick={() => setConfirmDeleteId(null)}
+                    style={cancelBtnStyle}
                   >
-                    Edit
+                    OK
                   </button>
-                  <button
-                    onClick={() => { setConfirmDeleteId(c.id); setEditingId(null) }}
-                    className="text-xs text-zinc-400 hover:text-red-600 shrink-0"
-                  >
-                    Delete
-                  </button>
+                )}
+              </div>
+            ) : (
+              <div
+                key={c.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--sp-md)',
+                  padding: '10px var(--sp-xl)',
+                  borderBottom: '1px solid var(--border)',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+                onMouseLeave={e => (e.currentTarget.style.background = '')}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>{c.name}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: 'var(--fs-xs)', color: 'var(--muted)' }}>sort: {c.sort_order}</p>
                 </div>
-              )
-            )}
-          </div>
+                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', flexShrink: 0 }}>
+                  {todoCounts[c.id] ?? 0} todos
+                </span>
+                <button
+                  onClick={() => startEdit(c)}
+                  style={rowActionBtnStyle}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => { setConfirmDeleteId(c.id); setEditingId(null) }}
+                  style={rowActionBtnStyle}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--error)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
+                >
+                  Delete
+                </button>
+              </div>
+            )
+          )
         )}
       </div>
     </div>

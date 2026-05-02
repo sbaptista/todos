@@ -26,6 +26,68 @@ const EMPTY_FORM: ItemForm = {
   sort_order: '0',
 }
 
+const inputStyle: React.CSSProperties = {
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--r)',
+  padding: '10px var(--sp-md)',
+  fontSize: 'var(--fs-input)',
+  background: 'var(--bg)',
+  color: 'var(--text)',
+  outline: 'none',
+  boxSizing: 'border-box',
+  width: '100%',
+  transition: 'border-color var(--transition)',
+}
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 'var(--fs-xs)',
+  fontWeight: 'var(--fw-medium)',
+  color: 'var(--text3)',
+  marginBottom: 'var(--sp-xs)',
+}
+
+const primaryBtnStyle = (disabled: boolean): React.CSSProperties => ({
+  background: 'var(--success)',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 'var(--r)',
+  padding: '8px var(--sp-lg)',
+  fontSize: 'var(--fs-sm)',
+  fontWeight: 'var(--fw-medium)',
+  cursor: disabled ? 'not-allowed' : 'pointer',
+  opacity: disabled ? 0.6 : 1,
+})
+
+const cancelBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  fontSize: 'var(--fs-sm)',
+  color: 'var(--muted)',
+  cursor: 'pointer',
+  padding: '8px var(--sp-md)',
+}
+
+const rowActionBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  fontSize: 'var(--fs-xs)',
+  color: 'var(--muted)',
+  cursor: 'pointer',
+  padding: '4px var(--sp-sm)',
+  flexShrink: 0,
+}
+
+const dangerConfirmBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  fontSize: 'var(--fs-sm)',
+  color: 'var(--error)',
+  fontWeight: 'var(--fw-medium)',
+  cursor: 'pointer',
+  padding: '8px var(--sp-md)',
+}
+
 function ProductForm({
   form,
   onChange,
@@ -42,57 +104,75 @@ function ProductForm({
   saving: boolean
 }) {
   return (
-    <div className="px-4 py-4 bg-zinc-50 border-b border-zinc-100">
-      <div className="mb-3">
-        <label className="block text-xs text-zinc-500 mb-1">Name *</label>
+    <div style={{
+      background: 'var(--bg)',
+      borderBottom: '1px solid var(--border)',
+      padding: 'var(--sp-lg) var(--sp-xl)',
+    }}>
+      <div style={{ marginBottom: 'var(--sp-md)' }}>
+        <label style={labelStyle}>Name *</label>
         <input
-          className="w-full border border-zinc-200 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400"
+          style={inputStyle}
           value={form.name}
           onChange={e => onChange({ ...form, name: e.target.value })}
+          onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+          onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
           autoFocus
           placeholder="Project name"
         />
       </div>
-      <div className="mb-3">
-        <label className="block text-xs text-zinc-500 mb-1">Description</label>
+      <div style={{ marginBottom: 'var(--sp-md)' }}>
+        <label style={labelStyle}>Description</label>
         <input
-          className="w-full border border-zinc-200 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400"
+          style={inputStyle}
           value={form.description}
           onChange={e => onChange({ ...form, description: e.target.value })}
+          onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+          onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
           placeholder="Optional description"
         />
       </div>
-      <div className="flex items-end gap-4 mb-3">
+      <div style={{ display: 'flex', alignItems: 'flex-end', gap: 'var(--sp-xl)', marginBottom: 'var(--sp-md)' }}>
         <div>
-          <label className="block text-xs text-zinc-500 mb-1">Color</label>
+          <label style={labelStyle}>Color</label>
           <input
             type="color"
-            className="h-8 w-16 border border-zinc-200 rounded cursor-pointer p-0.5"
+            style={{
+              height: '32px',
+              width: '64px',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--r)',
+              cursor: 'pointer',
+              padding: '2px',
+              background: 'var(--bg)',
+            }}
             value={form.color}
             onChange={e => onChange({ ...form, color: e.target.value })}
           />
         </div>
         <div>
-          <label className="block text-xs text-zinc-500 mb-1">Sort Order</label>
+          <label style={labelStyle}>Sort Order</label>
           <input
             type="number"
-            className="w-20 border border-zinc-200 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-zinc-400"
+            style={{ ...inputStyle, width: '80px' }}
             value={form.sort_order}
             onChange={e => onChange({ ...form, sort_order: e.target.value })}
+            onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
+            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
           />
         </div>
       </div>
-      <div className="flex gap-2">
+      <div style={{ display: 'flex', gap: 'var(--sp-sm)' }}>
         <button
           onClick={onSubmit}
           disabled={saving}
-          className="text-sm bg-zinc-900 text-white px-3 py-1.5 rounded hover:bg-zinc-700 disabled:opacity-50"
+          style={primaryBtnStyle(saving)}
         >
           {saving ? 'Saving…' : submitLabel}
         </button>
         <button
           onClick={onCancel}
-          className="text-sm text-zinc-500 hover:text-zinc-800 px-3 py-1.5"
+          style={cancelBtnStyle}
         >
           Cancel
         </button>
@@ -194,12 +274,23 @@ export default function SettingsProducts() {
     setConfirmDeleteId(null)
   }
 
-  if (loading) return <div className="p-8 text-sm text-zinc-400">Loading…</div>
+  if (loading) return (
+    <div style={{ padding: 'var(--sp-3xl)', fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>
+      Loading…
+    </div>
+  )
 
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Projects</h2>
+    <div style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-xl)' }}>
+        <h2 style={{
+          fontSize: 'var(--fs-lg)',
+          fontWeight: 'var(--fw-bold)',
+          color: 'var(--text)',
+          margin: 0,
+        }}>
+          Projects
+        </h2>
         {!showAdd && (
           <button
             onClick={() => {
@@ -209,16 +300,33 @@ export default function SettingsProducts() {
               setAddForm(EMPTY_FORM)
               setError('')
             }}
-            className="text-sm border border-zinc-200 px-3 py-1.5 rounded text-zinc-600 hover:border-zinc-400 hover:text-zinc-900 transition-colors"
+            style={{
+              background: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--r)',
+              padding: '7px var(--sp-md)',
+              fontSize: 'var(--fs-sm)',
+              color: 'var(--text2)',
+              cursor: 'pointer',
+            }}
           >
             + Add Project
           </button>
         )}
       </div>
 
-      {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+      {error && (
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--error)', margin: '0 0 var(--sp-md)' }}>
+          {error}
+        </p>
+      )}
 
-      <div className="bg-white rounded-lg border border-zinc-200 overflow-hidden">
+      <div style={{
+        background: 'var(--bg2)',
+        borderRadius: 'var(--r-lg)',
+        border: '1px solid var(--border)',
+        overflow: 'hidden',
+      }}>
         {showAdd && (
           <ProductForm
             form={addForm}
@@ -231,86 +339,114 @@ export default function SettingsProducts() {
         )}
 
         {products.length === 0 && !showAdd ? (
-          <p className="text-sm text-zinc-400 px-4 py-8 text-center">No projects yet.</p>
+          <p style={{ padding: 'var(--sp-3xl)', textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>
+            No projects yet.
+          </p>
         ) : (
-          <div className="divide-y divide-zinc-100">
-            {products.map(p =>
-              editingId === p.id ? (
-                <ProductForm
-                  key={p.id}
-                  form={editForm}
-                  onChange={setEditForm}
-                  onSubmit={() => handleSave(p.id)}
-                  onCancel={() => { setEditingId(null); setError('') }}
-                  submitLabel="Save"
-                  saving={saving}
-                />
-              ) : confirmDeleteId === p.id ? (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-3 bg-red-50">
-                  <span className="text-sm flex-1">
-                    Delete <strong>{p.name}</strong>?
-                    {(todoCounts[p.id] ?? 0) > 0 && (
-                      <span className="text-zinc-500 ml-1">
-                        Cannot delete — {todoCounts[p.id]} todo{todoCounts[p.id] !== 1 ? 's' : ''} exist.
-                      </span>
-                    )}
-                  </span>
-                  {(todoCounts[p.id] ?? 0) === 0 ? (
-                    <>
-                      <button
-                        onClick={() => handleDelete(p.id)}
-                        disabled={saving}
-                        className="text-sm text-red-600 hover:text-red-800 font-medium disabled:opacity-50"
-                      >
-                        Confirm
-                      </button>
-                      <button
-                        onClick={() => setConfirmDeleteId(null)}
-                        className="text-sm text-zinc-500 hover:text-zinc-800"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : (
+          products.map(p =>
+            editingId === p.id ? (
+              <ProductForm
+                key={p.id}
+                form={editForm}
+                onChange={setEditForm}
+                onSubmit={() => handleSave(p.id)}
+                onCancel={() => { setEditingId(null); setError('') }}
+                submitLabel="Save"
+                saving={saving}
+              />
+            ) : confirmDeleteId === p.id ? (
+              <div key={p.id} style={{
+                background: 'rgba(139, 32, 32, 0.05)',
+                padding: '10px var(--sp-xl)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 'var(--sp-md)',
+                borderBottom: '1px solid var(--border)',
+              }}>
+                <span style={{ fontSize: 'var(--fs-sm)', flex: 1 }}>
+                  Delete <strong>{p.name}</strong>?
+                  {(todoCounts[p.id] ?? 0) > 0 && (
+                    <span style={{ color: 'var(--muted)', marginLeft: 'var(--sp-xs)' }}>
+                      Cannot delete — {todoCounts[p.id]} todo{todoCounts[p.id] !== 1 ? 's' : ''} exist.
+                    </span>
+                  )}
+                </span>
+                {(todoCounts[p.id] ?? 0) === 0 ? (
+                  <>
+                    <button
+                      onClick={() => handleDelete(p.id)}
+                      disabled={saving}
+                      style={{ ...dangerConfirmBtnStyle, opacity: saving ? 0.6 : 1 }}
+                    >
+                      Confirm
+                    </button>
                     <button
                       onClick={() => setConfirmDeleteId(null)}
-                      className="text-sm text-zinc-500 hover:text-zinc-800"
+                      style={cancelBtnStyle}
                     >
-                      OK
+                      Cancel
                     </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    style={cancelBtnStyle}
+                  >
+                    OK
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div
+                key={p.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'var(--sp-md)',
+                  padding: '10px var(--sp-xl)',
+                  borderBottom: '1px solid var(--border)',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
+                onMouseLeave={e => (e.currentTarget.style.background = '')}
+              >
+                <span
+                  style={{
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: 'var(--r)',
+                    flexShrink: 0,
+                    border: '1px solid var(--border)',
+                    backgroundColor: p.color ?? '#e5e7eb',
+                  }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>{p.name}</p>
+                  {p.description && (
+                    <p style={{ margin: '2px 0 0', fontSize: 'var(--fs-xs)', color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {p.description}
+                    </p>
                   )}
                 </div>
-              ) : (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-50">
-                  <span
-                    className="w-4 h-4 rounded shrink-0 border border-zinc-200"
-                    style={{ backgroundColor: p.color ?? '#e5e7eb' }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-zinc-800">{p.name}</p>
-                    {p.description && (
-                      <p className="text-xs text-zinc-400 truncate">{p.description}</p>
-                    )}
-                  </div>
-                  <span className="text-xs text-zinc-400 shrink-0">
-                    {todoCounts[p.id] ?? 0} todos
-                  </span>
-                  <button
-                    onClick={() => startEdit(p)}
-                    className="text-xs text-zinc-400 hover:text-zinc-700 shrink-0"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => { setConfirmDeleteId(p.id); setEditingId(null) }}
-                    className="text-xs text-zinc-400 hover:text-red-600 shrink-0"
-                  >
-                    Delete
-                  </button>
-                </div>
-              )
-            )}
-          </div>
+                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', flexShrink: 0 }}>
+                  {todoCounts[p.id] ?? 0} todos
+                </span>
+                <button
+                  onClick={() => startEdit(p)}
+                  style={rowActionBtnStyle}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => { setConfirmDeleteId(p.id); setEditingId(null) }}
+                  style={rowActionBtnStyle}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--error)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
+                >
+                  Delete
+                </button>
+              </div>
+            )
+          )
         )}
       </div>
     </div>
