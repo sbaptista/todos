@@ -15,18 +15,24 @@ type Props = {
     messages: ConversationMessage[]
     input: string
     submitting: boolean
+    productCode: string
+    scopeToProduct: boolean
     onInputChange: (v: string) => void
     onSubmit: (e?: React.FormEvent) => void
     onShowResults: (results: NonNullable<OrbResponse['results']>, label: string) => void
+    onScopeChange: (v: boolean) => void
 }
 
 export default function OrbConversation({
     messages,
     input,
     submitting,
+    productCode,
+    scopeToProduct,
     onInputChange,
     onSubmit,
     onShowResults,
+    onScopeChange,
 }: Props) {
     const threadRef   = useRef<HTMLDivElement>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -215,7 +221,7 @@ export default function OrbConversation({
                     style={{
                         position: 'absolute',
                         right: '12px',
-                        bottom: '10px',
+                        bottom: '34px',
                         background: 'none',
                         border: 'none',
                         cursor: input.trim() ? 'pointer' : 'default',
@@ -229,6 +235,40 @@ export default function OrbConversation({
                 >
                     ↵
                 </button>
+
+                {/* Scope pills */}
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '0 16px 10px',
+                }}>
+                    {[
+                        { label: productCode, value: true },
+                        { label: 'All',       value: false },
+                    ].map(({ label, value }) => (
+                        <button
+                            key={label}
+                            type="button"
+                            onClick={() => onScopeChange(value)}
+                            style={{
+                                fontFamily: 'var(--font-ui)',
+                                fontSize: 'var(--fs-xs)',
+                                fontWeight: 500,
+                                letterSpacing: '0.06em',
+                                padding: '3px 10px',
+                                borderRadius: '12px',
+                                border: `1px solid ${scopeToProduct === value ? 'var(--pill-active-border)' : 'var(--border)'}`,
+                                color: scopeToProduct === value ? 'var(--pill-active-color)' : 'var(--muted)',
+                                background: scopeToProduct === value ? 'var(--pill-active-bg)' : 'transparent',
+                                cursor: 'pointer',
+                                transition: 'all var(--transition)',
+                            }}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
             </form>
         </div>
     )

@@ -26,6 +26,7 @@ export type OrbResponse = {
 export type OrbRequest = {
   input: string
   productId: string  // currently-selected product
+  scopeToProduct?: boolean  // when true, queries default to current product
   dryRun?: boolean
 }
 
@@ -145,7 +146,7 @@ async function buildContext(supabase: Awaited<ReturnType<typeof createClient>>, 
 // System prompt
 // ──────────────────────────────────────────────────────────────────────────
 
-function systemPrompt(contextString: string, currentCode: string | null): Anthropic.TextBlockParam[] {
+function systemPrompt(contextString: string, currentCode: string | null, scopeToProduct: boolean): Anthropic.TextBlockParam[] {
   return [
     {
       type: 'text',
@@ -165,6 +166,7 @@ WHEN TO CALL TOOLS
 
 DEFAULTS
 - If product not specified, use currently-selected product: ${currentCode ?? '(none)'}
+- For queries without explicit product: ${scopeToProduct ? `restrict to current product (${currentCode ?? 'none'})` : 'search across all products'}
 - For queries, "urgent" = priority_value 1; "important" = 1-2.
 
 KEYBOARD NAVIGATION (answer without a tool if asked)
@@ -322,7 +324,7 @@ export async function orbConverse(req: OrbRequest): Promise<OrbResponse> {
     }
 
     const ctx = await buildContext(supabase, req.productId)
-    const sys = systemPrompt(ctx.contextString, ctx.current?.code ?? ctx.current?.name ?? null)
+    const sys = systemPrompt(ctx.contextString, ctx.current?.code ?? ctx.current?.name ?? null, req.scopeToProduct ?? true)
 
     if (req.dryRun) {
       return {

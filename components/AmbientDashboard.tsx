@@ -18,6 +18,7 @@ type Todo    = { id: string; title: string; status: string; priority_value: numb
 type Urgency = 'calm' | 'active' | 'urgent'
 
 const LAST_PRODUCT_KEY  = 'todos_last_product_id'
+const LS_SCOPE          = 'todos_orb_scope'
 const SS_INPUT          = 'todos_orb_input'
 const SS_CONVERSATION   = 'todos_orb_conversation'
 const INACTIVITY_MS     = 5 * 60 * 1000
@@ -108,6 +109,7 @@ export default function AmbientDashboard() {
     const [queryResults, setQueryResults]       = useState<OrbResponse['results']>(undefined)
     const [queryLabel, setQueryLabel]           = useState('')
     const [showQueryResults, setShowQueryResults] = useState(false)
+    const [scopeToProduct, setScopeToProduct]     = useState(true)
 
     const inactivityRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
     const prevSelectedId   = useRef<string | null>(null)
@@ -126,6 +128,12 @@ export default function AmbientDashboard() {
         setConversationActive(true)
         resetInactivity()
     }
+
+    // Restore scope preference from localStorage on mount
+    useEffect(() => {
+        const saved = localStorage.getItem(LS_SCOPE)
+        if (saved !== null) setScopeToProduct(saved !== 'false')
+    }, [])
 
     // Restore input and conversation from sessionStorage on mount
     useEffect(() => {
@@ -315,7 +323,7 @@ export default function AmbientDashboard() {
         resetInactivity()
 
         try {
-            const res = await orbConverse({ input: text, productId: selectedId, dryRun })
+            const res = await orbConverse({ input: text, productId: selectedId, scopeToProduct, dryRun })
             setMessages(prev => prev.map(m => m.id === processingId
                 ? {
                     id: processingId,
@@ -565,9 +573,12 @@ export default function AmbientDashboard() {
                 messages={messages}
                 input={input}
                 submitting={submitting}
+                productCode={selected?.code ?? selected?.name ?? ''}
+                scopeToProduct={scopeToProduct}
                 onInputChange={v => { setInput(v); sessionStorage.setItem(SS_INPUT, v) }}
                 onSubmit={handleSubmit}
                 onShowResults={handleShowResults}
+                onScopeChange={v => { setScopeToProduct(v); localStorage.setItem(LS_SCOPE, String(v)) }}
             />
 
             {/* Product pills */}
