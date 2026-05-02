@@ -1,89 +1,19 @@
 'use client'
 
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
-import { VERSION } from '@/lib/version'
+import CollapsibleSidebar, { type SidebarItem } from '@/components/CollapsibleSidebar'
 
-const NAV = [
-  { href: '/settings/account',    label: 'Account',    icon: '◉' },
-  { href: '/settings/products',   label: 'Projects',   icon: '◈' },
-  { href: '/settings/groups',     label: 'Groups',     icon: '▤' },
-  { href: '/settings/categories', label: 'Categories', icon: '◇' },
-  { href: '/settings/platforms',  label: 'Platforms',  icon: '▢' },
-  { href: '/settings/data',       label: 'Data',       icon: '⬡' },
+const NAV: SidebarItem[] = [
+  { id: 'account',    href: '/settings/account',    label: 'Account',    icon: '◉', active: false },
+  { id: 'products',   href: '/settings/products',   label: 'Projects',   icon: '◈', active: false },
+  { id: 'groups',     href: '/settings/groups',     label: 'Groups',     icon: '▤', active: false },
+  { id: 'categories', href: '/settings/categories', label: 'Categories', icon: '◇', active: false },
+  { id: 'platforms',  href: '/settings/platforms',  label: 'Platforms',  icon: '▢', active: false },
+  { id: 'data',       href: '/settings/data',       label: 'Data',       icon: '⬡', active: false },
 ]
 
 export default function SettingsSidebar() {
   const pathname = usePathname()
-  const [open, setOpen] = useState(true)
-
-  return (
-    <div style={{
-      width: open ? '220px' : '48px',
-      transition: 'width 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-      borderRight: '1px solid var(--border)',
-      display: 'flex',
-      flexDirection: 'column',
-      flexShrink: 0,
-      overflow: 'hidden',
-      background: 'var(--bg2)',
-    }}>
-
-      {/* Header: toggle + version */}
-      <div style={{ borderBottom: '1px solid var(--border)', padding: '8px var(--sp-sm)', display: 'flex', alignItems: 'center', gap: 'var(--sp-sm)', flexShrink: 0 }}>
-        <button
-          onClick={() => setOpen(o => !o)}
-          aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px', display: 'flex', alignItems: 'center', lineHeight: 1, flexShrink: 0 }}
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-            {open ? (
-              <><line x1="3" y1="2" x2="3" y2="14"/><polyline points="9,5 6,8 9,11"/><line x1="6" y1="8" x2="13" y2="8"/></>
-            ) : (
-              <><line x1="3" y1="2" x2="3" y2="14"/><polyline points="7,5 10,8 7,11"/><line x1="3" y1="8" x2="10" y2="8"/></>
-            )}
-          </svg>
-        </button>
-        {open && (
-          <span style={{ fontSize: 'var(--fs-version)', color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-            TODOS {VERSION}
-          </span>
-        )}
-      </div>
-
-      {/* Nav */}
-      <nav style={{ flex: 1, padding: '8px 0' }}>
-        {NAV.map(({ href, label, icon }) => {
-          const active = pathname === href
-          return (
-            <Link
-              key={href}
-              href={href}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: open ? 'flex-start' : 'center',
-                gap: '10px',
-                padding: open ? '10px 16px' : '12px 0',
-                background: active ? 'var(--pill-active-bg)' : 'transparent',
-                borderLeft: `2px solid ${active ? 'var(--pill-active-color)' : 'transparent'}`,
-                color: active ? 'var(--pill-active-color)' : 'var(--text2)',
-                fontSize: 'var(--fs-sm)',
-                fontFamily: 'var(--font-ui)',
-                textDecoration: 'none',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                transition: 'background var(--transition), color var(--transition)',
-              }}
-              aria-current={active ? 'page' : undefined}
-            >
-              <span style={{ fontSize: '15px', flexShrink: 0, opacity: 0.7 }}>{icon}</span>
-              {open && label}
-            </Link>
-          )
-        })}
-      </nav>
-    </div>
-  )
+  const items = NAV.map(item => ({ ...item, active: pathname === item.href }))
+  return <CollapsibleSidebar items={items} />
 }

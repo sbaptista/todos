@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { VERSION } from '@/lib/version'
+import CollapsibleSidebar from '@/components/CollapsibleSidebar'
 
 type Topic = {
   id: string
@@ -218,11 +218,31 @@ const TOPICS: Topic[] = [
       </div>
     ),
   },
+  {
+    id: 'about',
+    label: 'About',
+    icon: '◌',
+    content: (
+      <div>
+        <p style={s.p}>
+          TODOS is a personal project issue tracker built around a single idea: your work should have a presence, not just a list.
+        </p>
+        <p style={s.p}>
+          Most todo apps put you in charge of the list. TODOS puts the orb in charge of your attention. The orb reads your open work across all your projects and reflects it back — calm when things are light, active when the backlog builds, urgent when something needs your attention now. Color, motion, glow, and animation all carry the same signal independently, so nothing gets lost.
+        </p>
+        <p style={s.p}>
+          The orb is also conversational. Type plain English and it handles the rest — create a todo, ask what's most pressing, update a priority, mark something done. You don't navigate menus or fill out forms. You just talk to it.
+        </p>
+        <p style={{ ...s.p, marginBottom: 0 }}>
+          Under the hood, the orb is powered by AI. It understands context and intent, not just keywords. "What's the most important thing right now?" reasons over your full backlog across all projects to answer.
+        </p>
+      </div>
+    ),
+  },
 ]
 
 export default function OrbHelp({ onClose }: { onClose: () => void }) {
   const [selectedId, setSelectedId] = useState('ask')
-  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -289,72 +309,9 @@ export default function OrbHelp({ onClose }: { onClose: () => void }) {
       {/* Sidebar + content below the top bar */}
       <div style={{ display: 'flex', flex: 1, marginTop: '52px', overflow: 'hidden' }}>
 
-      {/* Sidebar */}
-      <div style={{
-        width: sidebarOpen ? '220px' : '48px',
-        transition: 'width 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-        borderRight: '1px solid var(--border)',
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0,
-        overflow: 'hidden',
-        background: 'var(--bg2)',
-      }}>
-        {/* Topic list */}
-        <nav style={{ flex: 1, padding: '8px 0' }}>
-          {TOPICS.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setSelectedId(t.id)}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                background: selectedId === t.id ? 'var(--pill-active-bg)' : 'transparent',
-                border: 'none',
-                borderLeft: `2px solid ${selectedId === t.id ? 'var(--pill-active-color)' : 'transparent'}`,
-                padding: sidebarOpen ? '10px 16px' : '12px 0',
-                color: selectedId === t.id ? 'var(--pill-active-color)' : 'var(--text2)',
-                fontSize: 'var(--fs-sm)',
-                cursor: 'pointer',
-                fontFamily: 'var(--font-ui)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: sidebarOpen ? 'flex-start' : 'center',
-                gap: '10px',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                transition: 'background var(--transition), color var(--transition)',
-              }}
-              aria-current={selectedId === t.id ? 'page' : undefined}
-            >
-              <span style={{ fontSize: '15px', flexShrink: 0, opacity: 0.7 }}>{t.icon}</span>
-              {sidebarOpen && t.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* Sidebar footer: collapse toggle + version */}
-        <div style={{ borderTop: '1px solid var(--border)', padding: '8px var(--sp-sm)', display: 'flex', alignItems: 'center', gap: 'var(--sp-sm)' }}>
-          <button
-            onClick={() => setSidebarOpen(s => !s)}
-            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px', display: 'flex', alignItems: 'center', lineHeight: 1, flexShrink: 0 }}
-          >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-              {sidebarOpen ? (
-                <><line x1="3" y1="2" x2="3" y2="14"/><polyline points="9,5 6,8 9,11"/><line x1="6" y1="8" x2="13" y2="8"/></>
-              ) : (
-                <><line x1="3" y1="2" x2="3" y2="14"/><polyline points="7,5 10,8 7,11"/><line x1="3" y1="8" x2="10" y2="8"/></>
-              )}
-            </svg>
-          </button>
-          {sidebarOpen && (
-            <span style={{ fontSize: 'var(--fs-version)', color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-              TODOS {VERSION}
-            </span>
-          )}
-        </div>
-      </div>
+        <CollapsibleSidebar
+          items={TOPICS.map(t => ({ id: t.id, label: t.label, icon: t.icon, active: selectedId === t.id, onClick: () => setSelectedId(t.id) }))}
+        />
 
       {/* Content area */}
       <div style={{ flex: 1, overflow: 'auto' }}>

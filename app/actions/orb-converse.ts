@@ -312,33 +312,31 @@ export async function orbConverse(req: OrbRequest): Promise<OrbResponse> {
     return { speech: 'Conversational mode is not configured yet.', error: 'missing_api_key' }
   }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { speech: 'Sign in first.', error: 'unauthenticated' }
-
-  if (!checkRateLimit(user.id)) {
-    return { speech: 'Slow down a moment — too many requests.', error: 'rate_limited' }
-  }
-
-  const ctx = await buildContext(supabase, req.productId)
-  const sys = systemPrompt(ctx.contextString, ctx.current?.code ?? ctx.current?.name ?? null)
-
-  // ── Dry run: log intent, skip API ───────────────────────────────────────
-  if (req.dryRun) {
-    return {
-      speech: `[dry run] Would send: "${req.input}" with ${ctx.todoList.length} todos as context.`,
-      debug: { toolCalls: [], rawText: '(dry run — no API call)' },
-    }
-  }
-
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-
   try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { speech: 'Sign in first.', error: 'unauthenticated' }
+
+    if (!checkRateLimit(user.id)) {
+      return { speech: 'Slow down a moment — too many requests.', error: 'rate_limited' }
+    }
+
+    const ctx = await buildContext(supabase, req.productId)
+    const sys = systemPrompt(ctx.contextString, ctx.current?.code ?? ctx.current?.name ?? null)
+
+    if (req.dryRun) {
+      return {
+        speech: `[dry run] Would send: "${req.input}" with ${ctx.todoList.length} todos as context.`,
+        debug: { toolCalls: [], rawText: '(dry run — no API call)' },
+      }
+    }
+
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
     const messages: Anthropic.MessageParam[] = [
       { role: 'user', content: req.input },
     ]
 
-    // Multi-turn loop: Claude may call tools, we run them, send results back
     let response = await client.messages.create({
       model: MODEL,
       max_tokens: 1024,
@@ -353,7 +351,6 @@ export async function orbConverse(req: OrbRequest): Promise<OrbResponse> {
     let queryResults: OrbResponse['results']
     let queryLabel: string | undefined
 
-    // Up to 3 turns of tool use
     for (let turn = 0; turn < 3; turn++) {
       if (response.stop_reason !== 'tool_use') break
 

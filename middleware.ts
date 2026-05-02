@@ -27,6 +27,12 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  // Server actions carry a Next-Action header — a redirect here produces an
+  // unparseable response on the client. Actions handle their own auth checks.
+  if (request.headers.get('Next-Action')) {
+    return supabaseResponse
+  }
+
   const { pathname } = request.nextUrl
 
   // Redirect unauthenticated users away from protected routes

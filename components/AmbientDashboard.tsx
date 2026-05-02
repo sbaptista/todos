@@ -244,6 +244,12 @@ export default function AmbientDashboard() {
     if (!text || !selectedId || submitting) return
     if (text === '?') {
       setShowHelp(true)
+      setInput('')
+      return
+    }
+    if (text.toLowerCase() === 'hint') {
+      setInput('')
+      setSpeech({ text: 'TODOS tracks your project backlogs. Type plain English — create todos, ask what\'s open, update priorities, or mark things done. Try: "What\'s urgent in HELM?" or "Add a bug to TODOS, high priority". Type ? for full help.' })
       return
     }
     if (text.toLowerCase() === 'explain') {
@@ -257,22 +263,26 @@ export default function AmbientDashboard() {
     setSubmitting(true)
     setSpeech({ text: 'Processing…' })
 
-    const res = await orbConverse({ input: text, productId: selectedId, dryRun })
-    setSpeech({ text: res.speech })
+    try {
+      const res = await orbConverse({ input: text, productId: selectedId, dryRun })
+      setSpeech({ text: res.speech })
 
-    if (res.results && res.results.length > 0) {
-      setQueryResults(res.results)
-      setQueryLabel(res.queryLabel ?? text)
-    } else {
-      setQueryResults(undefined)
+      if (res.results && res.results.length > 0) {
+        setQueryResults(res.results)
+        setQueryLabel(res.queryLabel ?? text)
+      } else {
+        setQueryResults(undefined)
+      }
+
+      if (res.refresh) {
+        setPulse(true)
+        setTimeout(() => setPulse(false), 420)
+      }
+    } catch {
+      setSpeech({ text: 'Something went wrong. Try again?' })
+    } finally {
+      setSubmitting(false)
     }
-
-    if (res.refresh) {
-      setPulse(true)
-      setTimeout(() => setPulse(false), 420)
-    }
-
-    setSubmitting(false)
   }
 
   if (loading) return (
