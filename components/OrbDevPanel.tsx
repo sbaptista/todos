@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 
+import type { ConversationMessage } from './OrbConversation'
+
 export type MoodOverride = 'calm' | 'active' | 'urgent' | null
 export type Speech = { text: string; autoFade?: number } | null
 
@@ -11,6 +13,8 @@ type Props = {
   onSpeak: (s: Speech) => void
   dryRun: boolean
   onDryRunChange: (v: boolean) => void
+  messages: ConversationMessage[]
+  onCycleHint: () => void
 }
 
 const SPEECH_PRESETS: Record<string, Speech> = {
@@ -22,7 +26,7 @@ const SPEECH_PRESETS: Record<string, Speech> = {
   },
 }
 
-function OrbDevPanelInner({ override, onChange, onSpeak, dryRun, onDryRunChange }: Props) {
+function OrbDevPanelInner({ override, onChange, onSpeak, dryRun, onDryRunChange, messages, onCycleHint }: Props) {
   const [open, setOpen] = useState(false)
 
   const btnStyle = (active: boolean): React.CSSProperties => ({
@@ -40,6 +44,15 @@ function OrbDevPanelInner({ override, onChange, onSpeak, dryRun, onDryRunChange 
     textAlign: 'left',
     letterSpacing: '0.04em',
   })
+
+  const copyTranscript = () => {
+    const text = messages.map(m => `${m.type.toUpperCase()}: ${m.text}`).join('\n\n')
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Transcript copied to clipboard!')
+    }).catch(err => {
+        alert('Failed to copy: ' + err)
+    })
+  }
 
   return (
     <div style={{ position: 'fixed', bottom: '16px', right: '16px', zIndex: 10000 }}>
@@ -76,6 +89,8 @@ function OrbDevPanelInner({ override, onChange, onSpeak, dryRun, onDryRunChange 
           flexDirection: 'column',
           gap: '6px',
           minWidth: '160px',
+          maxHeight: '70vh',
+          overflowY: 'auto',
         }}>
           <div style={{
             fontSize: '10px',
@@ -134,10 +149,27 @@ function OrbDevPanelInner({ override, onChange, onSpeak, dryRun, onDryRunChange 
             color: 'var(--muted)',
             padding: '8px 2px 2px',
           }}>
+            Discoverability
+          </div>
+          <button type="button" style={btnStyle(false)} onClick={onCycleHint}>
+            Cycle Placeholder
+          </button>
+
+          <div style={{
+            fontSize: '10px',
+            fontWeight: 700,
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            color: 'var(--muted)',
+            padding: '8px 2px 2px',
+          }}>
             Claude API
           </div>
           <button type="button" style={btnStyle(dryRun)} onClick={() => onDryRunChange(!dryRun)}>
             Dry run {dryRun ? '✓' : ''}
+          </button>
+          <button type="button" style={btnStyle(false)} onClick={copyTranscript}>
+            Copy Transcript ({messages.length})
           </button>
         </div>
       )}

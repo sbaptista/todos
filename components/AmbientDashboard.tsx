@@ -110,9 +110,17 @@ export default function AmbientDashboard() {
     const [queryLabel, setQueryLabel]           = useState('')
     const [showQueryResults, setShowQueryResults] = useState(false)
     const [scopeToProduct, setScopeToProduct]     = useState(true)
+    const [hintIndex, setHintIndex]               = useState(0)
+
+    const HINT_COUNT = 5 // must match ROTATING_HINTS length in OrbConversation
 
     const inactivityRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const hintIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null)
     const prevSelectedId   = useRef<string | null>(null)
+
+    function cycleHint() {
+        setHintIndex(i => (i + 1) % HINT_COUNT)
+    }
 
     function resetInactivity() {
         if (inactivityRef.current) clearTimeout(inactivityRef.current)
@@ -166,6 +174,7 @@ export default function AmbientDashboard() {
             setMessages([])
             setConversationActive(false)
             sessionStorage.removeItem(SS_CONVERSATION)
+            setHintIndex(0)
             if (inactivityRef.current) {
                 clearTimeout(inactivityRef.current)
                 inactivityRef.current = null
@@ -174,10 +183,31 @@ export default function AmbientDashboard() {
         prevSelectedId.current = selectedId
     }, [selectedId])
 
-    // Clean up inactivity timer on unmount
+    // Reset hintIndex when messages clear
     useEffect(() => {
-        return () => { if (inactivityRef.current) clearTimeout(inactivityRef.current) }
+        if (messages.length === 0) setHintIndex(0)
+    }, [messages.length])
+
+    // 45s placeholder cycling interval
+    useEffect(() => {
+        hintIntervalRef.current = setInterval(cycleHint, 45000)
+        return () => { if (hintIntervalRef.current) clearInterval(hintIntervalRef.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
+
+    // Clean up all timers on unmount
+    useEffect(() => {
+        return () => {
+            if (inactivityRef.current) clearTimeout(inactivityRef.current)
+            if (hintIntervalRef.current) clearInterval(hintIntervalRef.current)
+        }
+    }, [])
+
+    // Reset idle hint when input changes
+    useEffect(() => {
+        resetInactivity()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [input])
 
     // Load products, restore last selected
     useEffect(() => {
@@ -284,16 +314,45 @@ export default function AmbientDashboard() {
             return
         }
 
-        if (text.toLowerCase() === 'hint') {
+        if (text.startsWith('/')) {
             setInput('')
             sessionStorage.removeItem(SS_INPUT)
-            setMessages(prev => [
-                ...prev,
-                { id: genId(), type: 'user', text },
-                { id: genId(), type: 'orb', text: 'TODOS tracks your project backlogs. Type plain English — create todos, ask what\'s open, update priorities, or mark things done. Try: "What\'s urgent in HELM?" or "Add a bug to TODOS, high priority". Type ? for full help.' },
-            ])
-            setConversationActive(true)
-            resetInactivity()
+            
+            const [cmd, ...args] = text.split(' ')
+            if (cmd === '/settings') {
+                router.push('/settings')
+            } else if (cmd === '/help') {
+                setShowHelp(true)
+            } else if (cmd === '/switch') {
+                const target = args.join(' ')
+                const t = products.find(p => 
+                    p.code?.toUpperCase() === target.toUpperCase() || 
+                    p.name.toUpperCase() === target.toUpperCase()
+                )
+                if (t) setSelectedId(t.id)
+            } else if (cmd === '/edit') {
+                const target = args.join(' ')
+                if (target) {
+                    const t = products.find(p =>
+                        p.code?.toUpperCase() === target.toUpperCase() ||
+                        p.name.toUpperCase() === target.toUpperCase()
+                    )
+                    if (t) {
+                        setSelectedId(t.id)
+                        setShowEditProduct(true)
+                    }
+                } else {
+                    setShowEditProduct(true)
+                }
+            } else if (cmd === '/orb') {
+                setMessages(prev => [
+                    ...prev,
+                    { id: genId(), type: 'user', text },
+                    { id: genId(), type: 'orb', text: 'I\'m the orb — your conversational interface to TODOS.\n• Create: "Add a high priority todo to [project]"\n• Query: "What\'s most urgent?"\n• Update: "Mark the invoice task as done"\n• Navigate: "Switch to [project]" or "Open settings"\nType ? for full help.' },
+                ])
+                setConversationActive(true)
+                resetInactivity()
+            }
             return
         }
 
@@ -341,6 +400,19 @@ export default function AmbientDashboard() {
             if (res.refresh) {
                 setPulse(true)
                 setTimeout(() => setPulse(false), 420)
+            }
+            if (res.clientAction) {
+                if (res.clientAction.action === 'switch_project' && res.clientAction.target) {
+                    const t = products.find(p => 
+                        p.code?.toUpperCase() === res.clientAction!.target?.toUpperCase() || 
+                        p.name.toUpperCase() === res.clientAction!.target?.toUpperCase()
+                    )
+                    if (t) setSelectedId(t.id)
+                } else if (res.clientAction.action === 'open_settings') {
+                    router.push('/settings')
+                } else if (res.clientAction.action === 'open_help') {
+                    setShowHelp(true)
+                }
             }
         } catch {
             setMessages(prev => prev.map(m => m.id === processingId
@@ -578,6 +650,8 @@ export default function AmbientDashboard() {
                 input={input}
                 submitting={submitting}
                 productCode={selected?.code ?? selected?.name ?? ''}
+                products={products}
+                hintIndex={hintIndex}
                 scopeToProduct={scopeToProduct}
                 onInputChange={v => { setInput(v); sessionStorage.setItem(SS_INPUT, v) }}
                 onSubmit={handleSubmit}
@@ -735,6 +809,8 @@ export default function AmbientDashboard() {
                 onSpeak={speech => { if (speech) addOrbMessage(speech.text) }}
                 dryRun={dryRun}
                 onDryRunChange={setDryRun}
+                messages={messages}
+                onCycleHint={cycleHint}
             />
 
             {showAddProduct && (

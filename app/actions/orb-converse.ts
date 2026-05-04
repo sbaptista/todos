@@ -15,6 +15,8 @@ export type OrbResponse = {
   // optional structured result for query intents (renderable as fragment view)
   results?: Array<{ id: string; code: string; title: string; status: string; priority_value: number | null }>
   queryLabel?: string
+  // UI action payload for Conversational Navigation
+  clientAction?: { action: string; target?: string }
   // for debugging — only populated when dryRun=true
   debug?: {
     toolCalls: Array<{ name: string; input: unknown }>
@@ -69,7 +71,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'query_todos',
-    description: 'Find todos matching criteria. Use for "show me", "what\'s open", "what\'s urgent", etc.',
+    description: 'Find todos matching criteria. Use for "show me", "what\'s open", "what\'s urgent", etc. DO NOT use this if the user only wants a list of projects or a summary of counts—you already have that in your context.',
     input_schema: {
       type: 'object',
       properties: {
@@ -98,6 +100,18 @@ const TOOLS: Anthropic.Tool[] = [
         category_name: { type: 'string', description: 'Category name, resolved within the todo\'s product.' },
         urls: { type: 'array', items: { type: 'string' }, description: 'Reference URLs.' },
       },
+    },
+  },
+  {
+    name: 'client_action',
+    description: "Use this to navigate the user's interface, switch projects, or open system menus. Use this when the user asks to 'go to', 'switch to', or 'open' something.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        action: { type: 'string', enum: ['switch_project', 'open_settings', 'open_help'] },
+        target: { type: 'string', description: 'The product code to switch to (e.g. HELM, TODOS). Required for switch_project.' },
+      },
+      required: ['action'],
     },
   },
 ]
@@ -158,6 +172,7 @@ VOICE
 - One short sentence by default. Two when needed. Never paragraphs.
 - Never narrate what you're about to do — just do it (call the tool) and acknowledge briefly.
 - If you don't know, say so plainly. Don't fabricate.
+- NEVER use markdown formatting (no asterisks for bold, no backticks). Plain text only.
 
 WHEN TO CALL TOOLS
 - create_todo: user wants to add or capture something
@@ -304,6 +319,10 @@ async function executeTool(name: string, input: any, ctx: ToolContext): Promise<
     return JSON.stringify({ ok: true, code: `${p?.code ?? p?.name}-${target.todo_number}`, product_id: target.product_id })
   }
 
+  if (name === 'client_action') {
+    return JSON.stringify({ ok: true, executed_action: input.action })
+  }
+
   return JSON.stringify({ error: `unknown tool: ${name}` })
 }
 
@@ -357,6 +376,7 @@ export async function orbConverse(req: OrbRequest): Promise<OrbResponse> {
     let mutatedProductId: string | undefined
     let queryResults: OrbResponse['results']
     let queryLabel: string | undefined
+    let clientAction: { action: string; target?: string } | undefined
 
     for (let turn = 0; turn < 3; turn++) {
       if (response.stop_reason !== 'tool_use') break
@@ -391,6 +411,9 @@ export async function orbConverse(req: OrbRequest): Promise<OrbResponse> {
             queryLabel = req.input
           } catch {}
         }
+        if (block.name === 'client_action') {
+          clientAction = { action: (block.input as any).action, target: (block.input as any).target }
+        }
         toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result })
       }
 
@@ -408,7 +431,7 @@ export async function orbConverse(req: OrbRequest): Promise<OrbResponse> {
     const speechBlock = response.content.find(b => b.type === 'text') as Anthropic.TextBlock | undefined
     const speech = speechBlock?.text.trim() ?? '...'
 
-    return { speech, refresh, mutatedProductId, results: queryResults, queryLabel }
+    return { speech, refresh, mutatedProductId, results: queryResults, queryLabel, clientAction }
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'unknown error'
     console.error('[orbConverse]', msg)

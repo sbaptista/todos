@@ -87,7 +87,7 @@ const TOPICS: Topic[] = [
           <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
             <li style={s.li}>"Add a note to review the API docs, high priority"</li>
             <li style={s.li}>"Remind me to follow up on the proposal"</li>
-            <li style={s.li}>"HELM needs a login page"</li>
+            <li style={s.li}>"[Project] needs a login page"</li>
           </ul>
         </div>
 
@@ -95,7 +95,7 @@ const TOPICS: Topic[] = [
           <h2 style={s.h2}>Query</h2>
           <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
             <li style={s.li}>"What's most urgent right now?"</li>
-            <li style={s.li}>"Show me all open HELM todos"</li>
+            <li style={s.li}>"Show me all open [project] todos"</li>
             <li style={s.li}>"What did I say about the auth work?"</li>
           </ul>
         </div>
@@ -103,7 +103,7 @@ const TOPICS: Topic[] = [
         <div style={s.section}>
           <h2 style={s.h2}>Update</h2>
           <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
-            <li style={s.li}>"Mark TODOS-14 as done"</li>
+            <li style={s.li}>"Mark [project]-14 as done"</li>
             <li style={s.li}>"Move the invoice todo to high priority"</li>
             <li style={s.li}>"Set the accessibility task to in progress"</li>
           </ul>
@@ -116,7 +116,7 @@ const TOPICS: Topic[] = [
           </h2>
           <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
             <li style={{ ...s.li, color: 'var(--muted)' }}>"Delete the invoice todo"</li>
-            <li style={{ ...s.li, color: 'var(--muted)' }}>"Remove all done items from HELM"</li>
+            <li style={{ ...s.li, color: 'var(--muted)' }}>"Remove all done items from [project]"</li>
           </ul>
         </div>
 
@@ -126,22 +126,36 @@ const TOPICS: Topic[] = [
             <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 400, color: 'var(--muted)', letterSpacing: '0.04em' }}>coming soon</span>
           </h2>
           <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
-            <li style={{ ...s.li, color: 'var(--muted)' }}>"Archive everything closed in TODOS"</li>
-            <li style={{ ...s.li, color: 'var(--muted)' }}>"Archive TODOS-8"</li>
+            <li style={{ ...s.li, color: 'var(--muted)' }}>"Archive everything closed in [project]"</li>
+            <li style={{ ...s.li, color: 'var(--muted)' }}>"Archive [project]-8"</li>
           </ul>
         </div>
 
         <div style={s.section}>
           <h2 style={s.h2}>List</h2>
-          <p style={{ ...s.p, margin: 0 }}>Tap or click the orb to open the full todo list for the selected product.</p>
+          <p style={{ ...s.p, margin: 0 }}>Tap or click the orb to open the full todo list for the selected project.</p>
         </div>
+
+        <div style={s.section}>
+          <h2 style={s.h2}>Navigation</h2>
+          <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
+            <li style={s.li}>"Switch to [project]" or <span style={s.mono}>/switch [project]</span></li>
+            <li style={s.li}>"Open settings" or <span style={s.mono}>/settings</span></li>
+            <li style={s.li}>Edit current project: <span style={s.mono}>/edit</span></li>
+            <li style={s.li}>Edit a specific project: <span style={s.mono}>/edit [project]</span></li>
+          </ul>
+          <p style={{ ...s.p, marginTop: '10px', marginBottom: 0, fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>
+            Type <span style={s.mono}>/</span> in the input field to see all available commands.
+          </p>
+        </div>
+
 
         <div style={s.section}>
           <h2 style={s.h2}>Ask anything</h2>
           <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
             <li style={s.li}>"How do I use the keyboard?"</li>
             <li style={s.li}>"What does URGENT mean?"</li>
-            <li style={s.li}>"What products do I have?"</li>
+            <li style={s.li}>"What projects do I have?"</li>
           </ul>
         </div>
       </div>
@@ -159,7 +173,7 @@ const TOPICS: Topic[] = [
           {([
             ['Tab', 'Move between interactive elements'],
             ['Enter / Space', 'Activate the focused element'],
-            ['← / →', 'Switch between products on the orb screen'],
+            ['← / →', 'Switch between projects on the orb screen'],
             ['?', 'Open this help page'],
             ['Escape', 'Close any open panel or overlay'],
           ] as [string, string][]).map(([key, desc]) => (
@@ -182,7 +196,7 @@ const TOPICS: Topic[] = [
     icon: '●',
     content: (
       <div>
-        <p style={s.p}>The orb reflects your current workload for the selected product.</p>
+        <p style={s.p}>The orb reflects your current workload for the selected project.</p>
 
         <div style={s.section}>
           <h2 style={s.h2}>States</h2>
@@ -210,9 +224,9 @@ const TOPICS: Topic[] = [
         <div style={s.section}>
           <h2 style={s.h2}>Navigation</h2>
           <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
-            <li style={s.li}>The number in the center is your open todo count for the selected product.</li>
+            <li style={s.li}>The number in the center is your open todo count for the selected project.</li>
             <li style={s.li}>Tap or click the orb to open the full todo list.</li>
-            <li style={s.li}>The product pills at the bottom switch which backlog you are viewing.</li>
+            <li style={s.li}>The project pills at the bottom switch which backlog you are viewing.</li>
           </ul>
         </div>
       </div>

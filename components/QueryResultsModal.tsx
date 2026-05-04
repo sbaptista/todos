@@ -3,7 +3,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { OrbResponse } from '@/app/actions/orb-converse'
-import TodoPanel from './TodoPanel'
 import type { Todo, Group, Category, Product, Priority } from './TodoView'
 
 type ResultItem = NonNullable<OrbResponse['results']>[number]
@@ -20,6 +19,120 @@ const STATUS_COLOR: Record<string, string> = {
   in_progress: 'var(--status-in-progress)',
   on_hold:     'var(--status-on-hold)',
   done:        'var(--status-done)',
+}
+
+function InlineTodoEditor({
+  todo, priorities, onSave, onDelete, onCancel
+}: {
+  todo: Todo
+  priorities: Priority[]
+  onSave: (updated: Todo) => void
+  onDelete: (id: string) => void
+  onCancel: () => void
+}) {
+  const supabase = useMemo(() => createClient(), [])
+  const [form, setForm] = useState({ ...todo })
+  const [urlInput, setUrlInput] = useState((todo.urls ?? []).join('\\n'))
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const isDone = form.status === 'done'
+
+  async function handleSave() {
+    setSaving(true)
+    const urls = urlInput.split('\\n').map(u => u.trim()).filter(Boolean)
+    const { data } = await supabase
+      .from('todos')
+      .update({
+        title: form.title,
+        status: form.status,
+        priority_value: form.priority_value,
+        description: form.description || null,
+        resolution_notes: form.resolution_notes || null,
+        urls,
+        closed_at: form.status === 'done' ? (todo.closed_at ?? new Date().toISOString()) : null,
+      })
+      .eq('id', todo.id)
+      .select('*, groups(name), categories(name)')
+      .single()
+    setSaving(false)
+    if (data) onSave(data as Todo)
+  }
+
+  async function handleDelete() {
+    setDeleting(true)
+    await supabase.from('todos').delete().eq('id', todo.id)
+    setDeleting(false)
+    onDelete(todo.id)
+  }
+
+  const field: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '5px' }
+  const label: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }
+  const input: React.CSSProperties = { fontFamily: 'var(--font-ui)', fontSize: 'var(--fs-base)', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '8px 12px', color: 'var(--text)', outline: 'none' }
+  const textarea: React.CSSProperties = { ...input, resize: 'vertical', minHeight: '60px' }
+
+  return (
+    <div style={{ padding: 'var(--sp-xl)', background: 'var(--bg2)', borderTop: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-lg)' }}>
+      <div style={field}>
+        <label style={label}>Title</label>
+        <input style={input} value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))} />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-md)' }}>
+        <div style={field}>
+          <label style={label}>Status</label>
+          <select style={input} value={form.status} onChange={e => setForm(f => ({...f, status: e.target.value as Todo['status']}))}>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="on_hold">On Hold</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+        <div style={field}>
+          <label style={label}>Priority</label>
+          <select style={input} value={form.priority_value ?? ''} onChange={e => setForm(f => ({...f, priority_value: e.target.value ? Number(e.target.value) : null}))}>
+            <option value="">None</option>
+            {priorities.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div style={field}>
+        <label style={label}>Description</label>
+        <textarea style={textarea} value={form.description ?? ''} onChange={e => setForm(f => ({...f, description: e.target.value}))} />
+      </div>
+
+      {isDone && (
+        <div style={field}>
+          <label style={label}>Resolution Notes</label>
+          <textarea style={textarea} value={form.resolution_notes ?? ''} placeholder="What was done to resolve this…" onChange={e => setForm(f => ({...f, resolution_notes: e.target.value}))} />
+        </div>
+      )}
+
+      <div style={field}>
+        <label style={label}>URLs (one per line)</label>
+        <textarea style={{...textarea, fontFamily: 'monospace', fontSize: 'var(--fs-sm)'}} value={urlInput} onChange={e => setUrlInput(e.target.value)} />
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'var(--sp-md)' }}>
+        {confirmDelete ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-sm)' }}>
+            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--error)' }}>Are you sure?</span>
+            <button onClick={handleDelete} disabled={deleting} style={{ fontSize: 'var(--fs-xs)', background: 'var(--error)', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer' }}>{deleting ? 'Deleting...' : 'Yes, Delete'}</button>
+            <button onClick={() => setConfirmDelete(false)} style={{ fontSize: 'var(--fs-xs)', background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>Cancel</button>
+          </div>
+        ) : (
+          <button onClick={() => setConfirmDelete(true)} style={{ fontSize: 'var(--fs-xs)', background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>Delete</button>
+        )}
+
+        <div style={{ display: 'flex', gap: 'var(--sp-sm)' }}>
+          <button onClick={onCancel} style={{ fontSize: 'var(--fs-sm)', background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '6px 12px' }}>Cancel</button>
+          <button onClick={handleSave} disabled={saving} style={{ fontSize: 'var(--fs-sm)', background: 'var(--pill-active-bg)', border: '1px solid var(--pill-active-border)', color: 'var(--pill-active-color)', borderRadius: 'var(--r)', padding: '6px 16px', cursor: 'pointer' }}>{saving ? 'Saving...' : 'Save'}</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function QueryResultsModal({
@@ -170,97 +283,89 @@ export default function QueryResultsModal({
             </p>
           ) : (
             items.map((item, i) => (
-              <button
-                key={item.id}
-                onClick={() => openTodo(item)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--sp-md)',
-                  width: '100%',
-                  padding: 'var(--sp-md) var(--sp-xl)',
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'background var(--transition)',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg3, var(--bg))')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-              >
-                {/* Priority dot */}
-                <span style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  background: item.priority_value ? PRIORITY_DOT[item.priority_value] ?? 'var(--muted)' : 'var(--border)',
-                  flexShrink: 0,
-                }} />
+              <div key={item.id} style={{ display: 'flex', flexDirection: 'column', borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                <button
+                  onClick={() => selectedTodo?.id === item.id ? setSelectedTodo(null) : openTodo(item)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 'var(--sp-md)',
+                    width: '100%',
+                    padding: 'var(--sp-md) var(--sp-xl)',
+                    background: selectedTodo?.id === item.id ? 'var(--bg3)' : 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background var(--transition)',
+                  }}
+                  onMouseEnter={e => { if (selectedTodo?.id !== item.id) e.currentTarget.style.background = 'var(--bg3, var(--bg))' }}
+                  onMouseLeave={e => { if (selectedTodo?.id !== item.id) e.currentTarget.style.background = 'none' }}
+                >
+                  {/* Priority dot */}
+                  <span style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: item.priority_value ? PRIORITY_DOT[item.priority_value] ?? 'var(--muted)' : 'var(--border)',
+                    flexShrink: 0,
+                  }} />
 
-                {/* Code */}
-                <span style={{
-                  fontFamily: 'monospace',
-                  fontSize: 'var(--fs-xs)',
-                  color: 'var(--muted)',
-                  flexShrink: 0,
-                  minWidth: '64px',
-                }}>
-                  {item.code}
-                </span>
+                  {/* Code */}
+                  <span style={{
+                    fontFamily: 'monospace',
+                    fontSize: 'var(--fs-xs)',
+                    color: 'var(--muted)',
+                    flexShrink: 0,
+                    minWidth: '64px',
+                  }}>
+                    {item.code}
+                  </span>
 
-                {/* Title */}
-                <span style={{
-                  flex: 1,
-                  fontSize: 'var(--fs-sm)',
-                  color: 'var(--text)',
-                  fontFamily: 'var(--font-ui)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                  {item.title}
-                </span>
+                  {/* Title */}
+                  <span style={{
+                    flex: 1,
+                    fontSize: 'var(--fs-sm)',
+                    color: 'var(--text)',
+                    fontFamily: 'var(--font-ui)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {item.title}
+                  </span>
 
-                {/* Status */}
-                <span style={{
-                  fontSize: 'var(--fs-xs)',
-                  color: STATUS_COLOR[item.status] ?? 'var(--muted)',
-                  flexShrink: 0,
-                  textTransform: 'capitalize',
-                }}>
-                  {item.status.replace('_', ' ')}
-                </span>
-              </button>
+                  {/* Status */}
+                  <span style={{
+                    fontSize: 'var(--fs-xs)',
+                    color: STATUS_COLOR[item.status] ?? 'var(--muted)',
+                    flexShrink: 0,
+                    textTransform: 'capitalize',
+                  }}>
+                    {item.status.replace('_', ' ')}
+                  </span>
+                </button>
+                {selectedTodo?.id === item.id && (
+                  <InlineTodoEditor
+                    todo={selectedTodo}
+                    priorities={priorities}
+                    onSave={updated => {
+                      setSelectedTodo(null)
+                      setItems(prev => prev.map(it => it.id === updated.id ? { ...it, title: updated.title, status: updated.status, priority_value: updated.priority_value } : it))
+                    }}
+                    onDelete={id => {
+                      setSelectedTodo(null)
+                      setItems(prev => prev.filter(it => it.id !== id))
+                    }}
+                    onCancel={() => setSelectedTodo(null)}
+                  />
+                )}
+              </div>
             ))
           )}
         </div>
       </div>
 
-      {/* TodoPanel for selected item */}
-      {selectedTodo && (
-        <TodoPanel
-          todo={selectedTodo}
-          groups={groups}
-          categories={categories}
-          products={products}
-          priorities={priorities}
-          isAll={false}
-          onClose={() => setSelectedTodo(null)}
-          onSave={updated => {
-            setSelectedTodo(null)
-            setItems(prev => prev.map(it =>
-              it.id === updated.id
-                ? { ...it, title: updated.title, status: updated.status, priority_value: updated.priority_value }
-                : it
-            ))
-          }}
-          onDelete={id => {
-            setSelectedTodo(null)
-            setItems(prev => prev.filter(it => it.id !== id))
-          }}
-        />
-      )}
+      {/* Inline Editor removes need for TodoPanel */}
     </>
   )
 }
