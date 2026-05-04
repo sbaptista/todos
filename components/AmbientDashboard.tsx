@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { readStreamableValue } from 'ai/rsc'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -162,16 +163,21 @@ export default function AmbientDashboard({ initialProducts }: Props) {
         }
     }, [messages])
 
-    // Reset conversation on product switch (not on initial mount)
+    const orbSwitchingRef = useRef(false)
+
+    // Reset conversation on project switch (not on initial mount)
     useEffect(() => {
         if (prevSelectedId.current !== null && prevSelectedId.current !== selectedId) {
-            setMessages([])
-            setConversationActive(false)
-            sessionStorage.removeItem(SS_CONVERSATION)
-            if (inactivityRef.current) {
-                clearTimeout(inactivityRef.current)
-                inactivityRef.current = null
+            if (!orbSwitchingRef.current) {
+                setMessages([])
+                setConversationActive(false)
+                sessionStorage.removeItem(SS_CONVERSATION)
+                if (inactivityRef.current) {
+                    clearTimeout(inactivityRef.current)
+                    inactivityRef.current = null
+                }
             }
+            orbSwitchingRef.current = false
         }
         prevSelectedId.current = selectedId
     }, [selectedId])
@@ -375,35 +381,54 @@ export default function AmbientDashboard({ initialProducts }: Props) {
         resetInactivity()
 
         try {
-            const res = await orbConverse({ input: text, productId: selectedId, scopeToProduct, history, dryRun })
-            setMessages(prev => prev.map(m => m.id === processingId
-                ? {
-                    id: processingId,
-                    type: 'orb' as const,
-                    text: res.speech,
-                    results: res.results?.length ? res.results : undefined,
-                    queryLabel: res.queryLabel ?? text,
+            const stream = await orbConverse({ input: text, productId: selectedId, scopeToProduct, history, dryRun })
+            
+            for await (const chunk of readStreamableValue(stream)) {
+                if (!chunk) continue
+
+                setMessages(prev => prev.map(m => {
+                    if (m.id !== processingId) return m
+                    
+                    const newThoughts = m.thoughts ? [...m.thoughts] : []
+                    if (chunk.thought && !newThoughts.includes(chunk.thought)) {
+                        newThoughts.push(chunk.thought)
+                    }
+
+                    return {
+                        ...m,
+                        text: chunk.speech || m.text,
+                        thoughts: newThoughts,
+                        results: chunk.results?.length ? chunk.results : m.results,
+                        queryLabel: chunk.queryLabel ?? m.queryLabel ?? text,
+                        isStreaming: chunk.isStreaming,
+                    }
+                }))
+
+                if (chunk.refresh) {
+                    setPulse(true)
+                    setTimeout(() => setPulse(false), 420)
                 }
-                : m
-            ))
-            if (res.refresh) {
-                setPulse(true)
-                setTimeout(() => setPulse(false), 420)
-            }
-            if (res.clientAction) {
-                if (res.clientAction.action === 'switch_project' && res.clientAction.target) {
-                    const t = products.find(p => 
-                        p.code?.toUpperCase() === res.clientAction!.target?.toUpperCase() || 
-                        p.name.toUpperCase() === res.clientAction!.target?.toUpperCase()
-                    )
-                    if (t) setSelectedId(t.id)
-                } else if (res.clientAction.action === 'open_settings') {
-                    router.push('/settings')
-                } else if (res.clientAction.action === 'open_help') {
-                    setShowHelp(true)
+
+                if (chunk.clientAction) {
+                    const action = chunk.clientAction
+                    if (action.action === 'switch_project' && action.target) {
+                        const t = products.find(p => 
+                            p.code?.toUpperCase() === action.target?.toUpperCase() || 
+                            p.name.toUpperCase() === action.target?.toUpperCase()
+                        )
+                        if (t) {
+                            orbSwitchingRef.current = true
+                            setSelectedId(t.id)
+                        }
+                    } else if (action.action === 'open_settings') {
+                        router.push('/settings')
+                    } else if (action.action === 'open_help') {
+                        setShowHelp(true)
+                    }
                 }
             }
-        } catch {
+        } catch (err) {
+            console.error('[orbSubmit]', err)
             setMessages(prev => prev.map(m => m.id === processingId
                 ? { ...m, text: 'Something went wrong. Try again?' }
                 : m

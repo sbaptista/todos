@@ -9,6 +9,8 @@ export type ConversationMessage = {
     text: string
     results?: OrbResponse['results']
     queryLabel?: string
+    isStreaming?: boolean
+    thoughts?: string[]
 }
 
 type Props = {
@@ -169,15 +171,53 @@ export default function OrbConversation({
                             }}>
                                 Orb:
                             </span>
-                            {' '}
-                            <span style={{
-                                fontFamily: 'var(--font-ui)',
-                                fontSize: 'var(--fs-base)',
-                                color: 'var(--text2)',
-                                whiteSpace: 'pre-wrap',
-                            }}>
-                                {lastOrbMessage.text}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
+                                {lastOrbMessage.thoughts && lastOrbMessage.thoughts.length > 0 && (
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        gap: '4px',
+                                        opacity: 0.6
+                                    }}>
+                                        {lastOrbMessage.thoughts.map((thought, i) => (
+                                            <div key={i} style={{
+                                                fontSize: 'var(--fs-xs)',
+                                                color: 'var(--text3)',
+                                                fontFamily: 'var(--font-ui)',
+                                                letterSpacing: '0.02em',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                animation: 'todos-thought-fade-in 0.4s ease-out forwards'
+                                            }}>
+                                                <span style={{ color: 'var(--pill-active-color)', fontSize: '10px' }}>●</span>
+                                                {thought}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                <span style={{
+                                    fontFamily: 'var(--font-ui)',
+                                    fontSize: 'var(--fs-base)',
+                                    color: 'var(--text2)',
+                                    whiteSpace: 'pre-wrap',
+                                    opacity: lastOrbMessage.isStreaming ? 0.8 : 1,
+                                    transition: 'opacity 0.2s',
+                                }}>
+                                    {lastOrbMessage.text}
+                                    {lastOrbMessage.isStreaming && (
+                                        <span style={{
+                                            display: 'inline-block',
+                                            width: '4px',
+                                            height: '14px',
+                                            background: 'var(--pill-active-bg)',
+                                            marginLeft: '4px',
+                                            verticalAlign: 'middle',
+                                            animation: 'todos-cursor-blink 0.8s infinite'
+                                        }} />
+                                    )}
+                                </span>
+                            </div>
                             {lastOrbMessage.results && lastOrbMessage.results.length > 0 && (
                                 <div style={{ marginTop: '8px' }}>
                                     <button
@@ -424,6 +464,14 @@ export default function OrbConversation({
                 @keyframes todos-fade-in {
                     from { opacity: 0; transform: translateY(-4px); }
                     to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes todos-cursor-blink {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0; }
+                }
+                @keyframes todos-thought-fade-in {
+                    from { opacity: 0; transform: translateX(-4px); }
+                    to { opacity: 1; transform: translateX(0); }
                 }
             `}} />
         </div>
