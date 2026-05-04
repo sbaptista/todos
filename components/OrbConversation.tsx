@@ -18,9 +18,8 @@ type Props = {
     productCode: string
     products: { code: string | null; name: string }[]
     scopeToProduct: boolean
-    hintIndex: number
     onInputChange: (v: string) => void
-    onSubmit: (e?: React.FormEvent) => void
+    onSubmit: (value: string) => void
     onShowResults: (results: NonNullable<OrbResponse['results']>, label: string) => void
     onScopeChange: (v: boolean) => void
 }
@@ -32,7 +31,6 @@ export default function OrbConversation({
     productCode,
     products,
     scopeToProduct,
-    hintIndex,
     onInputChange,
     onSubmit,
     onShowResults,
@@ -48,14 +46,6 @@ export default function OrbConversation({
     const [historyIndex, setHistoryIndex] = useState<number>(-1)
 
     const [slashIndex, setSlashIndex] = useState(0)
-
-    const ROTATING_HINTS = [
-        'Type ? or / for help.',
-        "What's most urgent?",
-        '💡Ask "Switch to [project]"',
-        "Mark the invoice as done…",
-        '💡Ask "Open my settings"',
-    ]
 
     const SLASH_COMMANDS = [
         { cmd: '/switch [project]', desc: 'e.g. [project]' },
@@ -124,18 +114,18 @@ export default function OrbConversation({
 
     const handleFormSubmit = (e?: React.FormEvent) => {
         e?.preventDefault()
-        if (!input.trim() || submitting) return
-        
+        const value = (textareaRef.current?.value ?? input).trim()
+        if (!value || submitting) return
+
         const newHist = [...history]
-        if (newHist[newHist.length - 1] !== input.trim()) {
-            newHist.push(input.trim())
+        if (newHist[newHist.length - 1] !== value) {
+            newHist.push(value)
             setHistory(newHist)
             sessionStorage.setItem('todos_orb_cmd_hist', JSON.stringify(newHist))
         }
         setHistoryIndex(-1)
 
-        // Form submission is handled entirely by parent now
-        onSubmit()
+        onSubmit(value)
     }
 
     const lastOrbMessage = [...messages].reverse().find(m => m.type === 'orb')
@@ -221,7 +211,6 @@ export default function OrbConversation({
             <form onSubmit={handleFormSubmit} style={{ position: 'relative' }}>
                 {!input && (
                     <div
-                        key={hintIndex}
                         style={{
                             position: 'absolute',
                             top: '13px',
@@ -234,10 +223,9 @@ export default function OrbConversation({
                             zIndex: 1,
                             userSelect: 'none',
                             whiteSpace: 'nowrap',
-                            animation: 'todos-fade-in 0.5s ease-out',
                         }}
                     >
-                        {ROTATING_HINTS[hintIndex % ROTATING_HINTS.length]}
+                        Type ? or / for help.
                     </div>
                 )}
                 

@@ -112,17 +112,9 @@ export default function AmbientDashboard({ initialProducts }: Props) {
     const [queryLabel, setQueryLabel]           = useState('')
     const [showQueryResults, setShowQueryResults] = useState(false)
     const [scopeToProduct, setScopeToProduct]     = useState(true)
-    const [hintIndex, setHintIndex]               = useState(0)
-
-    const HINT_COUNT = 5 // must match ROTATING_HINTS length in OrbConversation
 
     const inactivityRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
-    const hintIntervalRef  = useRef<ReturnType<typeof setInterval> | null>(null)
     const prevSelectedId   = useRef<string | null>(null)
-
-    function cycleHint() {
-        setHintIndex(i => (i + 1) % HINT_COUNT)
-    }
 
     function resetInactivity() {
         if (inactivityRef.current) clearTimeout(inactivityRef.current)
@@ -176,7 +168,6 @@ export default function AmbientDashboard({ initialProducts }: Props) {
             setMessages([])
             setConversationActive(false)
             sessionStorage.removeItem(SS_CONVERSATION)
-            setHintIndex(0)
             if (inactivityRef.current) {
                 clearTimeout(inactivityRef.current)
                 inactivityRef.current = null
@@ -185,23 +176,10 @@ export default function AmbientDashboard({ initialProducts }: Props) {
         prevSelectedId.current = selectedId
     }, [selectedId])
 
-    // Reset hintIndex when messages clear
-    useEffect(() => {
-        if (messages.length === 0) setHintIndex(0)
-    }, [messages.length])
-
-    // 45s placeholder cycling interval
-    useEffect(() => {
-        hintIntervalRef.current = setInterval(cycleHint, 45000)
-        return () => { if (hintIntervalRef.current) clearInterval(hintIntervalRef.current) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
-
     // Clean up all timers on unmount
     useEffect(() => {
         return () => {
             if (inactivityRef.current) clearTimeout(inactivityRef.current)
-            if (hintIntervalRef.current) clearInterval(hintIntervalRef.current)
         }
     }, [])
 
@@ -315,9 +293,8 @@ export default function AmbientDashboard({ initialProducts }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [products])
 
-    async function handleSubmit(e?: React.FormEvent) {
-        e?.preventDefault()
-        const text = input.trim()
+    async function handleSubmit(value?: string) {
+        const text = (value ?? input).trim()
         if (!text || !selectedId || submitting) return
 
         if (text === '?') {
@@ -663,7 +640,6 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 submitting={submitting}
                 productCode={selected?.code ?? selected?.name ?? ''}
                 products={products}
-                hintIndex={hintIndex}
                 scopeToProduct={scopeToProduct}
                 onInputChange={v => { setInput(v); sessionStorage.setItem(SS_INPUT, v) }}
                 onSubmit={handleSubmit}
@@ -822,7 +798,6 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 dryRun={dryRun}
                 onDryRunChange={setDryRun}
                 messages={messages}
-                onCycleHint={cycleHint}
             />
 
             {showAddProduct && (

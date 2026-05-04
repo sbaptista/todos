@@ -14,7 +14,6 @@ type Props = {
   dryRun: boolean
   onDryRunChange: (v: boolean) => void
   messages: ConversationMessage[]
-  onCycleHint: () => void
 }
 
 const SPEECH_PRESETS: Record<string, Speech> = {
@@ -26,7 +25,7 @@ const SPEECH_PRESETS: Record<string, Speech> = {
   },
 }
 
-function OrbDevPanelInner({ override, onChange, onSpeak, dryRun, onDryRunChange, messages, onCycleHint }: Props) {
+function OrbDevPanelInner({ override, onChange, onSpeak, dryRun, onDryRunChange, messages }: Props) {
   const [open, setOpen] = useState(false)
 
   const btnStyle = (active: boolean): React.CSSProperties => ({
@@ -139,20 +138,6 @@ function OrbDevPanelInner({ override, onChange, onSpeak, dryRun, onDryRunChange,
           </button>
           <button type="button" style={btnStyle(false)} onClick={() => onSpeak(null)}>
             Clear
-          </button>
-
-          <div style={{
-            fontSize: '10px',
-            fontWeight: 700,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: 'var(--muted)',
-            padding: '8px 2px 2px',
-          }}>
-            Discoverability
-          </div>
-          <button type="button" style={btnStyle(false)} onClick={onCycleHint}>
-            Cycle Placeholder
           </button>
 
           <div style={{
