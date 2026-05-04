@@ -17,6 +17,8 @@ type Product = { id: string; name: string; code: string | null; description: str
 type Todo    = { id: string; title: string; status: string; priority_value: number | null }
 type Urgency = 'calm' | 'active' | 'urgent'
 
+type Props = { initialProducts?: Product[] }
+
 const LAST_PRODUCT_KEY  = 'todos_last_product_id'
 const LS_SCOPE          = 'todos_orb_scope'
 const SS_INPUT          = 'todos_orb_input'
@@ -88,15 +90,15 @@ const SOLAR_FLARES = [
     { angle: 340, width: 26, height: 34, dur: 15, delay: 13.2 },
 ]
 
-export default function AmbientDashboard() {
+export default function AmbientDashboard({ initialProducts }: Props) {
     const router   = useRouter()
     const supabase = useMemo(() => createClient(), [])
 
-    const [products, setProducts]               = useState<Product[]>([])
+    const [products, setProducts]               = useState<Product[]>(initialProducts ?? [])
     const [selectedId, setSelectedId]           = useState<string | null>(null)
     const [todos, setTodos]                     = useState<Todo[]>([])
     const [input, setInput]                     = useState('')
-    const [loading, setLoading]                 = useState(true)
+    const [loading, setLoading]                 = useState(!initialProducts)
     const [submitting, setSubmitting]           = useState(false)
     const [showAddProduct, setShowAddProduct]   = useState(false)
     const [showEditProduct, setShowEditProduct] = useState(false)
@@ -212,6 +214,15 @@ export default function AmbientDashboard() {
     // Load products, restore last selected
     useEffect(() => {
         async function load() {
+            if (initialProducts) {
+                // Data already available from server — just restore last-selected
+                if (initialProducts.length > 0) {
+                    const last  = localStorage.getItem(LAST_PRODUCT_KEY)
+                    const found = initialProducts.find(p => p.id === last)
+                    setSelectedId(found ? found.id : initialProducts[0].id)
+                }
+                return
+            }
             const { data } = await supabase.from('projects').select('id, name, code, description').order('sort_order')
             const list = (data ?? []) as Product[]
             setProducts(list)
@@ -223,6 +234,7 @@ export default function AmbientDashboard() {
             setLoading(false)
         }
         load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [supabase])
 
     const fetchTodos = useCallback(async () => {
