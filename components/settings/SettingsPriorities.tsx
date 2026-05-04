@@ -290,7 +290,6 @@ export default function SettingsPriorities() {
             <div key={`prio-edit-${p.value}`} style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: 'var(--sp-lg) var(--sp-xl)' }}>
               <label style={labelStyle}>Label *</label>
               <input
-                style={inputStyle}
                 value={editForm.label}
                 onChange={e => setEditForm({ ...editForm, label: e.target.value })}
                 autoFocus
