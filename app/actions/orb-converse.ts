@@ -116,6 +116,17 @@ const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'delete_todo',
+    description: 'Permanently delete a todo. Hard delete — irreversible. Only use when the user clearly asks to delete or remove a task.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        code: { type: 'string', description: 'Task code, e.g. "TODOS-44".' },
+      },
+      required: ['code'],
+    },
+  },
+  {
     name: 'client_action',
     description: "Navigate or switch UI state.",
     input_schema: {
@@ -145,6 +156,7 @@ const TOOL_LABELS: Record<string, string> = {
     create_todo: 'Creating task...',
     query_todos: 'Searching backlog...',
     update_todo: 'Updating task...',
+    delete_todo: 'Deleting task...',
     client_action: 'Navigating...',
     search_knowledge: 'Searching knowledge repository...',
 }
@@ -359,6 +371,39 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
                         output = { ...output, distillation: { success: false, error: String(e) } }
                     }
                 }
+              }
+            }
+          } else if (tc.name === 'delete_todo') {
+            const productCode = input.code?.split('-')[0]
+            const todoNum = parseInt(input.code?.split('-')[1] || '0')
+            let todo = ctx.todoList.find((t: any) => {
+              const p = ctx.productList.find((pp: any) => pp.id === t.product_id)
+              return p?.code === productCode && t.todo_number === todoNum
+            })
+
+            if (!todo) {
+                const { data: found } = await supabase
+                    .from('todos')
+                    .select('*, projects!inner(code)')
+                    .eq('todo_number', todoNum)
+                    .ilike('projects.code', productCode)
+                    .maybeSingle()
+                if (found) todo = found
+            }
+
+            if (!todo) output = { error: 'todo not found' }
+            else {
+              const { error } = await supabase.from('todos').delete().eq('id', todo.id)
+              if (error) output = { error: error.message }
+              else {
+                output = { ok: true, code: input.code }
+                stream.update({ speech: accumulatedSpeech, thought: `Deleted ${input.code}`, refresh: true, mutatedProductId: todo.product_id })
+                await logAuditEvent({
+                  action: 'todo_delete',
+                  table_name: 'todos',
+                  record_id: todo.id,
+                  before: { code: input.code, title: todo.title, status: todo.status }
+                })
               }
             }
           } else if (tc.name === 'client_action') {
