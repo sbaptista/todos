@@ -3,6 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createStreamableValue } from 'ai/rsc'
 import { createClient } from '@/lib/supabase/server'
+import { logAuditEvent } from '@/lib/audit'
 
 // ──────────────────────────────────────────────────────────────────────────
 // Types
@@ -18,6 +19,7 @@ export type OrbResponse = {
   clientAction?: { action: string; target?: string }
   error?: string
   isStreaming?: boolean
+  suggestedKnowledge?: { id: string; productId: string; title: string; suggestion: { title: string; content: string } }
 }
 
 export type OrbRequest = {
@@ -35,13 +37,14 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
 // ──────────────────────────────────────────────────────────────────────────
 
 async function buildContext(supabase: any, currentProductId: string) {
-  const [{ data: products }, { data: todos }, { data: groups }, { data: categories }, { data: statuses }, { data: priorities }] = await Promise.all([
+  const [{ data: products }, { data: todos }, { data: groups }, { data: categories }, { data: statuses }, { data: priorities }, { data: knowledge }] = await Promise.all([
     supabase.from('projects').select('id, name, code').order('sort_order'),
-    supabase.from('todos').select('id, todo_number, title, status, priority_value, product_id').is('deleted_at', null),
+    supabase.from('todos').select('id, todo_number, title, status, priority_value, product_id, closed_at').is('deleted_at', null),
     supabase.from('groups').select('id, name, product_id'),
     supabase.from('categories').select('id, name, product_id'),
     supabase.from('statuses').select('*').order('sort_order'),
     supabase.from('priorities').select('*').order('value'),
+    supabase.from('knowledge_repo').select('*, projects(code)').order('created_at', { ascending: false }),
   ])
 
   const productList  = (products   ?? [])
@@ -50,6 +53,7 @@ async function buildContext(supabase: any, currentProductId: string) {
   const categoryList = (categories ?? [])
   const statusList   = (statuses   ?? [])
   const priorityList = (priorities ?? [])
+  const knowledgeList = (knowledge   ?? [])
   const current = productList.find((p: any) => p.id === currentProductId)
 
   const byProduct = productList.map((p: any) => {
@@ -60,7 +64,7 @@ async function buildContext(supabase: any, currentProductId: string) {
     return `${p.code ?? p.name}:\n${productTodos || '  (none open)'}`
   }).join('\n\n')
 
-  return { productList, todoList, groupList, categoryList, statusList, priorityList, current, contextString: byProduct }
+  return { productList, todoList, groupList, categoryList, statusList, priorityList, knowledgeList, current, contextString: byProduct }
 }
 
 const TOOLS: Anthropic.Tool[] = [
@@ -123,6 +127,18 @@ const TOOLS: Anthropic.Tool[] = [
       required: ['action'],
     },
   },
+  {
+    name: 'search_knowledge',
+    description: 'Search the Knowledge Repository for lessons, decisions, and distilled insights.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string' },
+        product_code: { type: 'string' },
+      },
+      required: ['query'],
+    },
+  },
 ]
 
 const TOOL_LABELS: Record<string, string> = {
@@ -130,6 +146,7 @@ const TOOL_LABELS: Record<string, string> = {
     query_todos: 'Searching backlog...',
     update_todo: 'Updating task...',
     client_action: 'Navigating...',
+    search_knowledge: 'Searching knowledge repository...',
 }
 
 export async function orbConverse(req: OrbRequest) {
@@ -163,19 +180,24 @@ export async function orbConverse(req: OrbRequest) {
 VOICE: Brief, direct. Plain text only. NO markdown.
 VALID VALUES: Statuses: ${statusNames} | Priorities: ${priorityInfo}
 BACKLOG:
-${ctx.contextString}`,
+${ctx.contextString}
+
+KNOWLEDGE BASE (Recent):
+${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.title}: ${k.content.slice(0, 100)}...`).join('\n')}
+(Note: Use the 'search_knowledge' tool to query the full repository if the answer isn't here.)`,
           messages,
           tools: TOOLS,
           stream: true,
         })
 
         let currentTurnSpeech = ''
+        const baseSpeech = accumulatedSpeech
         let toolCalls: any[] = []
 
         for await (const chunk of response) {
           if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
             currentTurnSpeech += chunk.delta.text
-            accumulatedSpeech = currentTurnSpeech 
+            accumulatedSpeech = baseSpeech + currentTurnSpeech 
             stream.update({ speech: accumulatedSpeech, isStreaming: true })
           } else if (chunk.type === 'content_block_start' && chunk.content_block.type === 'tool_use') {
              const label = TOOL_LABELS[chunk.content_block.name] || 'Thinking...'
@@ -214,11 +236,17 @@ ${ctx.contextString}`,
                 title: input.title,
                 status: 'open',
                 priority_value: input.priority_value ?? null,
-              }).select('todo_number').single()
+              }).select('id, todo_number').single()
               if (error) output = { error: error.message }
               else {
                 output = { ok: true, code: `${product.code}-${data.todo_number}` }
                 stream.update({ speech: accumulatedSpeech, thought: `Created ${product.code}-${data.todo_number}`, refresh: true, mutatedProductId: product.id })
+                await logAuditEvent({
+                  action: 'todo_create',
+                  table_name: 'todos',
+                  record_id: data.id,
+                  after: { code: `${product.code}-${data.todo_number}`, title: input.title, priority_value: input.priority_value ?? null }
+                })
               }
             }
           } else if (tc.name === 'query_todos') {
@@ -242,18 +270,125 @@ ${ctx.contextString}`,
             })
             output = { count: results.length, returned }
             stream.update({ speech: accumulatedSpeech, thought: `Found ${results.length} items`, results: returned, queryLabel: req.input })
+          } else if (tc.name === 'update_todo') {
+            const productCode = input.code?.split('-')[0]
+            const todoNum = parseInt(input.code?.split('-')[1] || '0')
+            let todo = ctx.todoList.find((t: any) => {
+              const p = ctx.productList.find((pp: any) => pp.id === t.product_id)
+              return p?.code === productCode && t.todo_number === todoNum
+            })
+
+            if (!todo) {
+                const { data: found } = await supabase
+                    .from('todos')
+                    .select('*, projects!inner(code)')
+                    .eq('todo_number', todoNum)
+                    .ilike('projects.code', productCode)
+                    .maybeSingle()
+                if (found) todo = found
+            }
+
+            if (!todo) output = { error: 'todo not found' }
+            else {
+              // True when the new status should close the task: use is_closed flag with 'done' as fallback
+              const closingStatus = !!(input.new_status && (
+                ctx.statusList.find((s: any) => s.name === input.new_status)?.is_closed ||
+                input.new_status === 'done'
+              ))
+
+              const { data, error } = await supabase.from('todos').update({
+                title: input.new_title ?? todo.title,
+                status: input.new_status ?? todo.status,
+                priority_value: input.new_priority !== undefined ? input.new_priority : todo.priority_value,
+                description: input.description ?? todo.description,
+                resolution_notes: input.resolution_notes ?? todo.resolution_notes,
+                closed_at: closingStatus ? new Date().toISOString() : todo.closed_at,
+              }).eq('id', todo.id).select('*').single()
+
+              if (error) output = { error: error.message }
+              else {
+                output = { ok: true }
+                stream.update({ speech: accumulatedSpeech, thought: `Updated ${input.code}`, refresh: true, mutatedProductId: todo.product_id })
+                await logAuditEvent({
+                  action: closingStatus && !todo.closed_at ? 'todo_close' : 'todo_update',
+                  table_name: 'todos',
+                  record_id: todo.id,
+                  before: { status: todo.status, priority_value: todo.priority_value, title: todo.title },
+                  after: { status: data.status, priority_value: data.priority_value, title: data.title, code: input.code }
+                })
+
+                // Only distill when task is being closed for the first time
+                const isClosing = closingStatus && !todo.closed_at
+                if (isClosing) {
+                    const notesLen = (data.resolution_notes || '').length
+                    stream.update({ speech: accumulatedSpeech, thought: `Distilling insights (${notesLen} chars of notes)...` })
+
+                    const distillation = await anthropic.messages.create({
+                        model: 'claude-sonnet-4-5-20250929',
+                        max_tokens: 500,
+                        system: "Extract the 'Gold' (the key technical decision or lesson learned) from the task. Return a RAW JSON object with 'title' and 'content'. DO NOT use markdown or code blocks.",
+                        messages: [{ role: 'user', content: `Task: ${data.title}\nDescription: ${data.description}\nResolution: ${data.resolution_notes}` }]
+                    })
+                    try {
+                        let text = (distillation.content[0] as any).text
+                        const firstBrace = text.indexOf('{')
+                        const lastBrace = text.lastIndexOf('}')
+                        if (firstBrace !== -1 && lastBrace !== -1) {
+                            const jsonStr = text.substring(firstBrace, lastBrace + 1)
+                            const result = JSON.parse(jsonStr)
+
+                            if (!result.skip) {
+                                output = { ...output, distillation: { success: true, title: result.title } }
+                                stream.update({
+                                    speech: accumulatedSpeech,
+                                    thought: 'Insight ready to review',
+                                    suggestedKnowledge: {
+                                        id: todo.id,
+                                        productId: todo.product_id,
+                                        title: todo.title,
+                                        suggestion: result
+                                    }
+                                })
+                            } else {
+                                output = { ...output, distillation: { success: false, reason: 'no_gold_found' } }
+                                stream.update({ speech: accumulatedSpeech, thought: 'No new insights to distill' })
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Distillation failed', e)
+                        output = { ...output, distillation: { success: false, error: String(e) } }
+                    }
+                }
+              }
+            }
           } else if (tc.name === 'client_action') {
             const label = input.action === 'switch_project' ? `Switched to ${input.target}` : 'Navigating...'
             stream.update({ speech: accumulatedSpeech, thought: label, clientAction: { action: input.action, target: input.target } })
             output = { ok: true }
+          } else if (tc.name === 'search_knowledge') {
+            let results = ctx.knowledgeList.slice()
+            if (input.product_code) {
+                const p = ctx.productList.find((pp: any) => pp.code?.toUpperCase() === String(input.product_code).toUpperCase())
+                if (p) results = results.filter((k: any) => k.product_id === p.id)
+            }
+            if (input.query) {
+                const q = String(input.query).toLowerCase()
+                results = results.filter((k: any) => k.title.toLowerCase().includes(q) || k.content.toLowerCase().includes(q))
+            }
+            const returned = results.slice(0, 10).map((k: any) => ({ title: k.title, content: k.content, code: k.projects?.code }))
+            output = { count: results.length, returned }
+            stream.update({ speech: accumulatedSpeech, thought: `Found ${results.length} insights`, knowledgeResults: returned })
           }
           toolOutputs.push({ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(output) })
         }
         messages.push({ role: 'user', content: toolOutputs })
-        
+
         // Slight artificial delay between turns to make thoughts readable
         await new Promise(r => setTimeout(r, 600))
       }
+      // Reached MAX_TURNS without a no-tool-call response — close the stream
+      // so the client's for-await loop doesn't hang.
+      stream.done({ speech: accumulatedSpeech, isStreaming: false })
     } catch (err) {
       console.error('[orbConverse] Error:', err)
       stream.done({ speech: 'System error.', error: String(err) })

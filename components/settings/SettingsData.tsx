@@ -3,35 +3,40 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useVisibilityRefetch } from '@/lib/hooks/useVisibilityRefetch'
+import { prepareArchive, purgeArchivedTasks } from '@/app/actions/archive-data'
+import { importData } from '@/app/actions/import-data'
+import { getAuditLogs } from '@/app/actions/get-audit-logs'
+import { diagnoseAudit } from '@/app/actions/diagnose-audit'
 
 type AuditRow = Record<string, unknown>
 
 export default function SettingsData() {
   const supabase = useMemo(() => createClient(), [])
   const [exporting, setExporting] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [auditLog, setAuditLog] = useState<AuditRow[]>([])
   const [auditLoading, setAuditLoading] = useState(true)
   const [auditError, setAuditError] = useState('')
   const [auditPage, setAuditPage] = useState(0)
+  const [totalCount, setTotalCount] = useState(0)
+  const [diagnostic, setDiagnostic] = useState<string | null>(null)
   const PAGE_SIZE = 50
+  const isDev = process.env.NODE_ENV === 'development'
 
   const loadAudit = useCallback(async () => {
     setAuditLoading(true)
     setAuditError('')
-    const from = auditPage * PAGE_SIZE
-    const to = from + PAGE_SIZE - 1
-    const { data, error } = await supabase
-      .from('audit_log')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .range(from, to)
-    if (error) {
-      setAuditError(error.message)
+    
+    const res = await getAuditLogs(auditPage, PAGE_SIZE)
+    
+    if (res.error) {
+      setAuditError(res.error)
     } else {
-      setAuditLog(data ?? [])
+      setAuditLog(res.data ?? [])
+      setTotalCount(res.count ?? 0)
     }
     setAuditLoading(false)
-  }, [supabase, auditPage])
+  }, [auditPage])
 
   useVisibilityRefetch(loadAudit)
   useEffect(() => { loadAudit() }, [loadAudit])
@@ -67,6 +72,69 @@ export default function SettingsData() {
     setExporting(false)
   }
 
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!confirm('This will restore data from the archive. Existing records with matching IDs will be updated (upsert). Proceed?')) return
+
+    setImporting(true)
+    try {
+      const text = await file.text()
+      const payload = JSON.parse(text)
+      const res = await importData(payload)
+      if (res.error) alert(`Import failed: ${res.error}`)
+      else {
+        alert('Data restored successfully.')
+        loadAudit()
+      }
+    } catch (err: any) {
+      alert(`Invalid file: ${err.message}`)
+    } finally {
+      setImporting(false)
+      if (e.target) e.target.value = ''
+    }
+  }
+
+  async function handleArchive() {
+    if (!confirm('This will download all closed tasks older than 30 days as a JSON file and then PERMANENTLY delete them from the database. Proceed?')) return
+    
+    setExporting(true)
+    const result = await prepareArchive()
+    
+    if (!result.success || !result.data || result.data.length === 0) {
+      alert(result.error || 'No aged tasks found to archive.')
+      setExporting(false)
+      return
+    }
+
+    // 1. Download the file
+    const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `todos-archive-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    // 2. Confirm Purge
+    if (confirm(`Archive downloaded (${result.count} tasks). Permanently delete these records from Supabase now?`)) {
+      const purgeResult = await purgeArchivedTasks(result.data.map((t: any) => t.id))
+      if (purgeResult.success) {
+        alert('Archival complete. Database purged.')
+      } else {
+        alert('Archive saved, but purge failed: ' + purgeResult.error)
+      }
+    } else {
+      alert('Archive saved. Database was NOT purged.')
+    }
+    
+    setExporting(false)
+    loadAudit()
+  }
+
   const auditColumns = auditLog.length > 0 ? Object.keys(auditLog[0]) : []
 
   function formatCell(value: unknown): string {
@@ -90,59 +158,211 @@ export default function SettingsData() {
         color: 'var(--text)',
         margin: '0 0 var(--sp-2xl)',
       }}>
-        Data
+        Data Management
       </h2>
 
-      {/* Export section */}
-      <div style={{ ...cardStyle, marginBottom: 'var(--sp-3xl)' }}>
-        <h3 style={{
-          fontSize: 'var(--fs-sm)',
-          fontWeight: 'var(--fw-medium)',
-          color: 'var(--text2)',
-          margin: '0 0 var(--sp-xs)',
-        }}>
-          Export Data
+      {/* 1. Backup & Recovery */}
+      <div style={{ marginBottom: 'var(--sp-3xl)' }}>
+        <h3 style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--sp-md)' }}>
+          Backup & Recovery
         </h3>
-        <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', margin: '0 0 var(--sp-lg)' }}>
-          Download all your products, groups, categories, platforms, and todos as a single JSON file.
-        </p>
-        <button
-          onClick={handleExport}
-          disabled={exporting}
-          style={{
-            background: 'none',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--r)',
-            padding: '8px var(--sp-md)',
-            fontSize: 'var(--fs-sm)',
-            color: 'var(--text2)',
-            cursor: exporting ? 'not-allowed' : 'pointer',
-            opacity: exporting ? 0.6 : 1,
-            transition: 'all var(--transition)',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.borderColor = 'var(--border-focus)'
-            e.currentTarget.style.color = 'var(--text)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = 'var(--border)'
-            e.currentTarget.style.color = 'var(--text2)'
-          }}
-        >
-          {exporting ? 'Preparing…' : 'Download JSON'}
-        </button>
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-xl)' }}>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--sp-xs)' }}>
+                System Archive
+              </h4>
+              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', margin: 0 }}>
+                Portability layer for your entire workspace. Export to backup or Import to restore/merge data from a JSON archive.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 'var(--sp-md)', flexShrink: 0 }}>
+              <button
+                onClick={handleExport}
+                disabled={exporting}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--r)',
+                  padding: '8px var(--sp-md)',
+                  fontSize: 'var(--fs-sm)',
+                  color: 'var(--text2)',
+                  cursor: exporting ? 'not-allowed' : 'pointer',
+                  opacity: exporting ? 0.6 : 1,
+                  transition: 'all var(--transition)',
+                }}
+              >
+                {exporting ? 'Exporting…' : 'Export Full'}
+              </button>
+
+              <label style={{
+                display: 'inline-block',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--r)',
+                padding: '8px var(--sp-md)',
+                fontSize: 'var(--fs-sm)',
+                color: 'var(--text2)',
+                cursor: importing ? 'not-allowed' : 'pointer',
+                opacity: importing ? 0.6 : 1,
+                transition: 'all var(--transition)',
+              }}>
+                {importing ? 'Importing…' : 'Import Archive'}
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  onChange={handleImport} 
+                  disabled={importing}
+                  style={{ display: 'none' }}
+                />
+              </label>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Audit log section */}
-      <div>
-        <h3 style={{
-          fontSize: 'var(--fs-sm)',
-          fontWeight: 'var(--fw-medium)',
-          color: 'var(--text2)',
-          margin: '0 0 var(--sp-md)',
-        }}>
-          Audit Log
+      {/* 2. Data Lifecycle */}
+      <div style={{ marginBottom: 'var(--sp-3xl)' }}>
+        <h3 style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--sp-md)' }}>
+          Data Lifecycle
         </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-lg)' }}>
+          {/* Todos Archival */}
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-xl)' }}>
+              <div style={{ flex: 1 }}>
+                <h4 style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--sp-xs)' }}>
+                  Task Archival
+                </h4>
+                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', margin: 0 }}>
+                  Bulk export and purge closed tasks older than 30 days. Keeps the live database lean and fast.
+                </p>
+              </div>
+              <button
+                onClick={handleArchive}
+                disabled={exporting}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--r)',
+                  padding: '8px var(--sp-md)',
+                  fontSize: 'var(--fs-sm)',
+                  color: 'var(--text2)',
+                  cursor: exporting ? 'not-allowed' : 'pointer',
+                  opacity: exporting ? 0.6 : 1,
+                  transition: 'all var(--transition)',
+                  flexShrink: 0,
+                }}
+              >
+                {exporting ? 'Working…' : 'Archive & Purge'}
+              </button>
+            </div>
+          </div>
+
+          {/* Knowledge Repo Link */}
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-xl)' }}>
+              <div style={{ flex: 1 }}>
+                <h4 style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--sp-xs)' }}>
+                  Knowledge Repository
+                </h4>
+                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', margin: 0 }}>
+                  Manage, search, and archive curated insights and historical decisions.
+                </p>
+              </div>
+              <button
+                onClick={() => window.location.href = '/settings/knowledge'}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--r)',
+                  padding: '8px var(--sp-md)',
+                  fontSize: 'var(--fs-sm)',
+                  color: 'var(--text2)',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                Manage Repo
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Audit Log */}
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 var(--sp-md)' }}>
+          <h3 style={{
+            fontSize: 'var(--fs-sm)',
+            fontWeight: 'var(--fw-medium)',
+            color: 'var(--text2)',
+            margin: 0,
+          }}>
+            Audit Log
+          </h3>
+          {isDev && (
+            <div style={{ display: 'flex', gap: 'var(--sp-sm)' }}>
+              {diagnostic && (
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(diagnostic)
+                  }}
+                  style={{
+                    background: 'none',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--r)',
+                    padding: '4px 10px',
+                    fontSize: 'var(--fs-xs)',
+                    color: 'var(--text3)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Copy
+                </button>
+              )}
+              <button
+                onClick={async () => {
+                  setDiagnostic('Running…')
+                  const r = await diagnoseAudit()
+                  setDiagnostic(JSON.stringify(r, null, 2))
+                  loadAudit()
+                }}
+                style={{
+                  background: 'none',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--r)',
+                  padding: '4px 10px',
+                  fontSize: 'var(--fs-xs)',
+                  color: 'var(--text3)',
+                  cursor: 'pointer',
+                }}
+              >
+                Diagnose
+              </button>
+            </div>
+          )}
+        </div>
+
+        {isDev && diagnostic && (
+          <pre style={{
+            background: 'var(--bg2)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--r)',
+            padding: 'var(--sp-md)',
+            fontSize: 'var(--fs-xs)',
+            color: 'var(--text2)',
+            margin: '0 0 var(--sp-md)',
+            overflow: 'auto',
+            maxHeight: '400px',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            userSelect: 'text',
+            WebkitUserSelect: 'text',
+            fontFamily: 'var(--font-mono, monospace)',
+          }}>
+            {diagnostic}
+          </pre>
+        )}
 
         {auditError && (
           <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--error)', marginBottom: 'var(--sp-md)' }}>

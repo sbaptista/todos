@@ -12,6 +12,7 @@ import OrbConversation, { type ConversationMessage } from './OrbConversation'
 import { OrbDevPanel, type MoodOverride } from './OrbDevPanel'
 import { orbConverse, type OrbResponse } from '@/app/actions/orb-converse'
 import { useVisibilityRefetch } from '@/lib/hooks/useVisibilityRefetch'
+import DistillModal from './DistillModal'
 import { VERSION } from '@/lib/version'
 
 type Product = { id: string; name: string; code: string | null; description: string | null }
@@ -113,6 +114,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
     const [queryLabel, setQueryLabel]           = useState('')
     const [showQueryResults, setShowQueryResults] = useState(false)
     const [scopeToProduct, setScopeToProduct]     = useState(true)
+    const [distillTodo, setDistillTodo]           = useState<{ id: string; productId: string; title: string; suggestion: { title: string; content: string } } | null>(null)
 
     const inactivityRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
     const prevSelectedId   = useRef<string | null>(null)
@@ -425,6 +427,14 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                     } else if (action.action === 'open_help') {
                         setShowHelp(true)
                     }
+                }
+
+                if (chunk.suggestedKnowledge) {
+                    setDistillTodo(chunk.suggestedKnowledge)
+                }
+
+                if (chunk.knowledgeResults) {
+                    setQueryResults(chunk.knowledgeResults)
                 }
             }
         } catch (err) {
@@ -849,6 +859,28 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                         setSelectedId(prev => prev === id ? (products.find(p => p.id !== id)?.id ?? null) : prev)
                         setShowEditProduct(false)
                     }}
+                />
+            )}
+
+            {distillTodo && (
+                <DistillModal 
+                    todoId={distillTodo.id}
+                    productId={distillTodo.productId}
+                    initialTitle={distillTodo.suggestion.title}
+                    initialContent={distillTodo.suggestion.content}
+                    onClose={() => setDistillTodo(null)}
+                    onSaved={() => {
+                        setDistillTodo(null)
+                        setPulse(true)
+                        setTimeout(() => setPulse(false), 500)
+                    }}
+                />
+            )}
+
+            {queryResults && (
+                <QueryResultsModal 
+                    results={queryResults}
+                    onClose={() => setQueryResults(null)}
                 />
             )}
 

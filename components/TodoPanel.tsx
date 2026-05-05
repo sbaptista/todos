@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Todo, Group, Category, Product, Priority } from './TodoView'
+import DistillModal from './DistillModal'
+import { logAudit } from '@/app/actions/log-audit'
 
 type Props = {
   todo: Todo
@@ -35,6 +37,7 @@ export default function TodoPanel({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
   const [idCopied, setIdCopied] = useState(false)
+  const [showDistill, setShowDistill] = useState(false)
 
   useEffect(() => {
     setForm({ ...todo })
@@ -75,12 +78,31 @@ export default function TodoPanel({
       .select('*, groups(name), categories(name)')
       .single()
     setSaving(false)
-    if (data) onSave(data as Todo)
+    if (data) {
+      onSave(data as Todo)
+      const justClosed = form.status === 'done' && todo.status !== 'done'
+      logAudit({
+        action: justClosed ? 'todo_close' : 'todo_update',
+        table_name: 'todos',
+        record_id: todo.id,
+        before: { status: todo.status, priority_value: todo.priority_value, title: todo.title },
+        after: { status: form.status, priority_value: form.priority_value, title: form.title }
+      })
+      if (justClosed) {
+        setShowDistill(true)
+      }
+    }
   }
 
   async function handleDelete() {
     setDeleting(true)
     await supabase.from('todos').delete().eq('id', todo.id)
+    logAudit({
+      action: 'todo_delete',
+      table_name: 'todos',
+      record_id: todo.id,
+      before: { title: todo.title, status: todo.status }
+    })
     setDeleting(false)
     onDelete(todo.id)
   }
@@ -466,6 +488,17 @@ export default function TodoPanel({
           </button>
         </div>
       </div>
+
+      {showDistill && (
+        <DistillModal
+          todoId={todo.id}
+          productId={todo.product_id}
+          initialTitle={`Lesson: ${todo.title}`}
+          initialContent={todo.resolution_notes || todo.description || ''}
+          onClose={() => setShowDistill(false)}
+          onSaved={() => setShowDistill(false)}
+        />
+      )}
     </>
   )
 }

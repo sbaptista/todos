@@ -8,6 +8,8 @@ import { VERSION } from '@/lib/version'
 import TodoPanel from './TodoPanel'
 import TodoForm from './TodoForm'
 import ProductConfigPanel from './ProductConfigPanel'
+import DistillModal from './DistillModal'
+import { logAudit } from '@/app/actions/log-audit'
 
 export type Status = 'open' | 'in_progress' | 'on_hold' | 'done'
 
@@ -73,6 +75,7 @@ export default function TodoView({ productId }: { productId: string }) {
   const [selectMode,        setSelectMode]         = useState(false)
   const [selectedIds,       setSelectedIds]        = useState<string[]>([])
   const [confirmBulkDelete, setConfirmBulkDelete]  = useState(false)
+  const [distillTodo,       setDistillTodo]       = useState<Todo | null>(null)
 
   const fetchTodos = useCallback(async () => {
     let todoQuery = supabase
@@ -142,6 +145,17 @@ export default function TodoView({ productId }: { productId: string }) {
       const updated = data as Todo
       setTodos(prev => prev.map(t => t.id === todo.id ? updated : t))
       if (selectedTodo?.id === todo.id) setSelectedTodo(updated)
+      logAudit({
+        action: newStatus === 'done' ? 'todo_close' : 'todo_reopen',
+        table_name: 'todos',
+        record_id: todo.id,
+        before: { status: todo.status },
+        after: { status: newStatus, title: todo.title }
+      })
+
+      if (newStatus === 'done') {
+        setDistillTodo(updated)
+      }
     }
   }
 
@@ -164,10 +178,16 @@ export default function TodoView({ productId }: { productId: string }) {
 
   async function handleBulkMarkDone() {
     if (selectedIds.length === 0) return
+    const ids = [...selectedIds]
     await supabase.from('todos').update({
       status: 'done',
       closed_at: new Date().toISOString(),
-    }).in('id', selectedIds)
+    }).in('id', ids)
+    logAudit({
+      action: 'todo_bulk_close',
+      table_name: 'todos',
+      after: { count: ids.length, ids }
+    })
     await fetchTodos()
     setSelectedIds([])
     setSelectMode(false)
@@ -175,9 +195,15 @@ export default function TodoView({ productId }: { productId: string }) {
 
   async function handleBulkDelete() {
     if (selectedIds.length === 0) return
-    await supabase.from('todos').delete().in('id', selectedIds)
-    setTodos(prev => prev.filter(t => !selectedIds.includes(t.id)))
-    if (selectedTodo && selectedIds.includes(selectedTodo.id)) setSelectedTodo(null)
+    const ids = [...selectedIds]
+    await supabase.from('todos').delete().in('id', ids)
+    logAudit({
+      action: 'todo_bulk_delete',
+      table_name: 'todos',
+      before: { count: ids.length, ids }
+    })
+    setTodos(prev => prev.filter(t => !ids.includes(t.id)))
+    if (selectedTodo && ids.includes(selectedTodo.id)) setSelectedTodo(null)
     setSelectedIds([])
     setConfirmBulkDelete(false)
     setSelectMode(false)
@@ -793,6 +819,17 @@ export default function TodoView({ productId }: { productId: string }) {
           productName={currentProduct.name}
           productIcon={currentProduct.icon}
           onClose={() => setShowProductConfig(false)}
+        />
+      )}
+
+      {distillTodo && (
+        <DistillModal
+          todoId={distillTodo.id}
+          productId={distillTodo.product_id}
+          initialTitle={`Lesson: ${distillTodo.title}`}
+          initialContent={distillTodo.resolution_notes || distillTodo.description || ''}
+          onClose={() => setDistillTodo(null)}
+          onSaved={() => setDistillTodo(null)}
         />
       )}
 
