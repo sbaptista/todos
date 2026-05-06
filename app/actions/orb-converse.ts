@@ -108,8 +108,6 @@ const TOOLS: Anthropic.Tool[] = [
         new_title: { type: 'string' },
         description: { type: 'string' },
         resolution_notes: { type: 'string' },
-        group_name: { type: 'string' },
-        category_name: { type: 'string' },
         urls: { type: 'array', items: { type: 'string' } },
       },
     },

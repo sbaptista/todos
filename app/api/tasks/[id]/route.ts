@@ -20,7 +20,7 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { title, description, status, priority_value, resolution_notes, urls, group_id, category_id, group_name, category_name } = body
+  const { title, description, status, priority_value, resolution_notes, urls } = body
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
 
@@ -33,8 +33,6 @@ export async function PATCH(
       ? urls.split('\n').map((u: string) => u.trim()).filter(Boolean)
       : urls
   }
-  if (group_id !== undefined) updates.group_id = group_id
-  if (category_id !== undefined) updates.category_id = category_id
 
   if (status !== undefined) {
     updates.status = status
@@ -47,42 +45,12 @@ export async function PATCH(
 
   const supabase = createServiceClient()
 
-  // Name-based lookups — resolve group_name / category_name to IDs within the todo's product
-  if (group_name !== undefined || category_name !== undefined) {
-    const { data: existing } = await supabase
-      .from('todos')
-      .select('product_id')
-      .eq('id', id)
-      .single()
-
-    if (existing) {
-      if (group_name !== undefined) {
-        const { data: group } = await supabase
-          .from('groups')
-          .select('id')
-          .eq('product_id', existing.product_id)
-          .ilike('name', group_name)
-          .single()
-        updates.group_id = group?.id ?? null
-      }
-      if (category_name !== undefined) {
-        const { data: category } = await supabase
-          .from('categories')
-          .select('id')
-          .eq('product_id', existing.product_id)
-          .ilike('name', category_name)
-          .single()
-        updates.category_id = category?.id ?? null
-      }
-    }
-  }
-
   const { data: todo, error } = await supabase
     .from('todos')
     .update(updates)
     .eq('id', id)
     .is('deleted_at', null)
-    .select('id, todo_number, title, description, status, priority_value, resolution_notes, urls, group_id, category_id, created_at, updated_at, closed_at')
+    .select('id, todo_number, title, description, status, priority_value, resolution_notes, urls, created_at, updated_at, closed_at')
     .single()
 
   if (error) {

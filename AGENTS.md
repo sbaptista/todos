@@ -45,14 +45,12 @@ curl -s -X PATCH "https://orb-eight-lake.vercel.app/api/tasks/<id>" \
     "title": "Updated title",
     "status": "done",
     "priority_value": 2,
-    "group_name": "Developer",
-    "category_name": "Bug",
     "resolution_notes": "Describe what was done to fix it — populate when closing a todo, not before.",
     "urls": "https://example.com\nhttps://example2.com"
   }'
 ```
 
-All fields are optional. `group_name` and `category_name` are resolved by name within the todo's product — no need to look up IDs. `urls` accepts either a JSON array or a newline-separated string. `resolution_notes` is for post-fix documentation — what was done, not what needs doing.
+All fields are optional. `urls` accepts either a JSON array or a newline-separated string. `resolution_notes` is for post-fix documentation — what was done, not what needs doing.
 
 ## Delete a todo
 
