@@ -91,7 +91,7 @@ export default function SettingsKnowledge() {
                       {entry.title}
                     </p>
                     <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', margin: '2px 0 0' }}>
-                      {entry.projects?.code || 'TODOS'} · {new Date(entry.created_at).toLocaleDateString()}
+                      {entry.projects?.code || 'ORB'} · {new Date(entry.created_at).toLocaleDateString()}
                     </p>
                   </div>
                   <span style={{ 

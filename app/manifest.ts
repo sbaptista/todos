@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'TODOS',
-    short_name: 'TODOS',
+    name: 'Orb',
+    short_name: 'Orb',
     description: 'Personal project issue tracker',
     start_url: '/',
     display: 'standalone',

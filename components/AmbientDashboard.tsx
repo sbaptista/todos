@@ -347,7 +347,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 setMessages(prev => [
                     ...prev,
                     { id: genId(), type: 'user', text },
-                    { id: genId(), type: 'orb', text: 'I\'m the orb — your conversational interface to TODOS.\n• Create: "Add a high priority todo to [project]"\n• Query: "What\'s most urgent?"\n• Update: "Mark the invoice task as done"\n• Navigate: "Switch to [project]" or "Open settings"\nType ? for full help.' },
+                    { id: genId(), type: 'orb', text: 'I\'m the orb — your conversational interface to Orb.\n• Create: "Add a high priority todo to [project]"\n• Query: "What\'s most urgent?"\n• Update: "Mark the invoice task as done"\n• Navigate: "Switch to [project]" or "Open settings"\nType ? for full help.' },
                 ])
                 setConversationActive(true)
                 resetInactivity()
@@ -815,7 +815,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 justifyContent: 'space-between',
             }}>
                 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', letterSpacing: '0.05em' }}>
-                    TODOS {VERSION}
+                    Orb {VERSION}
                 </span>
             </div>
 

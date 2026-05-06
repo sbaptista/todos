@@ -18,7 +18,7 @@ const cormorant = Cormorant_Garamond({
 })
 
 export const metadata: Metadata = {
-  title: 'Todos',
+  title: 'Orb',
   themeColor: '#d4e4d4',
 }
 

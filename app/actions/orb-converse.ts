@@ -191,7 +191,7 @@ export async function orbConverse(req: OrbRequest) {
         const response = await anthropic.messages.create({
           model: 'claude-sonnet-4-5-20250929',
           max_tokens: 1024,
-          system: `You are the voice of the orb — the conversational layer of TODOS.
+          system: `You are the voice of the orb — the conversational layer of Orb.
 VOICE: Brief, direct. Plain text only. NO markdown.
 VALID VALUES: Statuses: ${statusNames} | Priorities: ${priorityInfo}
 BACKLOG:

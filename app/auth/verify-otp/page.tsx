@@ -187,7 +187,7 @@ function VerifyOtpContent() {
           color: 'var(--muted)',
           letterSpacing: '0.05em',
         }}>
-          TODOS {VERSION}
+          Orb {VERSION}
         </span>
       </div>
     </div>

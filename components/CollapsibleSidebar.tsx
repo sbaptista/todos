@@ -71,7 +71,7 @@ export default function CollapsibleSidebar({ items, defaultOpen = true }: Props)
         </button>
         {open && (
           <span style={{ fontSize: 'var(--fs-version)', color: 'var(--muted)', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-            TODOS {VERSION}
+            Orb {VERSION}
           </span>
         )}
       </div>

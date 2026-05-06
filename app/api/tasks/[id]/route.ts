@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
 function checkAuth(request: NextRequest): NextResponse | null {
-  if (process.env.TODOS_API_ENABLED !== 'true') {
+  if (process.env.ORB_API_ENABLED !== 'true') {
     return NextResponse.json({ error: 'API disabled' }, { status: 503 })
   }
-  if (request.headers.get('Authorization') !== process.env.TODOS_API_SECRET) {
+  if (request.headers.get('Authorization') !== process.env.ORB_API_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   return null

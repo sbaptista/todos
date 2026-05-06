@@ -81,7 +81,7 @@ export default function LoginPage() {
               color: 'var(--text)',
               margin: 0,
             }}>
-              TODOS
+              Orb
             </h1>
             <p style={{
               marginTop: 'var(--sp-sm)',
@@ -200,7 +200,7 @@ export default function LoginPage() {
           color: 'var(--muted)',
           letterSpacing: '0.05em',
         }}>
-          TODOS {VERSION}
+          Orb {VERSION}
         </span>
       </div>
     </div>

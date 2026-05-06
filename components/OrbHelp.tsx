@@ -239,10 +239,10 @@ const TOPICS: Topic[] = [
     content: (
       <div>
         <p style={s.p}>
-          TODOS is a personal project issue tracker built around a single idea: your work should have a presence, not just a list.
+          Orb is a personal project issue tracker built around a single idea: your work should have a presence, not just a list.
         </p>
         <p style={s.p}>
-          Most todo apps put you in charge of the list. TODOS puts the orb in charge of your attention. The orb reads your open work across all your projects and reflects it back — calm when things are light, active when the backlog builds, urgent when something needs your attention now. Color, motion, glow, and animation all carry the same signal independently, so nothing gets lost.
+          Most todo apps put you in charge of the list. Orb puts the orb in charge of your attention. The orb reads your open work across all your projects and reflects it back — calm when things are light, active when the backlog builds, urgent when something needs your attention now. Color, motion, glow, and animation all carry the same signal independently, so nothing gets lost.
         </p>
         <p style={s.p}>
           The orb is also conversational. Type plain English and it handles the rest — create a todo, ask what's most pressing, update a priority, mark something done. You don't navigate menus or fill out forms. You just talk to it.

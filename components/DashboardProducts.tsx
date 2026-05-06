@@ -389,7 +389,7 @@ export default function DashboardProducts() {
       </div>
       <div style={{ padding: 'var(--sp-lg) var(--sp-2xl)' }}>
         <span style={{ fontSize: 'var(--fs-version)', color: 'var(--muted)', letterSpacing: '0.05em' }}>
-          TODOS {VERSION}
+          Orb {VERSION}
         </span>
       </div>
     </main>
