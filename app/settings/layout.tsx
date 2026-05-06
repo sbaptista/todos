@@ -51,7 +51,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
       </div>
 
       {/* Sidebar + content */}
-      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+      <div className="settings-shell" style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         <SettingsSidebar />
         <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
           {children}

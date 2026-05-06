@@ -165,7 +165,7 @@ export default function SettingsData() {
   }
 
   return (
-    <div style={{ padding: 'var(--sp-2xl)', maxWidth: '960px' }}>
+    <div className="settings-page" style={{ padding: 'var(--sp-2xl)', maxWidth: '960px' }}>
       <h2 style={{
         fontSize: 'var(--fs-lg)',
         fontWeight: 'var(--fw-bold)',
@@ -181,7 +181,7 @@ export default function SettingsData() {
           Backup & Recovery
         </h3>
         <div style={cardStyle}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-xl)' }}>
+          <div className="settings-card-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-xl)' }}>
             <div style={{ flex: 1 }}>
               <h4 style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--sp-xs)' }}>
                 System Archive
@@ -190,7 +190,7 @@ export default function SettingsData() {
                 Portability layer for your entire workspace. Export includes all projects, tasks, and knowledge entries. Import restores or merges from any exported file.
               </p>
             </div>
-            <div style={{ display: 'flex', gap: 'var(--sp-md)', flexShrink: 0 }}>
+            <div className="settings-card-actions" style={{ display: 'flex', gap: 'var(--sp-md)', flexShrink: 0 }}>
               <button
                 onClick={handleExport}
                 disabled={exporting}
@@ -242,7 +242,7 @@ export default function SettingsData() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-lg)' }}>
           {/* Todos Archival */}
           <div style={cardStyle}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-xl)' }}>
+            <div className="settings-card-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-xl)' }}>
               <div style={{ flex: 1 }}>
                 <h4 style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--sp-xs)' }}>
                   Task Archival
@@ -274,7 +274,7 @@ export default function SettingsData() {
 
           {/* Knowledge Repo Link */}
           <div style={cardStyle}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-xl)' }}>
+            <div className="settings-card-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-xl)' }}>
               <div style={{ flex: 1 }}>
                 <h4 style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--sp-xs)' }}>
                   Knowledge Repository

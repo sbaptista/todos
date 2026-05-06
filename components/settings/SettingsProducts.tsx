@@ -284,7 +284,7 @@ export default function SettingsProducts() {
   )
 
   return (
-    <div style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
+    <div className="settings-page" style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-xl)' }}>
         <h2 style={{
           fontSize: 'var(--fs-lg)',

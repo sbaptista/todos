@@ -267,7 +267,7 @@ export default function SettingsStatuses() {
   )
 
   return (
-    <div style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
+    <div className="settings-page" style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-xl)' }}>
         <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-bold)', color: 'var(--text)', margin: 0 }}>
           Statuses
@@ -375,6 +375,7 @@ export default function SettingsStatuses() {
           ) : (
             <div
               key={`status-row-${s.id}`}
+              className="settings-list-row"
               style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-md)', padding: '10px var(--sp-xl)', borderBottom: '1px solid var(--border)' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
               onMouseLeave={e => (e.currentTarget.style.background = '')}
@@ -395,10 +396,10 @@ export default function SettingsStatuses() {
               <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', flexShrink: 0 }}>
                 {todoCounts[s.id] ?? 0} todos
               </span>
-              
-              <div style={{ display: 'flex', gap: '2px', marginRight: 'var(--sp-md)' }}>
-                <button 
-                  onClick={() => handleMove(s.id, 'up')} 
+
+              <div className="settings-row-actions" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                <button
+                  onClick={() => handleMove(s.id, 'up')}
                   disabled={idx === 0 || saving}
                   style={moveBtnStyle(idx === 0 || saving)}
                   onMouseEnter={e => idx > 0 && !saving && (e.currentTarget.style.color = 'var(--success)')}
@@ -407,8 +408,8 @@ export default function SettingsStatuses() {
                 >
                   <ArrowUp />
                 </button>
-                <button 
-                  onClick={() => handleMove(s.id, 'down')} 
+                <button
+                  onClick={() => handleMove(s.id, 'down')}
                   disabled={idx === statuses.length - 1 || saving}
                   style={moveBtnStyle(idx === statuses.length - 1 || saving)}
                   onMouseEnter={e => idx < statuses.length - 1 && !saving && (e.currentTarget.style.color = 'var(--success)')}
@@ -417,17 +418,16 @@ export default function SettingsStatuses() {
                 >
                   <ArrowDown />
                 </button>
+                <button onClick={() => startEdit(s)} style={rowActionBtnStyle}>Edit</button>
+                <button
+                  onClick={() => { setConfirmDeleteId(s.id); setEditingId(null) }}
+                  style={rowActionBtnStyle}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--error)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
+                >
+                  Delete
+                </button>
               </div>
-
-              <button onClick={() => startEdit(s)} style={rowActionBtnStyle}>Edit</button>
-              <button
-                onClick={() => { setConfirmDeleteId(s.id); setEditingId(null) }}
-                style={rowActionBtnStyle}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--error)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
-              >
-                Delete
-              </button>
             </div>
           )
         ))}

@@ -245,7 +245,7 @@ export default function SettingsPriorities() {
   )
 
   return (
-    <div style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
+    <div className="settings-page" style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-xl)' }}>
         <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-bold)', color: 'var(--text)', margin: 0 }}>
           Priorities
@@ -327,6 +327,7 @@ export default function SettingsPriorities() {
           ) : (
             <div
               key={`prio-row-${p.value}`}
+              className="settings-list-row"
               style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-md)', padding: '10px var(--sp-xl)', borderBottom: '1px solid var(--border)' }}
               onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
               onMouseLeave={e => (e.currentTarget.style.background = '')}
@@ -340,10 +341,10 @@ export default function SettingsPriorities() {
               <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                 {todoCounts[p.value] ?? 0} tasks
               </span>
-              
-              <div style={{ display: 'flex', gap: '2px', marginRight: 'var(--sp-md)' }}>
-                <button 
-                  onClick={() => handleMove(p.label, 'up')} 
+
+              <div className="settings-row-actions" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                <button
+                  onClick={() => handleMove(p.label, 'up')}
                   disabled={idx === 0 || saving}
                   style={moveBtnStyle(idx === 0 || saving)}
                   onMouseEnter={e => idx > 0 && !saving && (e.currentTarget.style.color = 'var(--success)')}
@@ -352,8 +353,8 @@ export default function SettingsPriorities() {
                 >
                   <ArrowUp />
                 </button>
-                <button 
-                  onClick={() => handleMove(p.label, 'down')} 
+                <button
+                  onClick={() => handleMove(p.label, 'down')}
                   disabled={idx === priorities.length - 1 || saving}
                   style={moveBtnStyle(idx === priorities.length - 1 || saving)}
                   onMouseEnter={e => idx < priorities.length - 1 && !saving && (e.currentTarget.style.color = 'var(--success)')}
@@ -362,17 +363,16 @@ export default function SettingsPriorities() {
                 >
                   <ArrowDown />
                 </button>
+                <button onClick={() => startEdit(p)} style={rowActionBtnStyle}>Edit</button>
+                <button
+                  onClick={() => { setConfirmDeleteValue(p.value); setEditingValue(null) }}
+                  style={rowActionBtnStyle}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--error)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
+                >
+                  Delete
+                </button>
               </div>
-
-              <button onClick={() => startEdit(p)} style={rowActionBtnStyle}>Edit</button>
-              <button
-                onClick={() => { setConfirmDeleteValue(p.value); setEditingValue(null) }}
-                style={rowActionBtnStyle}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--error)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
-              >
-                Delete
-              </button>
             </div>
           )
         ))}

@@ -169,7 +169,7 @@ export default function SettingsPlatforms() {
         borderBottom: '1px solid var(--border)',
         padding: 'var(--sp-lg) var(--sp-xl)',
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-md)', marginBottom: 'var(--sp-md)' }}>
+        <div className="settings-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-md)', marginBottom: 'var(--sp-md)' }}>
           <div>
             <label style={labelStyle}>Name *</label>
             <input
@@ -217,7 +217,7 @@ export default function SettingsPlatforms() {
   )
 
   return (
-    <div style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
+    <div className="settings-page" style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-xl)' }}>
         <h2 style={{
           fontSize: 'var(--fs-lg)',

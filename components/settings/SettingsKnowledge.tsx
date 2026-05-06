@@ -44,7 +44,7 @@ export default function SettingsKnowledge() {
   }
 
   return (
-    <div style={{ padding: 'var(--sp-2xl)', maxWidth: '960px' }}>
+    <div className="settings-page" style={{ padding: 'var(--sp-2xl)', maxWidth: '960px' }}>
       <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-bold)', color: 'var(--text)', margin: '0 0 var(--sp-2xl)' }}>
         Knowledge Repository
       </h2>

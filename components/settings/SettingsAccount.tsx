@@ -117,7 +117,7 @@ export default function SettingsAccount() {
   }
 
   return (
-    <div style={{ padding: 'var(--sp-2xl)', maxWidth: '480px' }}>
+    <div className="settings-page" style={{ padding: 'var(--sp-2xl)', maxWidth: '480px' }}>
       <h2 style={{
         fontSize: 'var(--fs-lg)',
         fontWeight: 'var(--fw-bold)',
@@ -129,7 +129,7 @@ export default function SettingsAccount() {
 
       <div style={cardStyle}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-lg)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-md)' }}>
+          <div className="settings-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-md)' }}>
             <div>
               <label style={labelStyle}>First Name</label>
               <input

@@ -46,7 +46,7 @@ function RowForm({ nameLabel, namePlaceholder, form, onChange, onSubmit, onCance
       background: 'var(--bg3)',
       borderBottom: '1px solid var(--border)',
     }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 'var(--sp-md)', marginBottom: 'var(--sp-md)' }}>
+      <div className="settings-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 'var(--sp-md)', marginBottom: 'var(--sp-md)' }}>
         <div>
           <label style={labelStyle}>{nameLabel} *</label>
           <input

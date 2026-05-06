@@ -43,7 +43,7 @@ export default function CollapsibleSidebar({ items, defaultOpen = true }: Props)
   })
 
   return (
-    <div style={{
+    <div className="settings-sidebar" style={{
       width: open ? '220px' : '48px',
       transition: 'width 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
       borderRight: '1px solid var(--border)',
