@@ -18,7 +18,7 @@ type Props = {
     input: string
     submitting: boolean
     productCode: string
-    products: { code: string | null; name: string }[]
+    products: { id: string; code: string | null; name: string }[]
     scopeToProduct: boolean
     onInputChange: (v: string) => void
     onSubmit: (value: string) => void
