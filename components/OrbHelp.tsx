@@ -192,7 +192,7 @@ const TOPICS: Topic[] = [
   },
   {
     id: 'orb',
-    label: 'About the orb',
+    label: 'The Orb',
     icon: '●',
     content: (
       <div>
@@ -257,6 +257,11 @@ const TOPICS: Topic[] = [
 
 export default function OrbHelp({ onClose }: { onClose: () => void }) {
   const [selectedId, setSelectedId] = useState('ask')
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    setIsMobile(window.matchMedia('(hover: none) and (pointer: coarse)').matches)
+  }, [])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -321,17 +326,56 @@ export default function OrbHelp({ onClose }: { onClose: () => void }) {
       </div>
 
       {/* Sidebar + content below the top bar */}
-      <div style={{ display: 'flex', flex: 1, marginTop: '52px', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flex: 1, marginTop: '52px', overflow: 'hidden' }}>
 
-        <CollapsibleSidebar
-          items={TOPICS.map(t => ({ id: t.id, label: t.label, icon: t.icon, active: selectedId === t.id, onClick: () => setSelectedId(t.id) }))}
-        />
+        {isMobile ? (
+          <nav style={{
+            display: 'flex',
+            gap: '8px',
+            padding: '10px var(--sp-lg)',
+            overflowX: 'auto',
+            flexShrink: 0,
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--bg2)',
+            WebkitOverflowScrolling: 'touch',
+          }}>
+            {TOPICS.map(t => (
+              <button
+                key={t.id}
+                onClick={() => setSelectedId(t.id)}
+                aria-current={selectedId === t.id ? 'page' : undefined}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '7px 14px',
+                  background: selectedId === t.id ? 'var(--pill-active-bg)' : 'transparent',
+                  border: `1.5px solid ${selectedId === t.id ? 'var(--pill-active-color)' : 'var(--border)'}`,
+                  borderRadius: '20px',
+                  color: selectedId === t.id ? 'var(--pill-active-color)' : 'var(--text2)',
+                  fontSize: 'var(--fs-sm)',
+                  fontFamily: 'var(--font-ui)',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{ fontSize: '13px', opacity: 0.7 }}>{t.icon}</span>
+                {t.label}
+              </button>
+            ))}
+          </nav>
+        ) : (
+          <CollapsibleSidebar
+            items={TOPICS.map(t => ({ id: t.id, label: t.label, icon: t.icon, active: selectedId === t.id, onClick: () => setSelectedId(t.id) }))}
+          />
+        )}
 
       {/* Content area */}
       <div style={{ flex: 1, overflow: 'auto' }}>
         {/* Topic content */}
         {selected && (
-          <div style={{ padding: 'var(--sp-3xl) var(--sp-2xl)', maxWidth: '620px' }}>
+          <div style={{ padding: isMobile ? 'var(--sp-xl) var(--sp-lg)' : 'var(--sp-3xl) var(--sp-2xl)', maxWidth: '620px' }}>
             <h1 style={{
               fontSize: 'var(--fs-xl)',
               fontWeight: 600,

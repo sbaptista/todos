@@ -216,7 +216,7 @@ export default function MuralCanvas({ urgency }: MuralProps) {
         zIndex: 0,
         pointerEvents: 'none',
         imageRendering: 'auto',
-        opacity: visible ? 0.35 : 0,
+        opacity: visible ? 0.22 : 0,
         transition: 'opacity 5s ease-in-out',
       }}
     />

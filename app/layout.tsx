@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${cormorant.variable}`}>
-      <body>
+      <body suppressHydrationWarning>
         <a href="#main-content" className="skip-link">Skip to content</a>
         <Providers>{children}</Providers>
       </body>

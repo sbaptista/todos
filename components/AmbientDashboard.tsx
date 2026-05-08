@@ -46,9 +46,9 @@ const ORB_SPEED: Record<Urgency, string> = {
 }
 
 const ORB_GLOW: Record<Urgency, { inset: string; blur: string }> = {
-    calm:   { inset: '-16px', blur: '20px' },
-    active: { inset: '-28px', blur: '28px' },
-    urgent: { inset: '-44px', blur: '38px' },
+    calm:   { inset: '-24px', blur: '28px' },
+    active: { inset: '-38px', blur: '36px' },
+    urgent: { inset: '-56px', blur: '46px' },
 }
 
 const ORB_STYLE: Record<Urgency, {
@@ -56,17 +56,17 @@ const ORB_STYLE: Record<Urgency, {
 }> = {
     calm: {
         orbMid: '#d4e4d4', orbLo: '#b8d0b8',
-        glow: 'rgba(80,130,80,0.22)',
+        glow: 'rgba(80,130,80,0.38)',
         countColor: '#2d5a2d', labelColor: '#7a9e7a',
     },
     active: {
         orbMid: '#e4daf4', orbLo: '#d0c4ee',
-        glow: 'rgba(130,90,200,0.28)',
+        glow: 'rgba(130,90,200,0.45)',
         countColor: '#5a3090', labelColor: '#9a7ac8',
     },
     urgent: {
         orbMid: '#f8ead8', orbLo: '#f0d4b0',
-        glow: 'rgba(230,130,55,0.48)',
+        glow: 'rgba(230,130,55,0.6)',
         countColor: '#a05010', labelColor: '#c88040',
     },
 }
@@ -843,7 +843,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
           50%      { transform: scale(1.025); border-radius: 50%; }
         }
         @keyframes todos-glow-calm {
-          0%, 100% { transform: scale(1);    opacity: 0.85; }
+          0%, 100% { transform: scale(1);    opacity: 0.92; }
           50%      { transform: scale(1.05); opacity: 1; }
         }
         @keyframes todos-orb-active {
@@ -852,7 +852,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
           66%      { transform: scale(1.025); border-radius: 51% 49% 48% 52%; }
         }
         @keyframes todos-glow-active {
-          0%, 100% { transform: scale(1);    opacity: 0.8; }
+          0%, 100% { transform: scale(1);    opacity: 0.88; }
           50%      { transform: scale(1.12); opacity: 1; }
         }
         @keyframes todos-orb-urgent {
@@ -860,7 +860,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
           50%      { transform: scale(1.045); border-radius: 50%; }
         }
         @keyframes todos-glow-urgent {
-          0%, 100% { transform: scale(1);    opacity: 0.75; }
+          0%, 100% { transform: scale(1);    opacity: 0.85; }
           50%      { transform: scale(1.18); opacity: 1; }
         }
         @keyframes todos-flare-rise {
