@@ -70,17 +70,18 @@ export default function TodoView({ productId }: { productId: string }) {
   const [selectedIds,       setSelectedIds]        = useState<string[]>([])
   const [confirmBulkDelete, setConfirmBulkDelete]  = useState(false)
   const [distillTodo,       setDistillTodo]       = useState<Todo | null>(null)
+  const [sortAsc,           setSortAsc]           = useState(true)
 
   const fetchTodos = useCallback(async () => {
     let todoQuery = supabase
       .from('todos')
       .select('*, groups(name), categories(name)')
       .is('deleted_at', null)
-      .order('sort_order')
+    todoQuery = todoQuery.order('todo_number', { ascending: sortAsc })
     if (!isAll) todoQuery = todoQuery.eq('product_id', productId)
     const { data } = await todoQuery
     setTodos((data as Todo[]) ?? [])
-  }, [productId, isAll, supabase])
+  }, [productId, isAll, supabase, sortAsc])
 
   useVisibilityRefetch(fetchTodos)
 
@@ -315,6 +316,34 @@ export default function TodoView({ productId }: { productId: string }) {
         )}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-sm)' }}>
+          {/* Sort toggle: asc ↔ desc by todo number */}
+          <button
+            onClick={() => setSortAsc(v => !v)}
+            style={{
+              background: 'transparent',
+              border: `1px solid var(--border)`,
+              borderRadius: 'var(--r)',
+              padding: '5px 10px',
+              fontSize: 'var(--fs-sm)',
+              color: 'var(--muted)',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              fontFamily: 'var(--font-ui)',
+            }}
+            aria-label={sortAsc ? 'Sort newest first' : 'Sort oldest first'}
+            title={sortAsc ? 'Oldest first' : 'Newest first'}
+          >
+            Sort
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              {sortAsc
+                ? <path d="M12 19V5M5 12l7-7 7 7"/>
+                : <path d="M12 5v14M5 12l7 7 7-7"/>
+              }
+            </svg>
+          </button>
+
           {/* Filter toggle */}
           <button
             onClick={() => setShowFilters(f => !f)}

@@ -15,6 +15,7 @@ import { useVisibilityRefetch } from '@/lib/hooks/useVisibilityRefetch'
 import DistillModal from './DistillModal'
 import { VERSION } from '@/lib/version'
 import { useToast } from '@/components/ui/Toast'
+import MuralCanvas from './MuralCanvas'
 
 type Product = { id: string; name: string; code: string | null; description: string | null }
 type Todo    = { id: string; title: string; status: string; priority_value: number | null }
@@ -23,7 +24,6 @@ type Urgency = 'calm' | 'active' | 'urgent'
 type Props = { initialProducts?: Product[] }
 
 const LAST_PRODUCT_KEY  = 'todos_last_product_id'
-const LS_SCOPE          = 'todos_orb_scope'
 const SS_INPUT          = 'todos_orb_input'
 const SS_CONVERSATION   = 'todos_orb_conversation'
 const INACTIVITY_MS     = 5 * 60 * 1000
@@ -136,11 +136,6 @@ export default function AmbientDashboard({ initialProducts }: Props) {
         resetInactivity()
     }
 
-    // Restore scope preference from localStorage on mount
-    useEffect(() => {
-        const saved = localStorage.getItem(LS_SCOPE)
-        if (saved !== null) setScopeToProduct(saved !== 'false')
-    }, [])
 
     // Restore input and conversation from sessionStorage on mount
     useEffect(() => {
@@ -495,11 +490,13 @@ export default function AmbientDashboard({ initialProducts }: Props) {
     )
 
     return (
+        <>
+        <MuralCanvas key={selectedId} urgency={urgency} />
         <div
             id="main-content"
             style={{
                 minHeight: '100vh',
-                background: 'var(--bg)',
+                background: 'transparent',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -514,6 +511,8 @@ export default function AmbientDashboard({ initialProducts }: Props) {
 
             {/* Orb wrapper — height contracts when conversation is active */}
             <div style={{
+                position: 'relative' as const,
+                zIndex: 1,
                 height: orbWrapperH,
                 display: 'flex',
                 alignItems: 'center',
@@ -524,6 +523,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
             }}>
                 <div
                     onClick={() => selectedId && router.push(`/dashboard/${selectedId}`)}
+                    title="View todo list"
                     style={{
                         position: 'relative',
                         width: '240px',
@@ -682,15 +682,16 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 onInputChange={v => { setInput(v); sessionStorage.setItem(SS_INPUT, v) }}
                 onSubmit={handleSubmit}
                 onShowResults={handleShowResults}
-                onScopeChange={v => { setScopeToProduct(v); localStorage.setItem(LS_SCOPE, String(v)) }}
+                onScopeChange={v => setScopeToProduct(v)}
             />
 
             {/* Product pills */}
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '420px' }}>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center', maxWidth: '420px', position: 'relative', zIndex: 2, background: '#fff', borderRadius: '24px', padding: '12px 20px', boxShadow: '0 8px 32px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08)', overflow: 'visible' }}>
                 {products.map(p => (
                     <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <button
-                            onClick={() => setSelectedId(p.id)}
+                            onClick={() => { setSelectedId(p.id); setScopeToProduct(true) }}
+                            title={`Switch to ${p.code ?? p.name}`}
                             style={{
                                 fontFamily: 'var(--font-ui)',
                                 fontSize: 'var(--fs-xs)',
@@ -698,7 +699,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                                 letterSpacing: '0.07em',
                                 padding: '7px 16px',
                                 borderRadius: '20px',
-                                border: `1px solid ${p.id === selectedId ? 'var(--pill-active-border)' : 'var(--border)'}`,
+                                border: `1.5px solid ${p.id === selectedId ? 'var(--pill-active-border)' : 'rgba(60,110,60,0.35)'}`,
                                 color: p.id === selectedId ? 'var(--pill-active-color)' : 'var(--muted)',
                                 background: p.id === selectedId ? 'var(--pill-active-bg)' : 'transparent',
                                 cursor: 'pointer',
@@ -709,17 +710,21 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                         </button>
                         {p.id === selectedId && (
                             <button
-                                onClick={() => setShowEditProduct(true)}
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setShowEditProduct(true) }}
+                                title={`Edit ${p.code ?? p.name}`}
                                 aria-label={`Edit ${p.name}`}
                                 style={{
+                                    position: 'relative' as const,
+                                    zIndex: 10,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    width: '32px',
-                                    height: '32px',
+                                    width: '36px',
+                                    height: '36px',
                                     borderRadius: '50%',
-                                    border: '1px solid var(--border)',
-                                    background: 'transparent',
+                                    border: '1.5px solid rgba(60,110,60,0.35)',
+                                    background: '#fff',
                                     color: 'var(--muted)',
                                     cursor: 'pointer',
                                     padding: 0,
@@ -727,7 +732,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                                     transition: 'all var(--transition)',
                                 }}
                                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--text3)'; e.currentTarget.style.color = 'var(--text2)' }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--muted)' }}
+                                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.35)'; e.currentTarget.style.color = 'var(--muted)' }}
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -739,6 +744,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 ))}
                 <button
                     onClick={() => setShowAddProduct(true)}
+                    title="Add new project"
                     style={{
                         fontFamily: 'var(--font-ui)',
                         fontSize: 'var(--fs-xs)',
@@ -746,7 +752,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                         letterSpacing: '0.07em',
                         padding: '7px 16px',
                         borderRadius: '20px',
-                        border: '1px dashed var(--border)',
+                        border: '1.5px dashed rgba(60,110,60,0.35)',
                         color: 'var(--muted)',
                         background: 'none',
                         cursor: 'pointer',
@@ -765,13 +771,17 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 'var(--sp-md)',
+                zIndex: 2,
             }}>
                 <button
                     onClick={() => setShowHelp(true)}
+                    title="Help"
                     aria-label="Help"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px', display: 'flex', alignItems: 'center', lineHeight: 1 }}
+                    style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(60,110,60,0.25)', borderRadius: '50%', cursor: 'pointer', color: 'var(--muted)', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.5)'; e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = '#fff' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.25)'; e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'rgba(255,255,255,0.7)' }}
                 >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="10"/>
                         <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
                         <line x1="12" y1="17" x2="12.01" y2="17"/>
@@ -779,10 +789,13 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 </button>
                 <Link
                     href="/settings"
+                    title="Settings"
                     aria-label="Settings"
-                    style={{ display: 'flex', alignItems: 'center', color: 'var(--muted)', padding: '4px', lineHeight: 1 }}
+                    style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(60,110,60,0.25)', borderRadius: '50%', color: 'var(--muted)', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.5)'; e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = '#fff' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.25)'; e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'rgba(255,255,255,0.7)' }}
                 >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                     </svg>
@@ -792,10 +805,13 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                         await supabase.auth.signOut()
                         router.push('/auth/login')
                     }}
+                    title="Sign out"
                     aria-label="Sign out"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: '4px', display: 'flex', alignItems: 'center', lineHeight: 1 }}
+                    style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(60,110,60,0.25)', borderRadius: '50%', cursor: 'pointer', color: 'var(--muted)', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.5)'; e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = '#fff' }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.25)'; e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'rgba(255,255,255,0.7)' }}
                 >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                         <polyline points="16 17 21 12 16 7"/>
                         <line x1="21" y1="12" x2="9" y2="12"/>
@@ -813,6 +829,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                zIndex: 2,
             }}>
                 <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', letterSpacing: '0.05em' }}>
                     Orb {VERSION}
@@ -923,5 +940,6 @@ export default function AmbientDashboard({ initialProducts }: Props) {
         }
       `}</style>
         </div>
+        </>
     )
 }

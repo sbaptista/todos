@@ -42,7 +42,9 @@ export default function OrbConversation({
     const textareaRef           = useRef<HTMLTextAreaElement>(null)
     const slashMenuDismissed    = useRef(false)
     const [inputFocused, setInputFocused] = useState(false)
-    
+    const [copiedResponse, setCopiedResponse] = useState(false)
+    const [copiedInput, setCopiedInput] = useState(false)
+
     // Command History
     const [history, setHistory] = useState<string[]>([])
     const [historyIndex, setHistoryIndex] = useState<number>(-1)
@@ -103,6 +105,18 @@ export default function OrbConversation({
         }
     }
 
+    function copyToClipboard(text: string, which: 'response' | 'input') {
+        navigator.clipboard.writeText(text).then(() => {
+            if (which === 'response') {
+                setCopiedResponse(true)
+                setTimeout(() => setCopiedResponse(false), 1500)
+            } else {
+                setCopiedInput(true)
+                setTimeout(() => setCopiedInput(false), 1500)
+            }
+        })
+    }
+
     const autoResize = useCallback(() => {
         const el = textareaRef.current
         if (!el) return
@@ -135,12 +149,14 @@ export default function OrbConversation({
 
     return (
         <div style={{
+            position: 'relative' as const,
+            zIndex: 1,
             width: '420px',
             maxWidth: '90vw',
-            background: 'var(--bg2)',
-            border: `1px solid ${inputFocused ? 'var(--border-focus)' : 'var(--border)'}`,
+            background: '#fff',
+            border: `1px solid ${inputFocused ? 'var(--border-focus)' : 'rgba(0,0,0,0.08)'}`,
             borderRadius: 'var(--r-xl)',
-            boxShadow: 'var(--shadow-sm)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'visible',
@@ -156,20 +172,51 @@ export default function OrbConversation({
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '10px',
-                        // Minimal animation for transient entry
+                        maxHeight: '300px',
+                        overflowY: 'auto',
                         animation: 'todos-fade-in 0.3s ease-out',
                     }}
                 >
                     <div style={{ lineHeight: 1.5 }}>
                         <div>
-                            <span style={{
-                                fontFamily: 'var(--font-ui)',
-                                fontSize: 'var(--fs-sm)',
-                                fontWeight: 600,
-                                color: 'var(--text)',
-                                letterSpacing: '0.02em',
-                            }}>
-                                Orb:
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{
+                                    fontFamily: 'var(--font-ui)',
+                                    fontSize: 'var(--fs-sm)',
+                                    fontWeight: 600,
+                                    color: 'var(--text)',
+                                    letterSpacing: '0.02em',
+                                }}>
+                                    Orb:
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => copyToClipboard(lastOrbMessage.text, 'response')}
+                                    title="Copy response"
+                                    aria-label="Copy response"
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        color: copiedResponse ? 'var(--pill-active-color)' : 'var(--muted)',
+                                        padding: '2px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        transition: 'color 0.2s',
+                                        opacity: 0.7,
+                                    }}
+                                >
+                                    {copiedResponse ? (
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    ) : (
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                        </svg>
+                                    )}
+                                </button>
                             </span>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
                                 {lastOrbMessage.thoughts && lastOrbMessage.thoughts.length > 0 && (
@@ -222,6 +269,7 @@ export default function OrbConversation({
                                 <div style={{ marginTop: '8px' }}>
                                     <button
                                         onClick={() => onShowResults(lastOrbMessage.results!, lastOrbMessage.queryLabel ?? '')}
+                                        title="Show query results"
                                         style={{
                                             fontFamily: 'var(--font-ui)',
                                             fontSize: 'var(--fs-xs)',
@@ -276,7 +324,7 @@ export default function OrbConversation({
                         left: '16px',
                         marginBottom: '8px',
                         background: 'var(--bg)',
-                        border: '1px solid var(--border)',
+                        border: '1.5px solid rgba(60,110,60,0.35)',
                         borderRadius: '6px',
                         boxShadow: 'var(--shadow-md)',
                         padding: '4px',
@@ -372,6 +420,7 @@ export default function OrbConversation({
                         type="button"
                         onClick={() => onScopeChange(!scopeToProduct)}
                         onMouseDown={(e) => e.preventDefault()}
+                        title={scopeToProduct ? 'Search all projects' : 'Search current project only'}
                         style={{
                             fontFamily: 'var(--font-ui)',
                             fontSize: 'var(--fs-xs)',
@@ -379,7 +428,7 @@ export default function OrbConversation({
                             letterSpacing: '0.06em',
                             padding: '3px 10px',
                             borderRadius: '12px',
-                            border: `1px solid ${!scopeToProduct ? 'var(--pill-active-border)' : 'var(--border)'}`,
+                            border: `1.5px solid ${!scopeToProduct ? 'var(--pill-active-border)' : 'rgba(60,110,60,0.35)'}`,
                             color: !scopeToProduct ? 'var(--pill-active-color)' : 'var(--muted)',
                             background: !scopeToProduct ? 'var(--pill-active-bg)' : 'transparent',
                             cursor: 'pointer',
@@ -397,6 +446,7 @@ export default function OrbConversation({
                         onClick={handleHistoryUp}
                         onMouseDown={(e) => e.preventDefault()}
                         disabled={history.length === 0}
+                        title="Previous command"
                         aria-label="Previous command"
                         style={{
                             fontFamily: 'var(--font-ui)',
@@ -404,7 +454,7 @@ export default function OrbConversation({
                             fontWeight: 500,
                             padding: '3px 10px',
                             borderRadius: '12px',
-                            border: '1px solid var(--border)',
+                            border: '1.5px solid rgba(60,110,60,0.35)',
                             color: 'var(--muted)',
                             background: 'transparent',
                             cursor: history.length === 0 ? 'default' : 'pointer',
@@ -419,6 +469,7 @@ export default function OrbConversation({
                         onClick={handleHistoryDown}
                         onMouseDown={(e) => e.preventDefault()}
                         disabled={historyIndex === -1}
+                        title="Next command"
                         aria-label="Next command"
                         style={{
                             fontFamily: 'var(--font-ui)',
@@ -426,7 +477,7 @@ export default function OrbConversation({
                             fontWeight: 500,
                             padding: '3px 10px',
                             borderRadius: '12px',
-                            border: '1px solid var(--border)',
+                            border: '1.5px solid rgba(60,110,60,0.35)',
                             color: 'var(--muted)',
                             background: 'transparent',
                             cursor: historyIndex === -1 ? 'default' : 'pointer',
@@ -437,10 +488,45 @@ export default function OrbConversation({
                         ↓
                     </button>
 
+                    {/* Copy input pill */}
+                    <button
+                        type="button"
+                        onClick={() => input.trim() && copyToClipboard(input, 'input')}
+                        onMouseDown={(e) => e.preventDefault()}
+                        disabled={!input.trim()}
+                        title="Copy input"
+                        aria-label="Copy input"
+                        style={{
+                            fontFamily: 'var(--font-ui)',
+                            fontSize: 'var(--fs-xs)',
+                            fontWeight: 500,
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            border: '1.5px solid rgba(60,110,60,0.35)',
+                            color: copiedInput ? 'var(--pill-active-color)' : 'var(--muted)',
+                            background: copiedInput ? 'var(--pill-active-bg)' : 'transparent',
+                            cursor: input.trim() ? 'pointer' : 'default',
+                            opacity: input.trim() ? 1 : 0.35,
+                            transition: 'all var(--transition)',
+                        }}
+                    >
+                        {copiedInput ? (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        ) : (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                        )}
+                    </button>
+
                     {/* Submit pill */}
                     <button
                         type="submit"
                         disabled={!input.trim() || submitting}
+                        title="Submit"
                         aria-label="Submit"
                         style={{
                             fontFamily: 'var(--font-ui)',
@@ -449,7 +535,7 @@ export default function OrbConversation({
                             letterSpacing: '0.06em',
                             padding: '3px 12px',
                             borderRadius: '12px',
-                            border: `1px solid ${input.trim() ? 'var(--pill-active-border)' : 'var(--border)'}`,
+                            border: `1.5px solid ${input.trim() ? 'var(--pill-active-border)' : 'rgba(60,110,60,0.35)'}`,
                             color: input.trim() ? 'var(--pill-active-color)' : 'var(--muted)',
                             background: input.trim() ? 'var(--pill-active-bg)' : 'transparent',
                             cursor: input.trim() ? 'pointer' : 'default',

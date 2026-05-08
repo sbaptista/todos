@@ -38,7 +38,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
 // Tool Context & Helpers
 // ──────────────────────────────────────────────────────────────────────────
 
-async function buildContext(supabase: any, currentProductId: string) {
+async function buildContext(supabase: any, currentProductId: string, scopeToProduct: boolean = true) {
   const [{ data: products }, { data: todos }, { data: statuses }, { data: priorities }, { data: knowledge }] = await Promise.all([
     supabase.from('projects').select('id, name, code').order('sort_order'),
     supabase.from('todos').select('id, todo_number, title, status, priority_value, product_id, closed_at').is('deleted_at', null),
@@ -55,6 +55,9 @@ async function buildContext(supabase: any, currentProductId: string) {
   const current = productList.find((p: any) => p.id === currentProductId)
 
   const byProduct = productList.map((p: any) => {
+    if (scopeToProduct && p.id !== currentProductId) {
+      return `${p.code ?? p.name}: (not in scope)`
+    }
     const productTodos = todoList
       .filter((t: any) => t.product_id === p.id && !statusList.find((s: any) => s.name === t.status)?.is_closed)
       .map((t: any) => `  ${p.code ?? p.name}-${t.todo_number} [P${t.priority_value ?? '-'}] ${t.title}`)
@@ -164,7 +167,7 @@ export async function orbConverse(req: OrbRequest) {
   ;(async () => {
     try {
       const supabase = await createClient()
-      const ctx = await buildContext(supabase, req.productId)
+      const ctx = await buildContext(supabase, req.productId, req.scopeToProduct ?? true)
       const statusNames = ctx.statusList.map((s: any) => s.name).join(', ')
       const priorityInfo = ctx.priorityList.map((p: any) => `${p.value}:${p.label}`).join(', ')
 
@@ -188,6 +191,7 @@ export async function orbConverse(req: OrbRequest) {
           system: `You are the voice of the orb — the conversational layer of Orb.
 VOICE: Brief, direct. Plain text only. NO markdown.
 VALID VALUES: Statuses: ${statusNames} | Priorities: ${priorityInfo}
+SCOPE: ${req.scopeToProduct ? `Scoped to ${ctx.current?.code ?? ctx.current?.name}. Only discuss or query this project's todos unless the user explicitly asks about another project or says "all".` : 'All projects visible.'}
 BACKLOG:
 ${ctx.contextString}
 
