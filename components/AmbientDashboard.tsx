@@ -461,7 +461,6 @@ export default function AmbientDashboard({ initialProducts }: Props) {
     const lastOrbResponse = [...messages].reverse().find(m => m.type === 'orb')?.text
 
     const orbScale     = (isInputFocused && isMobile) ? 0.45 : 1.0
-    const orbWrapperH  = 'auto'
 
     if (loading) return (
         <div style={{
@@ -500,35 +499,35 @@ export default function AmbientDashboard({ initialProducts }: Props) {
     return (
         <>
         <MuralCanvas key={selectedId} urgency={urgency} />
-        <div
-            id="main-content"
-            style={{
-                minHeight: '100vh',
-                background: 'transparent',
+        <div style={{
+            height: '100dvh',
+            overflow: 'hidden',
+            position: 'relative',
+        }}>
+
+            {/* ── Star Wars fade mask ── */}
+            <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 'clamp(160px, 28vh, 220px)',
+                background: 'linear-gradient(to bottom, var(--bg) 0%, var(--bg) 20%, transparent 100%)',
+                zIndex: 9,
+                pointerEvents: 'none',
+            }} />
+
+            {/* ── Orb ── */}
+            <div style={{
+                position: 'fixed',
+                top: 'clamp(20px, 5vh, 44px)',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 10,
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                justifyContent: 'flex-start',
-                gap: 'clamp(20px, 4vh, 44px)',
-                paddingTop: 'max(60px, 10vh)',
-                paddingBottom: 'calc(var(--sp-3xl) + var(--sab))',
-                fontFamily: 'var(--font-ui)',
-                WebkitFontSmoothing: 'antialiased',
-            }}
-        >
-
-            {/* Orb wrapper — height contracts when conversation is active */}
-            <div style={{
-                position: 'relative' as const,
-                zIndex: 1,
-                height: 'auto',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'visible',
-                flexShrink: 0,
-                transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                marginBottom: isInputFocused ? '-20px' : '0',
+                pointerEvents: 'none',
             }}>
                 <div
                     onClick={() => selectedId && router.push(`/dashboard/${selectedId}`)}
@@ -541,6 +540,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
+                        pointerEvents: 'auto',
                         transform: `scale(${orbScale})`,
                         transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
                     }}
@@ -680,28 +680,126 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 </div>
             </div>
 
-            {/* Conversation — thread + input unified */}
-            <OrbConversation
-                messages={messages}
-                input={input}
-                submitting={submitting}
-                productCode={selected?.code ?? selected?.name ?? ''}
-                products={products}
-                scopeToProduct={scopeToProduct}
-                onInputChange={v => { setInput(v); sessionStorage.setItem(SS_INPUT, v) }}
-                onSubmit={handleSubmit}
-                onShowResults={handleShowResults}
-                onScopeChange={v => setScopeToProduct(v)}
-                onFocusChange={setIsInputFocused}
-                onSelectProject={id => { setSelectedId(id); setScopeToProduct(true) }}
-                selectedProjectId={selectedId}
-                onShowEditProject={() => setShowEditProduct(true)}
-                onShowAddProject={() => setShowAddProduct(true)}
-            />
+            {/* ── Conversation outer ── */}
+            <div style={{
+                height: '100%',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'flex-end',
+                paddingBottom: 'clamp(100px, 14vh, 140px)',
+            }}>
+                <OrbConversation
+                    messages={messages}
+                    input={input}
+                    submitting={submitting}
+                    productCode={selected?.code ?? selected?.name ?? ''}
+                    products={products}
+                    scopeToProduct={scopeToProduct}
+                    onInputChange={v => { setInput(v); sessionStorage.setItem(SS_INPUT, v) }}
+                    onSubmit={handleSubmit}
+                    onShowResults={handleShowResults}
+                    onScopeChange={v => setScopeToProduct(v)}
+                    onFocusChange={setIsInputFocused}
+                    onSelectProject={id => { setSelectedId(id); setScopeToProduct(true) }}
+                    selectedProjectId={selectedId}
+                    onShowEditProject={() => setShowEditProduct(true)}
+                    onShowAddProject={() => setShowAddProduct(true)}
+                />
+            </div>
 
-            {/* Project pills removed from here, now in OrbConversation */}
+            {/* ── Project strip ── */}
+            <div style={{
+                position: 'fixed',
+                bottom: 'calc(clamp(100px, 14vh, 140px) - 34px)',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 20,
+                display: 'flex',
+                justifyContent: 'center',
+                pointerEvents: 'none',
+            }}>
+                <div style={{
+                    maxWidth: '420px',
+                    width: '100%',
+                    display: 'flex',
+                    gap: '6px',
+                    overflowX: 'auto',
+                    WebkitOverflowScrolling: 'touch',
+                }}>
+                    {products.map(p => (
+                        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, pointerEvents: 'auto' }}>
+                            <button
+                                type="button"
+                                onClick={() => { setSelectedId(p.id); setScopeToProduct(true) }}
+                                title={`Switch to ${p.code ?? p.name}`}
+                                style={{
+                                    fontFamily: 'var(--font-ui)',
+                                    fontSize: '11px',
+                                    fontWeight: 500,
+                                    letterSpacing: '0.04em',
+                                    padding: '5px 14px',
+                                    borderRadius: '7px',
+                                    border: `1.5px solid ${p.id === selectedId ? 'var(--pill-active-border)' : 'var(--border)'}`,
+                                    color: p.id === selectedId ? 'var(--pill-active-color)' : 'var(--text2)',
+                                    background: p.id === selectedId ? 'var(--pill-active-bg)' : 'rgba(255,255,255,0.85)',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                    transition: 'all var(--transition)',
+                                    backdropFilter: 'blur(4px)',
+                                }}
+                            >
+                                {p.code ?? p.name}
+                            </button>
+                            {p.id === selectedId && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setShowEditProduct(true) }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: '24px',
+                                        height: '24px',
+                                        borderRadius: '50%',
+                                        border: '1.5px solid var(--border)',
+                                        background: 'rgba(255,255,255,0.85)',
+                                        color: 'var(--muted)',
+                                        cursor: 'pointer',
+                                        padding: 0,
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                    </svg>
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                    <button
+                        type="button"
+                        onClick={() => setShowAddProduct(true)}
+                        style={{
+                            pointerEvents: 'auto',
+                            fontFamily: 'var(--font-ui)',
+                            fontSize: '11px',
+                            fontWeight: 500,
+                            padding: '5px 14px',
+                            borderRadius: '7px',
+                            border: '1.5px dashed var(--border)',
+                            color: 'var(--muted)',
+                            background: 'rgba(255,255,255,0.85)',
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                            backdropFilter: 'blur(4px)',
+                        }}
+                    >
+                        + project
+                    </button>
+                </div>
+            </div>
 
-            {/* Top right — help + settings + sign out */}
+            {/* ── Top right — help + settings + sign out ── */}
             <div style={{
                 position: 'fixed',
                 top: 'calc(var(--sp-lg) + var(--sat))',
@@ -709,7 +807,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 'var(--sp-md)',
-                zIndex: 2,
+                zIndex: 20,
             }}>
                 <button
                     onClick={() => setShowHelp(true)}
@@ -757,23 +855,20 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 </button>
             </div>
 
-            {/* Bottom bar */}
+            {/* ── Version ── */}
             <div style={{
                 position: 'fixed',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                padding: 'calc(12px + var(--sab)) 20px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                zIndex: 2,
+                bottom: '14px',
+                left: '20px',
+                zIndex: 20,
+                fontSize: 'var(--fs-version)',
+                color: 'var(--muted)',
+                pointerEvents: 'none',
             }}>
-                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', letterSpacing: '0.05em' }}>
-                    Orb {VERSION}
-                </span>
+                Orb {VERSION}
             </div>
 
+            {/* ── Modals ── */}
             {showHelp && <OrbHelp onClose={() => setShowHelp(false)} />}
 
             {showQueryResults && queryResults && (

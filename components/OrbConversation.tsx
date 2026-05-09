@@ -31,6 +31,185 @@ type Props = {
     onShowAddProject: () => void
 }
 
+function OrbCard({ msg, onShowResults }: { msg: ConversationMessage; onShowResults: Props['onShowResults'] }) {
+    const [copied, setCopied] = useState(false)
+
+    function copy() {
+        navigator.clipboard.writeText(msg.text).then(() => {
+            setCopied(true)
+            setTimeout(() => setCopied(false), 1500)
+        })
+    }
+
+    return (
+        <div style={{
+            margin: '0 2px',
+            padding: '10px 14px',
+            background: 'transparent',
+            color: 'var(--text2)',
+            fontSize: 'var(--fs-sm)',
+            lineHeight: 1.5,
+            textAlign: 'left',
+            borderRadius: '4px',
+        }}>
+            {msg.thoughts && msg.thoughts.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', marginBottom: '4px' }}>
+                    {msg.thoughts.map((t, i) => (
+                        <span key={i} style={{
+                            display: 'block',
+                            fontSize: 'var(--fs-xs)',
+                            color: 'var(--muted)',
+                            padding: '1px 0',
+                        }}>
+                            {'\u2022'} {t}
+                        </span>
+                    ))}
+                </div>
+            )}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                <span style={{
+                    flex: 1,
+                    whiteSpace: 'pre-wrap',
+                    opacity: msg.isStreaming ? 0.8 : 1,
+                    transition: 'opacity 0.2s',
+                    fontSize: 'var(--fs-sm)',
+                    color: 'var(--text)',
+                }}>
+                    {msg.text}
+                    {msg.isStreaming && (
+                        <span style={{
+                            display: 'inline-block',
+                            width: '4px',
+                            height: '14px',
+                            background: 'var(--pill-active-bg)',
+                            marginLeft: '4px',
+                            verticalAlign: 'middle',
+                            animation: 'todos-cursor-blink 0.8s infinite',
+                        }} />
+                    )}
+                </span>
+                <button
+                    type="button"
+                    onClick={copy}
+                    title="Copy response"
+                    aria-label="Copy response"
+                    style={{
+                        flexShrink: 0,
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: copied ? 'var(--pill-active-color)' : 'var(--muted)',
+                        padding: '2px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        transition: 'color 0.2s',
+                        opacity: 0.5,
+                    }}
+                >
+                    {copied ? (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    ) : (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                    )}
+                </button>
+            </div>
+            {msg.results && msg.results.length > 0 && (
+                <div style={{ marginTop: '8px' }}>
+                    <div style={{
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--r)',
+                        background: 'var(--bg2)',
+                        overflow: 'hidden',
+                    }}>
+                        {msg.results.slice(0, 5).map(r => (
+                            <div key={r.id} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 12px',
+                                borderBottom: '1px solid var(--border)',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s',
+                            }}
+                                onClick={() => onShowResults(msg.results!, msg.queryLabel ?? '')}
+                            >
+                                <span style={{
+                                    width: '6px',
+                                    height: '6px',
+                                    borderRadius: '50%',
+                                    flexShrink: 0,
+                                    background: r.status === 'done' ? 'var(--muted)' : r.priority_value === 1 ? '#a05010' : '#5a3090',
+                                }} />
+                                <span style={{
+                                    fontFamily: 'monospace',
+                                    fontSize: 'var(--fs-xs)',
+                                    color: 'var(--muted)',
+                                    minWidth: '56px',
+                                    flexShrink: 0,
+                                }}>
+                                    {r.code || r.id.slice(0, 6)}
+                                </span>
+                                <span style={{
+                                    flex: 1,
+                                    fontSize: 'var(--fs-xs)',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                }}>
+                                    {r.title}
+                                </span>
+                                <span style={{
+                                    fontSize: '11px',
+                                    textTransform: 'capitalize',
+                                    flexShrink: 0,
+                                    color: r.status === 'done' ? '#6a8a6a' : '#4a7a4a',
+                                }}>
+                                    {r.status}
+                                </span>
+                            </div>
+                        ))}
+                        {msg.results.length > 5 && (
+                            <div style={{
+                                fontSize: 'var(--fs-xs)',
+                                color: 'var(--muted)',
+                                padding: '6px 12px',
+                                textAlign: 'center',
+                                borderTop: '1px solid var(--border)',
+                            }}>
+                                +{msg.results.length - 5} more &rarr;
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => onShowResults(msg.results!, msg.queryLabel ?? '')}
+                        style={{
+                            marginTop: '6px',
+                            fontFamily: 'var(--font-ui)',
+                            fontSize: 'var(--fs-xs)',
+                            fontWeight: 500,
+                            letterSpacing: '0.06em',
+                            padding: '5px 14px',
+                            borderRadius: '16px',
+                            border: '1px solid var(--pill-active-border)',
+                            color: 'var(--pill-active-color)',
+                            background: 'var(--pill-active-bg)',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        Show list &middot; {msg.results.length}
+                    </button>
+                </div>
+            )}
+        </div>
+    )
+}
+
 export default function OrbConversation({
     messages,
     input,
@@ -52,13 +231,23 @@ export default function OrbConversation({
     const textareaRef           = useRef<HTMLTextAreaElement>(null)
     const slashMenuDismissed    = useRef(false)
     const [inputFocused, setInputFocused] = useState(false)
-    const [copiedResponse, setCopiedResponse] = useState(false)
     const [copiedInput, setCopiedInput] = useState(false)
-    const [showFullText, setShowFullText] = useState(false)
+    const [copiedTranscript, setCopiedTranscript] = useState(false)
 
     useEffect(() => {
         onFocusChange(inputFocused)
     }, [inputFocused, onFocusChange])
+
+    // Auto-scroll to bottom on new messages
+    useEffect(() => {
+        const el = threadRef.current
+        if (el) {
+            const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120
+            if (isNearBottom) {
+                requestAnimationFrame(() => { el.scrollTop = el.scrollHeight })
+            }
+        }
+    }, [messages])
 
     // Command History
     const [history, setHistory] = useState<string[]>([])
@@ -93,7 +282,6 @@ export default function OrbConversation({
         }
     }
 
-
     useEffect(() => {
         const saved = sessionStorage.getItem('todos_orb_cmd_hist')
         if (saved) {
@@ -120,25 +308,13 @@ export default function OrbConversation({
         }
     }
 
-    function copyToClipboard(text: string, which: 'response' | 'input') {
-        navigator.clipboard.writeText(text).then(() => {
-            if (which === 'response') {
-                setCopiedResponse(true)
-                setTimeout(() => setCopiedResponse(false), 1500)
-            } else {
-                setCopiedInput(true)
-                setTimeout(() => setCopiedInput(false), 1500)
-            }
-        })
-    }
-
     const autoResize = useCallback(() => {
         const el = textareaRef.current
         if (!el) return
         el.style.height = 'auto'
-        const h = Math.min(el.scrollHeight, 160)
+        const h = Math.min(el.scrollHeight, 120)
         el.style.height = `${h}px`
-        el.style.overflowY = el.scrollHeight > 160 ? 'auto' : 'hidden'
+        el.style.overflowY = el.scrollHeight > 120 ? 'auto' : 'hidden'
     }, [])
 
     useEffect(() => { autoResize() }, [input, autoResize])
@@ -159,537 +335,381 @@ export default function OrbConversation({
         onSubmit(value)
     }
 
-    const lastOrbMessage = [...messages].reverse().find(m => m.type === 'orb')
-    const hasMessages = !!lastOrbMessage
-    
-    // Response Truncation Logic
-    const TEXT_THRESHOLD = 500
-    const isLongResponse = lastOrbMessage && lastOrbMessage.text.length > TEXT_THRESHOLD
-    const displayResponse = (isLongResponse && !showFullText) 
-        ? lastOrbMessage.text.slice(0, 300) + '...'
-        : lastOrbMessage?.text
+    function copyTranscript() {
+        const transcript = messages.map(m => {
+            const prefix = m.type === 'user' ? 'User' : 'Orb'
+            const thoughts = m.thoughts?.length ? ` [${m.thoughts.join('; ')}]` : ''
+            return `${prefix}:${thoughts} ${m.text}`
+        }).join('\n\n')
+        navigator.clipboard.writeText(transcript).then(() => {
+            setCopiedTranscript(true)
+            setTimeout(() => setCopiedTranscript(false), 1500)
+        })
+    }
 
     return (
         <div style={{
-            position: 'relative' as const,
-            zIndex: 1,
-            width: 'min(420px, 92vw)',
-            background: 'rgba(255, 255, 255, 0.98)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            border: `1.5px solid ${inputFocused ? 'var(--border-focus)' : 'rgba(60, 110, 60, 0.15)'}`,
+            width: '100%',
+            maxWidth: '420px',
+            height: '100%',
+            border: `1px solid ${inputFocused ? 'var(--border-focus)' : 'var(--border)'}`,
             borderRadius: 'var(--r-xl)',
+            background: 'rgba(255, 255, 255, 0.96)',
             boxShadow: 'var(--shadow-md)',
             display: 'flex',
             flexDirection: 'column',
-            overflow: 'visible',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            overflow: 'hidden',
+            transition: 'border-color 0.2s ease',
         }}>
-
-            {hasMessages && (
-                <div
-                    ref={threadRef}
-                    aria-live="polite"
-                    style={{
-                        padding: '16px 20px 12px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px',
-                        maxHeight: '300px',
-                        overflowY: 'auto',
-                        animation: 'todos-fade-in 0.3s ease-out',
-                    }}
-                >
-                    <div style={{ lineHeight: 1.5 }}>
-                        <div>
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{
-                                    fontFamily: 'var(--font-ui)',
-                                    fontSize: 'var(--fs-sm)',
-                                    fontWeight: 600,
-                                    color: 'var(--text)',
-                                    letterSpacing: '0.02em',
-                                }}>
-                                    Orb:
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => copyToClipboard(lastOrbMessage.text, 'response')}
-                                    title="Copy response"
-                                    aria-label="Copy response"
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        color: copiedResponse ? 'var(--pill-active-color)' : 'var(--muted)',
-                                        padding: '2px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        transition: 'color 0.2s',
-                                        opacity: 0.7,
-                                    }}
-                                >
-                                    {copiedResponse ? (
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    ) : (
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                                        </svg>
-                                    )}
-                                </button>
-                            </span>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px' }}>
-                                {lastOrbMessage.thoughts && lastOrbMessage.thoughts.length > 0 && (
-                                    <div style={{ 
-                                        display: 'flex', 
-                                        flexDirection: 'column', 
-                                        gap: '4px',
-                                        opacity: 0.6
-                                    }}>
-                                        {lastOrbMessage.thoughts.map((thought, i) => (
-                                            <div key={i} style={{
-                                                fontSize: 'var(--fs-xs)',
-                                                color: 'var(--text3)',
-                                                fontFamily: 'var(--font-ui)',
-                                                letterSpacing: '0.02em',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '6px',
-                                                animation: 'todos-thought-fade-in 0.4s ease-out forwards'
-                                            }}>
-                                                <span style={{ color: 'var(--pill-active-color)', fontSize: '10px' }}>●</span>
-                                                {thought}
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                <span style={{
-                                    fontFamily: 'var(--font-ui)',
-                                    fontSize: 'var(--fs-base)',
-                                    color: 'var(--text2)',
-                                    whiteSpace: 'pre-wrap',
-                                    opacity: lastOrbMessage.isStreaming ? 0.8 : 1,
-                                    transition: 'opacity 0.2s',
-                                }}>
-                                    {displayResponse}
-                                    {isLongResponse && !showFullText && (
-                                        <button 
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                onShowResults([{ id: 'full-text', title: 'Full Response', status: 'done', priority_value: 0 } as any], 'Full Response')
-                                                // We'll use the modal to show full text instead of just expanding inline
-                                            }}
-                                            style={{
-                                                display: 'block',
-                                                marginTop: '8px',
-                                                background: 'none',
-                                                border: 'none',
-                                                color: 'var(--pill-active-color)',
-                                                fontSize: 'var(--fs-xs)',
-                                                fontWeight: 600,
-                                                cursor: 'pointer',
-                                                textDecoration: 'underline',
-                                                padding: 0
-                                            }}
-                                        >
-                                            View full response
-                                        </button>
-                                    )}
-                                    {lastOrbMessage.isStreaming && (
-                                        <span style={{
-                                            display: 'inline-block',
-                                            width: '4px',
-                                            height: '14px',
-                                            background: 'var(--pill-active-bg)',
-                                            marginLeft: '4px',
-                                            verticalAlign: 'middle',
-                                            animation: 'todos-cursor-blink 0.8s infinite'
-                                        }} />
-                                    )}
-                                </span>
-                            </div>
-                            {lastOrbMessage.results && lastOrbMessage.results.length > 0 && (
-                                <div style={{ marginTop: '8px' }}>
-                                    <button
-                                        onClick={() => onShowResults(lastOrbMessage.results!, lastOrbMessage.queryLabel ?? '')}
-                                        title="Show query results"
-                                        style={{
-                                            fontFamily: 'var(--font-ui)',
-                                            fontSize: 'var(--fs-xs)',
-                                            fontWeight: 500,
-                                            letterSpacing: '0.06em',
-                                            padding: '5px 14px',
-                                            borderRadius: '16px',
-                                            border: '1px solid var(--pill-active-border)',
-                                            color: 'var(--pill-active-color)',
-                                            background: 'var(--pill-active-bg)',
-                                            cursor: 'pointer',
-                                        }}
-                                    >
-                                        Show list · {lastOrbMessage.results.length}
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {hasMessages && (
-                <div style={{ height: '1px', background: 'var(--border)', flexShrink: 0 }} />
-            )}
-
-            <form onSubmit={handleFormSubmit} style={{ position: 'relative' }}>
-                {!input && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: '13px',
-                            left: '20px',
-                            pointerEvents: 'none',
-                            fontFamily: 'var(--font-ui)',
-                            fontSize: 'var(--fs-input)',
-                            color: 'var(--muted)',
-                            lineHeight: 1.5,
-                            zIndex: 1,
-                            userSelect: 'none',
-                            whiteSpace: 'nowrap',
-                        }}
-                    >
-                        Type ? or / for help.
-                    </div>
-                )}
-                
-                {showSlashMenu && (
-                    <div style={{
-                        position: 'absolute',
-                        bottom: '100%',
-                        left: '16px',
-                        marginBottom: '8px',
-                        background: 'var(--bg)',
-                        border: '1.5px solid rgba(60,110,60,0.35)',
-                        borderRadius: '6px',
-                        boxShadow: 'var(--shadow-md)',
-                        padding: '4px',
-                        zIndex: 50,
-                        minWidth: '200px',
-                    }}>
-                        {activeSlashCommands.map((c, i) => (
+            <div
+                ref={threadRef}
+                style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    WebkitOverflowScrolling: 'touch',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    padding: 'clamp(200px, 34vh, 280px) 0 8px 0',
+                }}
+            >
+                {messages.map(msg => (
+                        msg.type === 'user' ? (
                             <div
-                                key={c.cmd}
+                                key={msg.id}
                                 style={{
-                                    padding: '6px 10px',
-                                    borderRadius: '4px',
-                                    background: slashIndex === i ? 'var(--bg2)' : 'transparent',
-                                    cursor: 'pointer',
                                     display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    gap: '12px',
-                                }}
-                                onMouseDown={(e) => {
-                                    e.preventDefault()
-                                    fillCommand(c.cmd)
+                                    justifyContent: 'flex-end',
+                                    margin: '0 2px',
                                 }}
                             >
-                                <span style={{ fontFamily: 'monospace', fontSize: 'var(--fs-xs)', color: 'var(--text)', fontWeight: slashIndex === i ? 600 : 400 }}>{c.cmd}</span>
-                                <span style={{ fontSize: '10px', color: 'var(--muted)' }}>{c.desc}</span>
+                                <div style={{
+                                    maxWidth: '75%',
+                                    padding: '10px 14px',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 'var(--r-xl)',
+                                    background: '#dae5da',
+                                    color: 'var(--text)',
+                                    fontSize: 'var(--fs-sm)',
+                                    lineHeight: 1.5,
+                                    textAlign: 'right',
+                                    wordBreak: 'break-word',
+                                }}>
+                                    {msg.text}
+                                </div>
                             </div>
-                        ))}
-                    </div>
-                )}
-
-                <textarea
-                    ref={textareaRef}
-                    rows={1}
-                    value={input}
-                    onChange={e => { slashMenuDismissed.current = false; onInputChange(e.target.value); autoResize() }}
-                    onKeyDown={e => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault()
-                            if (showSlashMenu && activeSlashCommands[slashIndex]) {
-                                fillCommand(activeSlashCommands[slashIndex].cmd)
-                            } else {
-                                handleFormSubmit()
-                            }
-                        } else if (e.key === 'ArrowUp') {
-                            e.preventDefault()
-                            if (showSlashMenu) {
-                                setSlashIndex(prev => Math.max(0, prev - 1))
-                            } else {
-                                handleHistoryUp()
-                            }
-                        } else if (e.key === 'ArrowDown') {
-                            e.preventDefault()
-                            if (showSlashMenu) {
-                                setSlashIndex(prev => Math.min(activeSlashCommands.length - 1, prev + 1))
-                            } else {
-                                handleHistoryDown()
-                            }
-                        } else if (e.key === 'Escape') {
-                            if (showSlashMenu) {
-                                onInputChange('')
-                            }
-                        }
-                    }}
-                    onFocus={() => setInputFocused(true)}
-                    onBlur={() => setInputFocused(false)}
-                    disabled={submitting}
-                    style={{
-                        width: '100%',
-                        fontFamily: 'var(--font-ui)',
-                        fontSize: 'var(--fs-input)',
-                        background: 'transparent',
-                        border: 'none',
-                        padding: '12px 20px',
-                        color: 'var(--text)',
-                        outline: 'none',
-                        resize: 'none',
-                        lineHeight: 1.5,
-                        overflowY: 'hidden',
-                        boxSizing: 'border-box',
-                    }}
-                />
-
-                {/* Pill strip */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '0 16px 10px',
-                }}>
-                    {/* Scope pill */}
-                    <button
-                        type="button"
-                        onClick={() => onScopeChange(!scopeToProduct)}
-                        onMouseDown={(e) => e.preventDefault()}
-                        title={scopeToProduct ? 'Search all projects' : 'Search current project only'}
-                        style={{
-                            fontFamily: 'var(--font-ui)',
-                            fontSize: 'var(--fs-xs)',
-                            fontWeight: 500,
-                            letterSpacing: '0.06em',
-                            padding: '3px 10px',
-                            borderRadius: '12px',
-                            border: `1.5px solid ${!scopeToProduct ? 'var(--pill-active-border)' : 'rgba(60,110,60,0.35)'}`,
-                            color: !scopeToProduct ? 'var(--pill-active-color)' : 'var(--muted)',
-                            background: !scopeToProduct ? 'var(--pill-active-bg)' : 'transparent',
-                            cursor: 'pointer',
-                            transition: 'all var(--transition)',
-                        }}
-                    >
-                        All
-                    </button>
-
-                    <div style={{ flex: 1 }} />
-
-                    {/* History nav pills */}
-                    <button
-                        type="button"
-                        onClick={handleHistoryUp}
-                        onMouseDown={(e) => e.preventDefault()}
-                        disabled={history.length === 0}
-                        title="Previous command"
-                        aria-label="Previous command"
-                        style={{
-                            fontFamily: 'var(--font-ui)',
-                            fontSize: 'var(--fs-xs)',
-                            fontWeight: 500,
-                            padding: '3px 10px',
-                            borderRadius: '12px',
-                            border: '1.5px solid rgba(60,110,60,0.35)',
-                            color: 'var(--muted)',
-                            background: 'transparent',
-                            cursor: history.length === 0 ? 'default' : 'pointer',
-                            opacity: history.length === 0 ? 0.35 : 1,
-                            transition: 'all var(--transition)',
-                        }}
-                    >
-                        ↑
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleHistoryDown}
-                        onMouseDown={(e) => e.preventDefault()}
-                        disabled={historyIndex === -1}
-                        title="Next command"
-                        aria-label="Next command"
-                        style={{
-                            fontFamily: 'var(--font-ui)',
-                            fontSize: 'var(--fs-xs)',
-                            fontWeight: 500,
-                            padding: '3px 10px',
-                            borderRadius: '12px',
-                            border: '1.5px solid rgba(60,110,60,0.35)',
-                            color: 'var(--muted)',
-                            background: 'transparent',
-                            cursor: historyIndex === -1 ? 'default' : 'pointer',
-                            opacity: historyIndex === -1 ? 0.35 : 1,
-                            transition: 'all var(--transition)',
-                        }}
-                    >
-                        ↓
-                    </button>
-
-                    {/* Copy input pill */}
-                    <button
-                        type="button"
-                        onClick={() => input.trim() && copyToClipboard(input, 'input')}
-                        onMouseDown={(e) => e.preventDefault()}
-                        disabled={!input.trim()}
-                        title="Copy input"
-                        aria-label="Copy input"
-                        style={{
-                            fontFamily: 'var(--font-ui)',
-                            fontSize: 'var(--fs-xs)',
-                            fontWeight: 500,
-                            padding: '3px 10px',
-                            borderRadius: '12px',
-                            border: '1.5px solid rgba(60,110,60,0.35)',
-                            color: copiedInput ? 'var(--pill-active-color)' : 'var(--muted)',
-                            background: copiedInput ? 'var(--pill-active-bg)' : 'transparent',
-                            cursor: input.trim() ? 'pointer' : 'default',
-                            opacity: input.trim() ? 1 : 0.35,
-                            transition: 'all var(--transition)',
-                        }}
-                    >
-                        {copiedInput ? (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
                         ) : (
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                            </svg>
-                        )}
-                    </button>
+                            <OrbCard key={msg.id} msg={msg} onShowResults={onShowResults} />
+                        )
+                ))}
+            </div>
 
-                    {/* Submit pill */}
-                    <button
-                        type="submit"
-                        disabled={!input.trim() || submitting}
-                        title="Submit"
-                        aria-label="Submit"
-                        style={{
-                            fontFamily: 'var(--font-ui)',
-                            fontSize: 'var(--fs-xs)',
-                            fontWeight: 500,
-                            letterSpacing: '0.06em',
-                            padding: '3px 12px',
-                            borderRadius: '12px',
-                            border: `1.5px solid ${input.trim() ? 'var(--pill-active-border)' : 'rgba(60,110,60,0.35)'}`,
-                            color: input.trim() ? 'var(--pill-active-color)' : 'var(--muted)',
-                            background: input.trim() ? 'var(--pill-active-bg)' : 'transparent',
-                            cursor: input.trim() ? 'pointer' : 'default',
-                            transition: 'all var(--transition)',
-                        }}
-                    >
-                        ↵
-                    </button>
-                </div>
-
-                {/* Project Strip Integration */}
+            <div style={{
+                flexShrink: 0,
+                margin: '0 2px 2px',
+            }}>
                 <div style={{
-                    borderTop: '1px solid var(--border)',
-                    padding: '10px 16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    overflowX: 'auto',
-                    scrollbarWidth: 'none', // Hide scrollbar for cleaner look
-                    msOverflowStyle: 'none',
-                    WebkitOverflowScrolling: 'touch',
+                    border: `1px solid ${inputFocused ? 'var(--border-focus)' : 'var(--border)'}`,
+                    borderRadius: 'var(--r-xl)',
+                    background: '#fff',
+                    overflow: 'hidden',
+                    transition: 'border-color 0.2s ease',
                 }}>
-                    <style dangerouslySetInnerHTML={{__html: `
-                        div::-webkit-scrollbar { display: none; }
-                    `}} />
-                    {products.map(p => (
-                        <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                    <form onSubmit={handleFormSubmit} style={{ position: 'relative' }}>
+                        {showSlashMenu && (
+                            <div style={{
+                                position: 'absolute',
+                                bottom: '100%',
+                                left: '8px',
+                                marginBottom: '4px',
+                                background: 'var(--bg)',
+                                border: '1.5px solid rgba(60,110,60,0.35)',
+                                borderRadius: '6px',
+                                boxShadow: 'var(--shadow-md)',
+                                padding: '4px',
+                                zIndex: 50,
+                                minWidth: '200px',
+                            }}>
+                                {activeSlashCommands.map((c, i) => (
+                                    <div
+                                        key={c.cmd}
+                                        style={{
+                                            padding: '6px 10px',
+                                            borderRadius: '4px',
+                                            background: slashIndex === i ? 'var(--bg2)' : 'transparent',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            gap: '12px',
+                                        }}
+                                        onMouseDown={(e) => {
+                                            e.preventDefault()
+                                            fillCommand(c.cmd)
+                                        }}
+                                    >
+                                        <span style={{ fontFamily: 'monospace', fontSize: 'var(--fs-xs)', color: 'var(--text)', fontWeight: slashIndex === i ? 600 : 400 }}>{c.cmd}</span>
+                                        <span style={{ fontSize: '10px', color: 'var(--muted)' }}>{c.desc}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {!input && !submitting && (
+                            <div style={{
+                                position: 'absolute',
+                                top: '13px',
+                                left: '14px',
+                                pointerEvents: 'none',
+                                fontFamily: 'var(--font-ui)',
+                                fontSize: 'var(--fs-sm)',
+                                color: 'var(--muted)',
+                                lineHeight: 1.5,
+                                zIndex: 1,
+                                userSelect: 'none',
+                                whiteSpace: 'nowrap',
+                            }}>
+                                Ask the Orb...
+                            </div>
+                        )}
+
+                        <textarea
+                            ref={textareaRef}
+                            rows={1}
+                            value={input}
+                            onChange={e => { slashMenuDismissed.current = false; onInputChange(e.target.value); autoResize() }}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault()
+                                    if (showSlashMenu && activeSlashCommands[slashIndex]) {
+                                        fillCommand(activeSlashCommands[slashIndex].cmd)
+                                    } else {
+                                        handleFormSubmit()
+                                    }
+                                } else if (e.key === 'ArrowUp') {
+                                    e.preventDefault()
+                                    if (showSlashMenu) {
+                                        setSlashIndex(prev => Math.max(0, prev - 1))
+                                    } else {
+                                        handleHistoryUp()
+                                    }
+                                } else if (e.key === 'ArrowDown') {
+                                    e.preventDefault()
+                                    if (showSlashMenu) {
+                                        setSlashIndex(prev => Math.min(activeSlashCommands.length - 1, prev + 1))
+                                    } else {
+                                        handleHistoryDown()
+                                    }
+                                } else if (e.key === 'Escape') {
+                                    if (showSlashMenu) {
+                                        onInputChange('')
+                                    }
+                                }
+                            }}
+                            onFocus={() => setInputFocused(true)}
+                            onBlur={() => setInputFocused(false)}
+                            disabled={submitting}
+                            placeholder=""
+                            style={{
+                                width: '100%',
+                                fontFamily: 'var(--font-ui)',
+                                fontSize: 'var(--fs-sm)',
+                                background: 'transparent',
+                                border: 'none',
+                                padding: '12px 14px',
+                                color: 'var(--text)',
+                                outline: 'none',
+                                resize: 'none',
+                                lineHeight: 1.5,
+                                overflowY: 'hidden',
+                                boxSizing: 'border-box',
+                                minHeight: '44px',
+                                maxHeight: '120px',
+                            }}
+                        />
+
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 10px 8px',
+                            borderTop: '1px solid var(--border)',
+                        }}>
                             <button
                                 type="button"
-                                onClick={() => onSelectProject(p.id!)}
-                                title={`Switch to ${p.code ?? p.name}`}
+                                onClick={() => onScopeChange(!scopeToProduct)}
+                                onMouseDown={(e) => e.preventDefault()}
+                                title={scopeToProduct ? 'Search all projects' : 'Search current project only'}
                                 style={{
                                     fontFamily: 'var(--font-ui)',
-                                    fontSize: '11px',
+                                    fontSize: '10px',
                                     fontWeight: 500,
-                                    letterSpacing: '0.04em',
-                                    padding: '5px 12px',
-                                    borderRadius: '16px',
-                                    border: `1.5px solid ${p.id === selectedProjectId ? 'var(--pill-active-border)' : 'rgba(60,110,60,0.25)'}`,
-                                    color: p.id === selectedProjectId ? 'var(--pill-active-color)' : 'var(--muted)',
-                                    background: p.id === selectedProjectId ? 'var(--pill-active-bg)' : 'transparent',
+                                    letterSpacing: '0.06em',
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    border: `1px solid ${!scopeToProduct ? 'var(--pill-active-border)' : 'var(--border)'}`,
+                                    color: !scopeToProduct ? 'var(--pill-active-color)' : 'var(--muted)',
+                                    background: !scopeToProduct ? 'var(--pill-active-bg)' : 'transparent',
                                     cursor: 'pointer',
-                                    whiteSpace: 'nowrap',
                                     transition: 'all var(--transition)',
                                 }}
                             >
-                                {p.code ?? p.name}
+                                All
                             </button>
-                            {p.id === selectedProjectId && (
-                                <button
-                                    type="button"
-                                    onClick={(e) => { e.stopPropagation(); onShowEditProject() }}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        width: '24px',
-                                        height: '24px',
-                                        borderRadius: '50%',
-                                        border: '1.5px solid rgba(60,110,60,0.25)',
-                                        background: '#fff',
-                                        color: 'var(--muted)',
-                                        cursor: 'pointer',
-                                        padding: 0,
-                                        transition: 'all 0.15s',
-                                    }}
-                                >
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+
+                            <button
+                                type="button"
+                                onClick={handleHistoryUp}
+                                onMouseDown={(e) => e.preventDefault()}
+                                disabled={history.length === 0}
+                                title="Previous command"
+                                aria-label="Previous command"
+                                style={{
+                                    fontFamily: 'var(--font-ui)',
+                                    fontSize: '10px',
+                                    fontWeight: 500,
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--border)',
+                                    color: 'var(--muted)',
+                                    background: 'transparent',
+                                    cursor: history.length === 0 ? 'default' : 'pointer',
+                                    opacity: history.length === 0 ? 0.35 : 1,
+                                    transition: 'all var(--transition)',
+                                }}
+                            >
+                                &uarr;
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleHistoryDown}
+                                onMouseDown={(e) => e.preventDefault()}
+                                disabled={historyIndex === -1}
+                                title="Next command"
+                                aria-label="Next command"
+                                style={{
+                                    fontFamily: 'var(--font-ui)',
+                                    fontSize: '10px',
+                                    fontWeight: 500,
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--border)',
+                                    color: 'var(--muted)',
+                                    background: 'transparent',
+                                    cursor: historyIndex === -1 ? 'default' : 'pointer',
+                                    opacity: historyIndex === -1 ? 0.35 : 1,
+                                    transition: 'all var(--transition)',
+                                }}
+                            >
+                                &darr;
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => input.trim() && navigator.clipboard.writeText(input).then(() => {
+                                    setCopiedInput(true)
+                                    setTimeout(() => setCopiedInput(false), 1500)
+                                })}
+                                onMouseDown={(e) => e.preventDefault()}
+                                disabled={!input.trim()}
+                                title="Copy input"
+                                aria-label="Copy input"
+                                style={{
+                                    fontFamily: 'var(--font-ui)',
+                                    fontSize: '10px',
+                                    fontWeight: 500,
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--border)',
+                                    color: copiedInput ? 'var(--pill-active-color)' : 'var(--muted)',
+                                    background: copiedInput ? 'var(--pill-active-bg)' : 'transparent',
+                                    cursor: input.trim() ? 'pointer' : 'default',
+                                    opacity: input.trim() ? 1 : 0.35,
+                                    transition: 'all var(--transition)',
+                                }}
+                            >
+                                {copiedInput ? (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="20 6 9 17 4 12"/>
                                     </svg>
-                                </button>
-                            )}
+                                ) : (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                    </svg>
+                                )}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={copyTranscript}
+                                onMouseDown={(e) => e.preventDefault()}
+                                disabled={messages.length === 0}
+                                title="Copy transcript"
+                                aria-label="Copy transcript"
+                                style={{
+                                    fontFamily: 'var(--font-ui)',
+                                    fontSize: '10px',
+                                    fontWeight: 500,
+                                    padding: '3px 8px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--border)',
+                                    color: copiedTranscript ? 'var(--pill-active-color)' : 'var(--muted)',
+                                    background: copiedTranscript ? 'var(--pill-active-bg)' : 'transparent',
+                                    cursor: messages.length === 0 ? 'default' : 'pointer',
+                                    opacity: messages.length === 0 ? 0.35 : 1,
+                                    transition: 'all var(--transition)',
+                                }}
+                            >
+                                {copiedTranscript ? (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                ) : (
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                        <line x1="8" y1="13" x2="16" y2="13"/>
+                                        <line x1="8" y1="17" x2="16" y2="17"/>
+                                    </svg>
+                                )}
+                            </button>
+
+                            <div style={{ flex: 1 }} />
+
+                            <button
+                                type="submit"
+                                disabled={!input.trim() || submitting}
+                                title="Submit"
+                                aria-label="Submit"
+                                style={{
+                                    fontFamily: 'var(--font-ui)',
+                                    fontSize: '10px',
+                                    fontWeight: 500,
+                                    letterSpacing: '0.06em',
+                                    padding: '3px 10px',
+                                    borderRadius: '6px',
+                                    border: `1px solid ${input.trim() ? 'var(--pill-active-border)' : 'var(--border)'}`,
+                                    color: input.trim() ? 'var(--pill-active-color)' : 'var(--muted)',
+                                    background: input.trim() ? 'var(--pill-active-bg)' : 'transparent',
+                                    cursor: input.trim() ? 'pointer' : 'default',
+                                    transition: 'all var(--transition)',
+                                }}
+                            >
+                                &crarr;
+                            </button>
                         </div>
-                    ))}
-                    <button
-                        type="button"
-                        onClick={onShowAddProject}
-                        style={{
-                            fontFamily: 'var(--font-ui)',
-                            fontSize: '11px',
-                            fontWeight: 500,
-                            padding: '5px 12px',
-                            borderRadius: '16px',
-                            border: '1.5px dashed rgba(60,110,60,0.25)',
-                            color: 'var(--muted)',
-                            background: 'none',
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                        }}
-                    >
-                        + project
-                    </button>
+                    </form>
                 </div>
-            </form>
-            <style dangerouslySetInnerHTML={{__html: `
-                @keyframes todos-fade-in {
-                    from { opacity: 0; transform: translateY(-4px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
+            </div>
+
+            <style>{`
                 @keyframes todos-cursor-blink {
                     0%, 100% { opacity: 1; }
                     50% { opacity: 0; }
                 }
-                @keyframes todos-thought-fade-in {
-                    from { opacity: 0; transform: translateX(-4px); }
-                    to { opacity: 1; transform: translateX(0); }
-                }
-            `}} />
+            `}</style>
         </div>
     )
 }
