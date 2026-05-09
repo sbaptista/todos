@@ -3,7 +3,9 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createStreamableValue } from 'ai/rsc'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { logAuditEvent } from '@/lib/audit'
+import { ORB_TOOLS, ORB_TOOL_LABELS, ORB_INTEGRITY_RULES } from '@/lib/orb-contract'
 
 // ──────────────────────────────────────────────────────────────────────────
 // Types
@@ -68,99 +70,6 @@ async function buildContext(supabase: any, currentProductId: string, scopeToProd
   return { productList, todoList, statusList, priorityList, knowledgeList, current, contextString: byProduct }
 }
 
-const TOOLS: Anthropic.Tool[] = [
-  {
-    name: 'create_todo',
-    description: 'Create a new todo.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        product_code: { type: 'string' },
-        title: { type: 'string' },
-        description: { type: 'string' },
-        priority_value: { type: 'integer' },
-      },
-      required: ['title'],
-    },
-  },
-  {
-    name: 'query_todos',
-    description: 'Find todos matching criteria.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        code: { type: 'string', description: 'Exact task code for single-todo lookup, e.g. "TODOS-62". Overrides all other filters.' },
-        product_code: { type: 'string' },
-        status: { type: 'string' },
-        priority_max: { type: 'integer' },
-        text_match: { type: 'string' },
-        max_results: { type: 'integer' },
-      },
-    },
-  },
-  {
-    name: 'update_todo',
-    description: 'Update an existing todo.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        code: { type: 'string' },
-        title_match: { type: 'string' },
-        new_status: { type: 'string' },
-        new_priority: { type: 'integer' },
-        new_title: { type: 'string' },
-        description: { type: 'string' },
-        resolution_notes: { type: 'string' },
-        urls: { type: 'array', items: { type: 'string' } },
-      },
-    },
-  },
-  {
-    name: 'delete_todo',
-    description: 'Permanently delete a todo. Hard delete — irreversible. Only use when the user clearly asks to delete or remove a task.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        code: { type: 'string', description: 'Task code, e.g. "TODOS-44".' },
-      },
-      required: ['code'],
-    },
-  },
-  {
-    name: 'client_action',
-    description: "Navigate or switch UI state.",
-    input_schema: {
-      type: 'object',
-      properties: {
-        action: { type: 'string', enum: ['switch_project', 'open_settings', 'open_help'] },
-        target: { type: 'string' },
-      },
-      required: ['action'],
-    },
-  },
-  {
-    name: 'search_knowledge',
-    description: 'Search the Knowledge Repository for lessons, decisions, and distilled insights.',
-    input_schema: {
-      type: 'object',
-      properties: {
-        query: { type: 'string' },
-        product_code: { type: 'string' },
-      },
-      required: ['query'],
-    },
-  },
-]
-
-const TOOL_LABELS: Record<string, string> = {
-    create_todo: 'Creating task...',
-    query_todos: 'Searching backlog...',
-    update_todo: 'Updating task...',
-    delete_todo: 'Deleting task...',
-    client_action: 'Navigating...',
-    search_knowledge: 'Searching knowledge repository...',
-}
-
 export async function orbConverse(req: OrbRequest) {
   const stream = createStreamableValue<OrbResponse>()
 
@@ -190,6 +99,9 @@ export async function orbConverse(req: OrbRequest) {
           max_tokens: 1024,
           system: `You are the voice of the orb — the conversational layer of Orb.
 VOICE: Brief, direct. Plain text only. NO markdown.
+
+${ORB_INTEGRITY_RULES}
+
 VALID VALUES: Statuses: ${statusNames} | Priorities: ${priorityInfo}
 SCOPE: ${req.scopeToProduct ? `Scoped to ${ctx.current?.code ?? ctx.current?.name}. Only discuss or query this project's todos unless the user explicitly asks about another project or says "all".` : 'All projects visible.'}
 BACKLOG:
@@ -199,7 +111,7 @@ KNOWLEDGE BASE (Recent):
 ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.title}: ${k.content.slice(0, 100)}...`).join('\n')}
 (Note: Use the 'search_knowledge' tool to query the full repository if the answer isn't here.)`,
           messages,
-          tools: TOOLS,
+          tools: ORB_TOOLS,
           stream: true,
         })
 
@@ -213,7 +125,7 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
             accumulatedSpeech = baseSpeech + currentTurnSpeech 
             stream.update({ speech: accumulatedSpeech, isStreaming: true })
           } else if (chunk.type === 'content_block_start' && chunk.content_block.type === 'tool_use') {
-             const label = TOOL_LABELS[chunk.content_block.name] || 'Thinking...'
+             const label = ORB_TOOL_LABELS[chunk.content_block.name] || 'Thinking...'
              stream.update({ speech: accumulatedSpeech, thought: label, isStreaming: true })
              toolCalls.push({ id: chunk.content_block.id, name: chunk.content_block.name, input: '' })
           } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'input_json_delta') {
@@ -445,6 +357,20 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
             const returned = results.slice(0, 10).map((k: any) => ({ title: k.title, content: k.content, code: k.projects?.code }))
             output = { count: results.length, returned }
             stream.update({ speech: accumulatedSpeech, thought: `Found ${results.length} insights`, knowledgeResults: returned })
+          } else if (tc.name === 'report_friction') {
+            const admin = createAdminClient()
+            const { error } = await admin.from('orb_friction').insert({
+              product_id: ctx.current?.id ?? null,
+              category: input.category,
+              summary: input.summary,
+              detail: input.detail ? { detail: input.detail } : {},
+              conversation_snippet: req.input,
+            })
+            if (error) output = { error: error.message }
+            else {
+              output = { ok: true }
+              stream.update({ speech: accumulatedSpeech, thought: 'Logged observation' })
+            }
           }
           if (output?.error) {
             stream.update({ speech: accumulatedSpeech, thought: `Error: ${output.error}` })

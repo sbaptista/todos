@@ -252,10 +252,10 @@ a, button, [role="button"], input, select, textarea {
   .settings-sidebar {
     width: 100% !important;
     border-right: none !important;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--text2);
     flex-direction: row !important;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -266,24 +266,31 @@ a, button, [role="button"], input, select, textarea {
   .settings-sidebar nav {
     display: flex !important;
     flex-direction: row !important;
-    padding: 0 !important;
-    gap: 0;
+    padding: 8px !important;
+    gap: 6px;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
   }
 
   .settings-sidebar nav a,
   .settings-sidebar nav button {
-    border-left: none !important;
-    border-bottom: 2px solid transparent;
-    padding: 10px 14px !important;
+    border: none !important;
+    padding: 6px 10px !important;
+    margin: 0 !important;
+    border-radius: 7px !important;
+    background: var(--bg) !important;
     white-space: nowrap;
     justify-content: center !important;
     font-size: var(--fs-xs) !important;
+    flex-shrink: 0 !important;
+    width: auto !important;
+    gap: 4px !important;
   }
 
   .settings-sidebar nav a[aria-current="page"],
   .settings-sidebar nav button[aria-current="page"] {
-    border-bottom-color: var(--pill-active-color);
-    border-left-color: transparent !important;
+    background: var(--pill-active-bg) !important;
+    color: var(--pill-active-color) !important;
   }
 
   .settings-page {

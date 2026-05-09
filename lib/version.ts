@@ -1,2 +1,1 @@
-import pkg from '../package.json'
-export const VERSION = `v${pkg.version}`
+export const VERSION = 'v0.4.0'

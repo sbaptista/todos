@@ -1,0 +1,239 @@
+openapi: 3.1.0
+info:
+  title: Orb Task API
+  version: 1.0.0
+  description: |
+    Machine-readable spec for the Orb task management API.
+    Agents and integrations MUST consult this spec to know what is
+    and is not possible before attempting any action.
+  x-orb-agent-contract: |
+    This spec covers the REST API for external access (curl, developer AIs).
+    Orb's internal conversational tools are defined in lib/orb-contract.ts.
+    The two interfaces share the same data model but differ in:
+    - Authentication: REST uses API key header; Orb uses Supabase RLS session
+    - Addressing: REST uses UUIDs; Orb uses task codes like ORB-73
+    - Deletion: REST soft-deletes (sets deleted_at); Orb hard-deletes
+    - Query: REST hits the database; Orb filters in-memory context
+
+servers:
+  - url: https://orb-eight-lake.vercel.app
+
+security:
+  - apiSecret: []
+
+components:
+  securitySchemes:
+    apiSecret:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        Raw secret string (not Bearer). Must match ORB_API_SECRET.
+        API also requires ORB_API_ENABLED=true on the server.
+
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        todo_number:
+          type: integer
+          description: Auto-incremented, unique per product.
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [open, done]
+        priority_value:
+          type: integer
+          nullable: true
+        resolution_notes:
+          type: string
+          nullable: true
+        urls:
+          type: array
+          items:
+            type: string
+            format: uri
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        closed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    TaskCreate:
+      type: object
+      required: [product_code, title]
+      properties:
+        product_code:
+          type: string
+          description: Case-insensitive product code (e.g. ORB, HELM).
+        title:
+          type: string
+        description:
+          type: string
+        priority_value:
+          type: integer
+
+    TaskUpdate:
+      type: object
+      description: |
+        All fields are optional. Only provided fields are updated.
+        IMPORTANT: There is NO product_code field. You cannot move
+        a task between products via PATCH. To move a task, create a
+        new task in the target product and delete the original.
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [open, done]
+          description: |
+            Setting to "done" automatically sets closed_at to now.
+            Setting to anything else automatically clears closed_at.
+        priority_value:
+          type: integer
+        resolution_notes:
+          type: string
+        urls:
+          oneOf:
+            - type: array
+              items:
+                type: string
+            - type: string
+              description: Newline-separated URLs, parsed server-side.
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+paths:
+  /api/tasks:
+    get:
+      operationId: listTasks
+      summary: List tasks for a product
+      parameters:
+        - name: product
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Product code (case-insensitive).
+      responses:
+        "200":
+          description: Array of tasks ordered by todo_number ascending.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+        "400":
+          description: Missing product query parameter.
+        "401":
+          description: Invalid or missing Authorization header.
+        "404":
+          description: Product not found.
+        "503":
+          description: API disabled (ORB_API_ENABLED !== true).
+
+    post:
+      operationId: createTask
+      summary: Create a new task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskCreate"
+      responses:
+        "201":
+          description: Task created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "400":
+          description: Missing product_code or title.
+        "401":
+          description: Unauthorized.
+        "404":
+          description: Product not found.
+        "503":
+          description: API disabled.
+
+  /api/tasks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    patch:
+      operationId: updateTask
+      summary: Update a task
+      description: |
+        Updates only the fields provided. Ignores soft-deleted tasks.
+
+        NOT SUPPORTED:
+        - Changing the product/project a task belongs to.
+        - Changing todo_number.
+        - Changing created_at.
+
+        To move a task between products: POST to create in the target
+        product, then DELETE the original.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdate"
+      responses:
+        "200":
+          description: Task updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          description: Unauthorized.
+        "404":
+          description: Task not found or already deleted.
+        "503":
+          description: API disabled.
+
+    delete:
+      operationId: deleteTask
+      summary: Soft-delete a task
+      description: Sets deleted_at timestamp. Does not destroy the row.
+      responses:
+        "200":
+          description: Soft-deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+        "401":
+          description: Unauthorized.
+        "503":
+          description: API disabled.
