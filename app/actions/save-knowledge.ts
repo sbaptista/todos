@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAuditEvent } from '@/lib/audit'
 import { revalidatePath } from 'next/cache'
+import { assertAdmin } from '@/lib/auth'
 
 export async function saveKnowledge(params: {
   product_id: string
@@ -10,6 +11,7 @@ export async function saveKnowledge(params: {
   title: string
   content: string
 }) {
+  await assertAdmin()
   const supabase = createAdminClient()
 
   try {

@@ -68,7 +68,7 @@ function ToastItemComp({ item, onDismiss }: { item: ToastItem; onDismiss: (id: s
     const timer = setTimeout(() => {
       setVisible(false)
       setTimeout(() => onDismiss(item.id), 220)
-    }, 3500)
+    }, 1500)
     return () => {
       cancelAnimationFrame(enterRaf)
       clearTimeout(timer)

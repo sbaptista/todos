@@ -9,11 +9,14 @@ const NAV: SidebarItem[] = [
   { id: 'priorities', href: '/settings/priorities', label: 'Priorities', icon: '▴', active: false },
   { id: 'statuses',   href: '/settings/statuses',   label: 'Statuses',   icon: '◪', active: false },
   { id: 'platforms',  href: '/settings/platforms',  label: 'Platforms',  icon: '▢', active: false },
-  { id: 'data',       href: '/settings/data',       label: 'Data',       icon: '⬡', active: false },
+  { id: 'users',      href: '/settings/users',      label: 'Users',     icon: '◎', active: false },
+  { id: 'data',       href: '/settings/data',       label: 'Data',      icon: '⬡', active: false },
 ]
 
-export default function SettingsSidebar() {
+export default function SettingsSidebar({ isAdmin }: { isAdmin?: boolean }) {
   const pathname = usePathname()
-  const items = NAV.map(item => ({ ...item, active: pathname === item.href }))
+  const items = NAV
+    .filter(item => item.id !== 'users' || isAdmin)
+    .map(item => ({ ...item, active: pathname === item.href }))
   return <CollapsibleSidebar items={items} />
 }

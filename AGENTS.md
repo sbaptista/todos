@@ -22,7 +22,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 2. **Never propose a plan and immediately build in the same response.**
 3. **Stan sets the pace.**
 4. **Schema-first.** Query `information_schema.columns` before writing any insert code.
-5. **Every git push gets a version bump — no exceptions.**
+5. **Every local change gets a version bump — no exceptions.** Git pushes bundle several versions. The dev server always shows the current local version so Stan can confirm changes loaded.
 6. **Handoff is written silently to `~/Downloads/`. No narration about the act of writing it.**
 7. **Localhost-first development.** All implementation and testing on `localhost:3001`.
 8. **Every new form field gets a deliberate label and placeholder text at build time — not deferred.**
@@ -73,7 +73,7 @@ One AI can perform both roles. If you are acting as both, state it explicitly.
 
 LAN access at `https://192.168.86.90:3001` — configured in `next.config.ts` `allowedDevOrigins`.
 
-Version bumps happen continuously as changes are made locally. Git pushes happen only when Stan decides enough changes have accumulated for a release. The version in `package.json` is the canonical source; `lib/version.ts` mirrors it for display. Both files are updated together on each bump — `lib/version.ts` is a static `VERSION` string, not a dynamic import, so remember to update both.
+Version bumps happen on every local change — no exceptions. Git pushes only happen when Stan decides enough changes have accumulated for a release, so they naturally bundle several versions. The version in `package.json` is the canonical source; `lib/version.ts` mirrors it for display (both updated together on each bump). `lib/version.ts` is a static `VERSION` string, not a dynamic import, so remember to update both files.
 
 **Bump protocol:** AI only bumps the patch (third node, e.g. `0.3.2→0.3.3`). Stan explicitly indicates when to bump minor (middle) or major (top) nodes.
 

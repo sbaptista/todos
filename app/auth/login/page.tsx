@@ -20,10 +20,11 @@ export default function LoginPage() {
 
     const supabase = createClient()
 
-    if (isDev && email === 'dev@dev.local') {
+    if (isDev && (email === 'dev@dev.local' || email === 'owner@test.local')) {
+      const isOwner = email === 'owner@test.local'
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: process.env.NEXT_PUBLIC_DEV_EMAIL!,
-        password: process.env.NEXT_PUBLIC_DEV_PASSWORD!,
+        email: isOwner ? 'owner@test.local' : process.env.NEXT_PUBLIC_DEV_EMAIL!,
+        password: isOwner ? 'orb123456' : process.env.NEXT_PUBLIC_DEV_PASSWORD!,
       })
       if (signInError) {
         setError(`Dev login failed: ${signInError.message}`)
@@ -54,6 +55,16 @@ export default function LoginPage() {
     }
 
     setLoading(false)
+  }
+
+  const clickCodeStyle: React.CSSProperties = {
+    background: 'rgba(122, 80, 16, 0.1)',
+    padding: '1px 6px',
+    borderRadius: '4px',
+    fontFamily: 'monospace',
+    cursor: 'pointer',
+    outline: '1px dashed rgba(122, 80, 16, 0.3)',
+    transition: 'background 0.15s, outline-color 0.15s',
   }
 
   return (
@@ -170,16 +181,25 @@ export default function LoginPage() {
               border: '1px solid rgba(122, 80, 16, 0.2)',
             }}>
               <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)', margin: 0, textAlign: 'center' }}>
-                <strong>Dev mode:</strong> Use email{' '}
-                <code style={{
-                  background: 'rgba(122, 80, 16, 0.1)',
-                  padding: '1px 6px',
-                  borderRadius: '4px',
-                  fontFamily: 'monospace',
-                }}>
+                <strong>Dev mode:</strong> use{' '}
+                <code
+                  onClick={() => setEmail('dev@dev.local')}
+                  style={clickCodeStyle}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(122, 80, 16, 0.2)'; e.currentTarget.style.outlineColor = 'rgba(122, 80, 16, 0.6)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(122, 80, 16, 0.1)'; e.currentTarget.style.outlineColor = 'rgba(122, 80, 16, 0.3)' }}
+                >
                   dev@dev.local
                 </code>{' '}
-                to bypass email sending
+                (admin) or{' '}
+                <code
+                  onClick={() => setEmail('owner@test.local')}
+                  style={clickCodeStyle}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(122, 80, 16, 0.2)'; e.currentTarget.style.outlineColor = 'rgba(122, 80, 16, 0.6)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(122, 80, 16, 0.1)'; e.currentTarget.style.outlineColor = 'rgba(122, 80, 16, 0.3)' }}
+                >
+                  owner@test.local
+                </code>{' '}
+                (owner)
               </p>
             </div>
           )}

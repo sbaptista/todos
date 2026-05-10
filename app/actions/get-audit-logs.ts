@@ -1,8 +1,10 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertAdmin } from '@/lib/auth'
 
 export async function getAuditLogs(page: number = 0, pageSize: number = 50) {
+  await assertAdmin()
   const supabase = createAdminClient()
   
   try {

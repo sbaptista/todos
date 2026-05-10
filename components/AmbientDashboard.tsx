@@ -17,11 +17,11 @@ import { VERSION } from '@/lib/version'
 import { useToast } from '@/components/ui/Toast'
 import MuralCanvas from './MuralCanvas'
 
-type Product = { id: string; name: string; code: string | null; description: string | null }
+type Product = { id: string; name: string; code: string | null; description: string | null; created_by: string }
 type Todo    = { id: string; title: string; status: string; priority_value: number | null }
 type Urgency = 'calm' | 'active' | 'urgent'
 
-type Props = { initialProducts?: Product[] }
+type Props = { initialProducts?: Product[]; isAdmin?: boolean }
 
 const LAST_PRODUCT_KEY  = 'todos_last_product_id'
 const SS_INPUT          = 'todos_orb_input'
@@ -93,7 +93,7 @@ const SOLAR_FLARES = [
     { angle: 340, width: 26, height: 34, dur: 15, delay: 13.2 },
 ]
 
-export default function AmbientDashboard({ initialProducts }: Props) {
+export default function AmbientDashboard({ initialProducts, isAdmin = false }: Props) {
     const router   = useRouter()
     const supabase = useMemo(() => createClient(), [])
     const toast    = useToast()
@@ -121,6 +121,9 @@ export default function AmbientDashboard({ initialProducts }: Props) {
     const [isMobile, setIsMobile]                 = useState(false)
     const [canScrollLeft, setCanScrollLeft]       = useState(false)
     const [canScrollRight, setCanScrollRight]     = useState(false)
+    const [ownerFilter, setOwnerFilter]           = useState<string | null>(null)
+    const [showOwnerDropdown, setShowOwnerDropdown] = useState(false)
+    const [owners, setOwners]                     = useState<{ id: string; name: string }[]>([])
 
     useEffect(() => {
         setIsMobile(window.matchMedia('(hover: none) and (pointer: coarse)').matches)
@@ -129,30 +132,6 @@ export default function AmbientDashboard({ initialProducts }: Props) {
     const inactivityRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
     const prevSelectedId     = useRef<string | null>(null)
     const projectScrollRef   = useRef<HTMLDivElement>(null)
-    const prevProductLen     = useRef(products.length)
-
-    function updateProjectScrollState() {
-        const el = projectScrollRef.current
-        if (!el) return
-        setCanScrollLeft(el.scrollLeft > 2)
-        setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
-    }
-
-    function scrollProjects(dir: 'left' | 'right') {
-        const el = projectScrollRef.current
-        if (!el) return
-        el.scrollBy({ left: dir === 'left' ? -120 : 120, behavior: 'smooth' })
-    }
-
-    // Auto-scroll to end when a project is added
-    useEffect(() => {
-        const el = projectScrollRef.current
-        if (products.length > prevProductLen.current && el) {
-            el.scrollLeft = el.scrollWidth
-        }
-        prevProductLen.current = products.length
-        updateProjectScrollState()
-    }, [products.length])
 
     function resetInactivity() {
         if (inactivityRef.current) clearTimeout(inactivityRef.current)
@@ -239,7 +218,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 }
                 return
             }
-            const { data } = await supabase.from('projects').select('id, name, code, description').order('sort_order')
+            const { data } = await supabase.from('projects').select('id, name, code, description, created_by').order('sort_order')
             const list = (data ?? []) as Product[]
             setProducts(list)
             if (list.length > 0) {
@@ -252,6 +231,57 @@ export default function AmbientDashboard({ initialProducts }: Props) {
         load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [supabase])
+
+    // Build owners list for admin filter (all users who can own projects)
+    useEffect(() => {
+        if (!isAdmin) return
+        async function load() {
+            const { data: users } = await supabase
+                .from('users')
+                .select('id, first_name, last_name, email')
+            if (users) {
+                setOwners(users.map(u => ({ id: u.id, name: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email })))
+            }
+        }
+        load()
+    }, [isAdmin, supabase])
+
+    // Derive display products based on owner filter
+    const displayProducts = ownerFilter ? products.filter(p => p.created_by === ownerFilter) : products
+
+    // Reset selection when current project is hidden by filter
+    useEffect(() => {
+        if (selectedId && !displayProducts.find(p => p.id === selectedId)) {
+            setSelectedId(displayProducts.length > 0 ? displayProducts[0].id : null)
+        }
+    }, [displayProducts, selectedId])
+
+    const prevDisplayProductLen = useRef(displayProducts.length)
+    const displayProductsRef = useRef(displayProducts)
+    displayProductsRef.current = displayProducts
+
+    function updateProjectScrollState() {
+        const el = projectScrollRef.current
+        if (!el) return
+        setCanScrollLeft(el.scrollLeft > 2)
+        setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2)
+    }
+
+    function scrollProjects(dir: 'left' | 'right') {
+        const el = projectScrollRef.current
+        if (!el) return
+        el.scrollBy({ left: dir === 'left' ? -120 : 120, behavior: 'smooth' })
+    }
+
+    // Auto-scroll to end when a project is added
+    useEffect(() => {
+        const el = projectScrollRef.current
+        if (displayProducts.length > prevDisplayProductLen.current && el) {
+            el.scrollLeft = el.scrollWidth
+        }
+        prevDisplayProductLen.current = displayProducts.length
+        updateProjectScrollState()
+    }, [displayProducts.length])
 
     const fetchTodos = useCallback(async () => {
         if (!selectedId) return
@@ -314,14 +344,15 @@ export default function AmbientDashboard({ initialProducts }: Props) {
             }
             if (!inInput && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
                 e.preventDefault()
+                const list = displayProductsRef.current
                 setSelectedId(current => {
-                    if (!current || products.length <= 1) return current
-                    const idx  = products.findIndex(p => p.id === current)
-                    if (idx === -1) return current
+                    if (!current || list.length <= 1) return current
+                    const idx  = list.findIndex(p => p.id === current)
+                    if (idx === -1) return list[0]?.id ?? current
                     const next = e.key === 'ArrowLeft'
-                        ? (idx - 1 + products.length) % products.length
-                        : (idx + 1) % products.length
-                    return products[next].id
+                        ? (idx - 1 + list.length) % list.length
+                        : (idx + 1) % list.length
+                    return list[next].id
                 })
             }
         }
@@ -501,27 +532,7 @@ export default function AmbientDashboard({ initialProducts }: Props) {
         </div>
     )
 
-    if (products.length === 0) return (
-        <div style={{
-            minHeight: '100vh',
-            background: 'var(--bg)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '16px',
-        }}>
-            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text2)' }}>No projects yet.</p>
-            <Link href="/dashboard/classic" style={{
-                fontSize: 'var(--fs-sm)',
-                color: 'var(--pill-active-color)',
-                textDecoration: 'underline',
-                textUnderlineOffset: '3px',
-            }}>
-                Go to classic view to create one
-            </Link>
-        </div>
-    )
+
 
     return (
         <>
@@ -742,6 +753,8 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                 transform: 'translateX(-50%)',
                 zIndex: 20,
                 display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
                 justifyContent: 'center',
             }}>
                 <div style={{
@@ -752,159 +765,239 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                     border: '1px solid var(--border)',
                     borderRadius: 'var(--r-xl)',
                     boxShadow: 'var(--shadow-md)',
-                    overflow: 'hidden',
+                    ...(displayProducts.length === 0 ? { justifyContent: 'center' } : {}),
                 }}>
-                    <div style={{
-                        flex: 1,
-                        position: 'relative',
-                        overflow: 'hidden',
-                        display: 'flex',
-                    }}>
-                        {canScrollLeft && (
-                            <div style={{
-                                position: 'absolute',
-                                left: 0,
-                                top: 0,
-                                bottom: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                zIndex: 3,
-                                pointerEvents: 'none',
-                            }}>
-                                <button
-                                    type="button"
-                                    onClick={() => scrollProjects('left')}
-                                    style={{
-                                        pointerEvents: 'auto',
-                                        width: '24px',
-                                        height: '24px',
-                                        borderRadius: '50%',
-                                        border: '1.5px solid var(--border)',
-                                        background: 'rgba(255,255,255,0.9)',
-                                        color: 'var(--muted)',
-                                        cursor: 'pointer',
-                                        padding: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                                    }}
-                                    aria-label="Scroll left"
-                                >
-                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                        <path d="M15 18l-6-6 6-6"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        )}
-                        <div
-                            ref={projectScrollRef}
-                            onScroll={updateProjectScrollState}
-                            style={{
-                                flex: 1,
-                                overflowX: 'auto',
-                                WebkitOverflowScrolling: 'touch',
-                                display: 'flex',
-                                gap: '4px',
-                                padding: '6px 0 6px 8px',
-                                maskImage: 'linear-gradient(to right, transparent 0, black 8px, black calc(100% - 8px), transparent 100%)',
-                                WebkitMaskImage: 'linear-gradient(to right, transparent 0, black 8px, black calc(100% - 8px), transparent 100%)',
-                            }}
-                        >
-                            {products.map(p => (
-                                <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                    {displayProducts.length > 0 && (
+                        <div style={{
+                            flex: 1,
+                            position: 'relative',
+                            overflow: 'hidden',
+                            display: 'flex',
+                        }}>
+                            {canScrollLeft && (
+                                <div style={{
+                                    position: 'absolute',
+                                    left: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    zIndex: 3,
+                                    pointerEvents: 'none',
+                                }}>
                                     <button
                                         type="button"
-                                        onClick={() => { setSelectedId(p.id); setScopeToProduct(true) }}
-                                        title={`Switch to ${p.code ?? p.name}`}
+                                        onClick={() => scrollProjects('left')}
                                         style={{
-                                            fontFamily: 'var(--font-ui)',
-                                            fontSize: '11px',
-                                            fontWeight: 500,
-                                            letterSpacing: '0.04em',
-                                            padding: '5px 14px',
-                                            borderRadius: '7px',
-                                            border: '1.5px solid var(--pill-active-border)',
-                                            color: p.id === selectedId ? 'var(--pill-active-color)' : 'var(--text2)',
-                                            background: p.id === selectedId ? 'var(--pill-active-bg)' : 'transparent',
+                                            pointerEvents: 'auto',
+                                            width: '24px',
+                                            height: '24px',
+                                            borderRadius: '50%',
+                                            border: '1.5px solid var(--border)',
+                                            background: 'rgba(255,255,255,0.9)',
+                                            color: 'var(--muted)',
                                             cursor: 'pointer',
-                                            whiteSpace: 'nowrap',
-                                            transition: 'all var(--transition)',
+                                            padding: 0,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                                         }}
+                                        aria-label="Scroll left"
                                     >
-                                        {p.code ?? p.name}
+                                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                            <path d="M15 18l-6-6 6-6"/>
+                                        </svg>
                                     </button>
-                                    {p.id === selectedId && (
+                                </div>
+                            )}
+                            <div
+                                ref={projectScrollRef}
+                                onScroll={updateProjectScrollState}
+                                style={{
+                                    flex: 1,
+                                    overflowX: 'auto',
+                                    WebkitOverflowScrolling: 'touch',
+                                    display: 'flex',
+                                    gap: '4px',
+                                    padding: '6px 8px',
+                                    minHeight: '36px',
+                                    maskImage: 'linear-gradient(to right, transparent 0, black 8px, black calc(100% - 8px), transparent 100%)',
+                                    WebkitMaskImage: 'linear-gradient(to right, transparent 0, black 8px, black calc(100% - 8px), transparent 100%)',
+                                }}
+                            >
+                                {displayProducts.map(p => (
+                                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                                         <button
                                             type="button"
-                                            onClick={(e) => { e.stopPropagation(); setShowEditProduct(true) }}
+                                            onClick={() => { setSelectedId(p.id); setScopeToProduct(true) }}
+                                            title={`Switch to ${p.code ?? p.name}`}
                                             style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                width: '24px',
-                                                height: '24px',
-                                                borderRadius: '50%',
-                                                border: '1.5px solid var(--border)',
-                                                background: 'transparent',
-                                                color: 'var(--muted)',
+                                                fontFamily: 'var(--font-ui)',
+                                                fontSize: '11px',
+                                                fontWeight: 500,
+                                                letterSpacing: '0.04em',
+                                                padding: '5px 14px',
+                                                borderRadius: '7px',
+                                                border: '1.5px solid var(--pill-active-border)',
+                                                color: p.id === selectedId ? 'var(--pill-active-color)' : 'var(--text2)',
+                                                background: p.id === selectedId ? 'var(--pill-active-bg)' : 'transparent',
                                                 cursor: 'pointer',
-                                                padding: 0,
-                                                transition: 'all 0.15s',
+                                                whiteSpace: 'nowrap',
+                                                transition: 'all var(--transition)',
                                             }}
                                         >
-                                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                            </svg>
+                                            {p.code ?? p.name}
                                         </button>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                        {canScrollRight && (
-                            <div style={{
-                                position: 'absolute',
-                                right: 0,
-                                top: 0,
-                                bottom: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                zIndex: 3,
-                                pointerEvents: 'none',
-                            }}>
-                                <button
-                                    type="button"
-                                    onClick={() => scrollProjects('right')}
-                                    style={{
-                                        pointerEvents: 'auto',
-                                        width: '24px',
-                                        height: '24px',
-                                        borderRadius: '50%',
-                                        border: '1.5px solid var(--border)',
-                                        background: 'rgba(255,255,255,0.9)',
-                                        color: 'var(--muted)',
-                                        cursor: 'pointer',
-                                        padding: 0,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                                    }}
-                                    aria-label="Scroll right"
-                                >
-                                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                                        <path d="M9 18l6-6-6-6"/>
-                                    </svg>
-                                </button>
+                                        {p.id === selectedId && (
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); setShowEditProduct(true) }}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    width: '24px',
+                                                    height: '24px',
+                                                    borderRadius: '50%',
+                                                    border: '1.5px solid var(--border)',
+                                                    background: 'transparent',
+                                                    color: 'var(--muted)',
+                                                    cursor: 'pointer',
+                                                    padding: 0,
+                                                    transition: 'all 0.15s',
+                                                }}
+                                            >
+                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                                </svg>
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
-                        )}
-                    </div>
+                            {canScrollRight && (
+                                <div style={{
+                                    position: 'absolute',
+                                    right: 0,
+                                    top: 0,
+                                    bottom: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    zIndex: 3,
+                                    pointerEvents: 'none',
+                                }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => scrollProjects('right')}
+                                        style={{
+                                            pointerEvents: 'auto',
+                                            width: '24px',
+                                            height: '24px',
+                                            borderRadius: '50%',
+                                            border: '1.5px solid var(--border)',
+                                            background: 'rgba(255,255,255,0.9)',
+                                            color: 'var(--muted)',
+                                            cursor: 'pointer',
+                                            padding: 0,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                        }}
+                                        aria-label="Scroll right"
+                                    >
+                                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                            <path d="M9 18l6-6-6-6"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
                         flexShrink: 0,
-                        padding: '0 6px',
+                        gap: '0',
+                        padding: '0 8px',
+                        position: 'relative',
                     }}>
+                        {isAdmin && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowOwnerDropdown(d => !d)}
+                                    style={{
+                                        fontFamily: 'var(--font-ui)',
+                                        fontSize: '11px',
+                                        fontWeight: 500,
+                                        padding: '0 8px 0 0',
+                                        border: 'none',
+                                        background: 'none',
+                                        color: ownerFilter ? 'var(--pill-active-color)' : 'var(--muted)',
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                        lineHeight: '28px',
+                                    }}
+                                >
+                                    {ownerFilter ? (owners.find(o => o.id === ownerFilter)?.name ?? 'Owner') : 'Owners'}
+                                </button>
+                                {showOwnerDropdown && (
+                                    <>
+                                        <div
+                                            style={{ position: 'fixed', inset: 0, zIndex: 29 }}
+                                            onClick={() => setShowOwnerDropdown(false)}
+                                        />
+                                        <div style={{
+                                            position: 'absolute',
+                                            bottom: '100%',
+                                            right: 0,
+                                            marginBottom: '4px',
+                                            zIndex: 30,
+                                            background: 'var(--bg2)',
+                                            border: '1px solid var(--border)',
+                                            borderRadius: 'var(--r)',
+                                            boxShadow: 'var(--shadow-lg)',
+                                            padding: '4px 0',
+                                            minWidth: '120px',
+                                        }}>
+                                            {owners.map(o => (
+                                                <button
+                                                    key={o.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setOwnerFilter(o.id === ownerFilter ? null : o.id)
+                                                        setSelectedId(null)
+                                                        setShowOwnerDropdown(false)
+                                                    }}
+                                                    style={{
+                                                        display: 'block',
+                                                        width: '100%',
+                                                        textAlign: 'left',
+                                                        background: o.id === ownerFilter ? 'var(--pill-active-bg)' : 'transparent',
+                                                        border: 'none',
+                                                        padding: '6px 12px',
+                                                        fontSize: 'var(--fs-sm)',
+                                                        color: o.id === ownerFilter ? 'var(--pill-active-color)' : 'var(--text)',
+                                                        cursor: 'pointer',
+                                                        fontFamily: 'var(--font-ui)',
+                                                        whiteSpace: 'nowrap',
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--pill-active-bg)' }}
+                                                    onMouseLeave={e => { e.currentTarget.style.background = o.id === ownerFilter ? 'var(--pill-active-bg)' : 'transparent' }}
+                                                >
+                                                    {o.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </>
+                        )}
+                        {displayProducts.length > 0 && (
+                            <span style={{ color: 'var(--muted)', fontSize: '11px', lineHeight: '28px' }}>|</span>
+                        )}
                         <button
                             type="button"
                             onClick={() => setShowAddProduct(true)}
@@ -912,16 +1005,16 @@ export default function AmbientDashboard({ initialProducts }: Props) {
                                 fontFamily: 'var(--font-ui)',
                                 fontSize: '11px',
                                 fontWeight: 500,
-                                padding: '5px 14px',
-                                borderRadius: '7px',
-                                border: '1.5px dashed var(--border)',
-                                color: 'var(--muted)',
-                                background: 'transparent',
+                                padding: '0 0 0 8px',
+                                border: 'none',
+                                background: 'none',
+                                color: displayProducts.length === 0 ? '#ED7654' : 'var(--muted)',
                                 cursor: 'pointer',
                                 whiteSpace: 'nowrap',
+                                lineHeight: '28px',
                             }}
                         >
-                            + project
+                            Add Project
                         </button>
                     </div>
                 </div>

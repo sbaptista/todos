@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/components/ui/Toast'
 
-type Project = { id: string; name: string; code: string | null; description: string | null }
+type Project = { id: string; name: string; code: string | null; description: string | null; created_by: string }
 
 const inputStyle: React.CSSProperties = {
   width: '100%',
@@ -67,6 +67,9 @@ export default function AddProductModal({
     setError('')
     const supabase = createClient()
 
+    const { data: { user } } = await supabase.auth.getUser()
+    const userId = user?.id
+
     if (isEdit) {
       const { data, error: err } = await supabase
         .from('projects')
@@ -76,7 +79,7 @@ export default function AddProductModal({
           description: description.trim() || null,
         })
         .eq('id', project.id)
-        .select('id, name, code, description')
+        .select('id, name, code, description, created_by')
         .single()
       setSaving(false)
       if (err) { toast.error('Failed to update project. Try again.'); return }
@@ -89,8 +92,9 @@ export default function AddProductModal({
           code: code.trim() || null,
           description: description.trim() || null,
           sort_order: 0,
+          created_by: userId,
         })
-        .select('id, name, code, description')
+        .select('id, name, code, description, created_by')
         .single()
       setSaving(false)
       if (err) { toast.error('Failed to create project. Try again.'); return }

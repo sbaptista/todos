@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { logAuditEvent } from '@/lib/audit'
+import { assertAdmin } from '@/lib/auth'
 
 /**
  * Strips out joined objects/arrays that aren't real columns in the table.
@@ -22,6 +23,7 @@ function cleanForUpsert(data: any[]) {
 }
 
 export async function importData(payload: any) {
+  await assertAdmin()
   const supabase = createAdminClient()
 
   try {

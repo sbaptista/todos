@@ -3,8 +3,10 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { logAuditEvent } from '@/lib/audit'
+import { assertAdmin } from '@/lib/auth'
 
 export async function purgeKnowledge(ids: string[]) {
+  await assertAdmin()
   const supabase = createAdminClient()
 
   try {

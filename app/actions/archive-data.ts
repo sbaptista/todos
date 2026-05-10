@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAuditEvent } from '@/lib/audit'
+import { assertAdmin } from '@/lib/auth'
 
 export type ArchiveResult = {
   success: boolean
@@ -15,6 +16,11 @@ export type ArchiveResult = {
  * Does NOT delete them yet—that happens after the client confirms the download.
  */
 export async function prepareArchive() {
+  try {
+    await assertAdmin()
+  } catch (e: any) {
+    return { success: false, error: e.message, count: 0 }
+  }
   const supabase = createAdminClient()
   
   const THRESHOLD_DAYS = 30
@@ -46,6 +52,11 @@ export async function prepareArchive() {
  * Permanently deletes tasks after they've been successfully downloaded by the user.
  */
 export async function purgeArchivedTasks(ids: string[]) {
+  try {
+    await assertAdmin()
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
   const supabase = createAdminClient()
   
   const { error } = await supabase

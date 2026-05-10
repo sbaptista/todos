@@ -8,6 +8,14 @@ export default async function SettingsLayout({ children }: { children: React.Rea
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
+  const { data: currentUser } = await supabase
+    .from('users')
+    .select('role_id')
+    .eq('id', user.id)
+    .single()
+
+  const isAdmin = currentUser?.role_id === 1 || currentUser?.role_id === 3
+
   return (
     <div style={{
       minHeight: '100dvh',
@@ -52,7 +60,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
 
       {/* Sidebar + content */}
       <div className="settings-shell" style={{ flex: 1, display: 'flex', minHeight: 0 }}>
-        <SettingsSidebar />
+        <SettingsSidebar isAdmin={isAdmin} />
         <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
           {children}
         </main>
