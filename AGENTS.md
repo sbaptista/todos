@@ -1,3 +1,19 @@
+## Comprehension Check — Answer all questions below verbatim before any other response:
+
+1. What is the current app version?
+2. What port does the dev server run on?
+3. What is the ORB API base URL and how is it authenticated?
+4. Where are resolution notes written and what else must be created when closing a todo?
+5. What is the handoff naming convention?
+6. Are there any uncommitted changes?
+7. What AI Role are you?
+
+**Instructions:**
+- Your first and only message before any tool use must be a numbered list answering all questions.
+- After answering, read `HANDOFF.md` before using any tools or continuing.
+- Do not summarize. Do not say "ready." Do not ask "what do you need?" Answer every question directly.
+- If you cannot answer all accurately, do not proceed — say exactly which you're uncertain of.
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
@@ -53,14 +69,100 @@ These rules are non-negotiable. They override convenience, speed, and user-pleas
 
 # AI Roles
 
-At session start, state which role you will perform:
+**Default model:** One integrated tool performs **both AI1 (planning/architecture) and AI2 (implementation)**. This is the most efficient workflow—no handoff friction, no copy-paste, no context loss.
 
-| Role | Responsibilities |
-|------|-----------------|
-| **AI1** (Planner) | Collaborate on decisions, design architecture, propose solutions for approval, generate handoff files, maintain session activity log |
-| **AI2** (Implementer) | Write code, execute approved plans, verify results |
+## When using a single integrated tool
 
-One AI can perform both roles. If you are acting as both, state it explicitly.
+**Integrated tools (can do both roles):**
+- Claude Code
+- Gemini CLI / Gemini Code Assist
+- Antigravity (when stable)
+- Perplexity Computer (cost-prohibitive for regular use)
+
+**At session start, state:**
+> "Acting as AI1+AI2 (both roles)"
+
+**Workflow:**
+1. Plan → get approval → implement → test → commit
+2. Update HANDOFF.md at session end
+3. No role-switching, no intermediate handoffs
+
+## When forced to split roles
+
+**Split only when:**
+- All integrated tools are throttled/unavailable
+- Task is purely research/design with no immediate implementation
+- Browser-only AI is the only available option
+
+**AI1-only tools (planning/architecture/research):**
+- Browser Perplexity
+- ChatGPT web
+- Any browser-based AI without filesystem/IDE integration
+
+**Pattern when split:**
+1. **AI1** writes plan + architecture into HANDOFF.md under new section:
+   ```
+   ## Approved Plan (for AI2)
+   [detailed implementation plan]
+   ```
+2. **AI2** reads HANDOFF.md, implements plan, removes plan section when complete, updates HANDOFF.md
+3. Both note in HANDOFF: `Reason for split: [tool limitation | all integrated tools throttled]`
+
+**Never split by choice.** Splitting is a fallback, not the norm.
+
+## Tag-team rotation strategy
+
+**Primary tools (use until limits):**
+- **Claude Code** — complex architecture, multi-file refactors, production-quality work
+- **Gemini (Pro/Ultra)** — simpler tasks, rapid prototyping, large-context analysis, research + code generation
+
+**Switch by difficulty tier (usage conservation):**
+- Gemini for: straightforward features, bug fixes, refactors, prototyping
+- Claude Code for: complex architecture, cross-file consistency, gnarly edge cases
+- Both do AI1+AI2; switching is by task complexity, not role
+
+**AI1-only fallback (rare):**
+- Browser Perplexity — when all integrated tools are throttled AND task is research/planning with no immediate coding
+- Pattern: Perplexity writes plan into HANDOFF.md → Claude Code/Gemini implements next session
+
+**Perplexity Computer:** Technically capable (AI1+AI2), but cost-prohibitive for regular rotation.
+
+# Session Workflow
+
+## At session start
+
+1. **Read both files:**
+   - `AGENTS.md` → understand the system
+   - `HANDOFF.md` → understand current state
+
+2. **Answer the comprehension check** (already at top of AGENTS.md)
+
+3. **Declare role:** `"Acting as AI1+AI2 (both roles)"`
+
+4. **Optional: Fetch live backlog** (see HANDOFF.md for curl command)
+
+5. **Work:** Plan → approve → implement → test
+
+## During session (when requested or at session end)
+
+When Stan asks "update the handoff" OR at natural session end:
+
+1. **Update HANDOFF.md** with:
+   - Current version (if bumped)
+   - Complete list of uncommitted changes (file-by-file)
+   - "Last Session Completed" — what was done this session (replaces prior)
+   - "Key Lesson" (if applicable)
+   - "Next Priorities"
+   - "AI Tool Used Last Session" (`YYYY-MM-DD — Tool (model)`)
+
+2. **Wait for Stan to commit** — do not auto-commit
+
+3. **Do not narrate** the update — just do it silently
+
+**Usage patterns:**
+- Mid-session: "Update the handoff" → checkpoint progress
+- Session end: "Update the handoff, we're done" → final state
+- Crash recovery: Uncommitted HANDOFF.md shows last state
 
 ---
 
@@ -110,6 +212,15 @@ Stan's todo backlog is queryable and writable during any session. Use this proac
 **Secret:** stored in `.env.local` as `ORB_API_SECRET` — read it with Bash if needed  
 **Kill switch:** `ORB_API_ENABLED` must be `true` (it is)  
 **Full spec:** `docs/api-spec.yaml` — consult before attempting unfamiliar operations
+
+## Network Access
+
+The curl examples below require outbound DNS resolution to `orb-eight-lake.vercel.app` (ORB API) and `livwkbnkdlrbmzgythys.supabase.co` (Supabase REST). Terminal-based AI tools (e.g. Claude Code) running natively on Stan's machine have full network access and can use these directly.
+
+**Sandboxed AI environments** (e.g. Gemini Antigravity, or any tool that cannot resolve external hosts) cannot execute these calls. If you cannot reach the API:
+1. **Try a test call first** — `curl -s "https://orb-eight-lake.vercel.app/api/tasks?product=ORB"` — if it fails with a DNS or connection error, you are sandboxed.
+2. **Fall back to providing content** — write the resolution notes and knowledge repo entry text in your response. Stan can close the todo manually via the Orb conversational interface or terminal.
+3. **Do not attempt localhost** — the dev server on `localhost:3001` is user-started and must not be restarted or relied upon as an API endpoint.
 
 ## Fetch todos for a product
 
