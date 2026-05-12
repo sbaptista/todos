@@ -1,11 +1,11 @@
 ## Comprehension Check — Answer all questions below verbatim before any other response:
 
-1. What is the current app version?
+1. Open package.json and return the exact "version" string.
 2. What port does the dev server run on?
 3. What is the ORB API base URL and how is it authenticated?
 4. Where are resolution notes written and what else must be created when closing a todo?
 5. What is the handoff naming convention?
-6. Are there any uncommitted changes?
+6. Run git status and report whether there are any uncommitted changes.
 7. What AI Role are you?
 
 **Instructions:**
