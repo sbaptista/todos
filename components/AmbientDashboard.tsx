@@ -774,7 +774,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'flex-end',
-                paddingBottom: 'clamp(100px, 14vh, 140px)',
+                padding: '0 16px clamp(100px, 14vh, 140px) 16px',
             }}>
                 <OrbConversation
                     messages={messages}
@@ -797,19 +797,21 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
 
             {/* ── Project strip ── */}
             <div style={{
-                position: 'fixed',
+                position: 'absolute',
                 bottom: 'calc(clamp(100px, 14vh, 140px) - 54px)',
-                left: '50%',
-                transform: 'translateX(-50%)',
+                left: 0,
+                right: 0,
                 zIndex: 20,
+                width: '100%',
+                padding: '0 16px',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
             }}>
                 <div style={{
-                    maxWidth: '420px',
                     width: '100%',
+                    maxWidth: '420px',
                     display: 'flex',
                     background: 'rgba(255, 255, 255, 0.96)',
                     border: '1px solid var(--border)',
@@ -842,6 +844,10 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                                             pointerEvents: 'auto',
                                             width: '24px',
                                             height: '24px',
+                                            minWidth: '24px',
+                                            maxWidth: '24px',
+                                            minHeight: '24px',
+                                            maxHeight: '24px',
                                             borderRadius: '50%',
                                             border: '1.5px solid var(--border)',
                                             background: 'rgba(255,255,255,0.9)',
@@ -852,6 +858,10 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                            flexShrink: 0,
+                                            appearance: 'none',
+                                            WebkitAppearance: 'none',
+                                            aspectRatio: '1 / 1',
                                         }}
                                         aria-label="Scroll left"
                                     >
@@ -910,6 +920,10 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                                                     justifyContent: 'center',
                                                     width: '24px',
                                                     height: '24px',
+                                                    minWidth: '24px',
+                                                    maxWidth: '24px',
+                                                    minHeight: '24px',
+                                                    maxHeight: '24px',
                                                     borderRadius: '50%',
                                                     border: '1.5px solid var(--border)',
                                                     background: 'transparent',
@@ -917,6 +931,10 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                                                     cursor: 'pointer',
                                                     padding: 0,
                                                     transition: 'all 0.15s',
+                                                    flexShrink: 0,
+                                                    appearance: 'none',
+                                                    WebkitAppearance: 'none',
+                                                    aspectRatio: '1 / 1',
                                                 }}
                                             >
                                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -945,6 +963,10 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                                             pointerEvents: 'auto',
                                             width: '24px',
                                             height: '24px',
+                                            minWidth: '24px',
+                                            maxWidth: '24px',
+                                            minHeight: '24px',
+                                            maxHeight: '24px',
                                             borderRadius: '50%',
                                             border: '1.5px solid var(--border)',
                                             background: 'rgba(255,255,255,0.9)',
@@ -955,6 +977,10 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                                            flexShrink: 0,
+                                            appearance: 'none',
+                                            WebkitAppearance: 'none',
+                                            aspectRatio: '1 / 1',
                                         }}
                                         aria-label="Scroll right"
                                     >
@@ -1082,7 +1108,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
 
             {/* ── Top right — help + settings + sign out ── */}
             <div style={{
-                position: 'fixed',
+                position: 'absolute',
                 top: 'calc(var(--sp-lg) + var(--sat))',
                 right: 'var(--sp-lg)',
                 display: 'flex',
@@ -1094,7 +1120,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                     onClick={() => setShowHelp(true)}
                     title="Help"
                     aria-label="Help"
-                    style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(60,110,60,0.25)', borderRadius: '50%', cursor: 'pointer', color: 'var(--muted)', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'all 0.15s' }}
+                    style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(60,110,60,0.25)', borderRadius: '50%', cursor: 'pointer', color: 'var(--muted)', width: '36px', height: '36px', minWidth: '36px', maxWidth: '36px', minHeight: '36px', maxHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'all 0.15s', padding: 0, flexShrink: 0, appearance: 'none', WebkitAppearance: 'none', aspectRatio: '1 / 1' }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.5)'; e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = '#fff' }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.25)'; e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'rgba(255,255,255,0.7)' }}
                 >
@@ -1108,7 +1134,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                     href="/settings"
                     title="Settings"
                     aria-label="Settings"
-                    style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(60,110,60,0.25)', borderRadius: '50%', color: 'var(--muted)', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'all 0.15s' }}
+                    style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(60,110,60,0.25)', borderRadius: '50%', color: 'var(--muted)', width: '36px', height: '36px', minWidth: '36px', maxWidth: '36px', minHeight: '36px', maxHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'all 0.15s', padding: 0, flexShrink: 0, appearance: 'none', WebkitAppearance: 'none', aspectRatio: '1 / 1' }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.5)'; e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = '#fff' }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.25)'; e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'rgba(255,255,255,0.7)' }}
                 >
@@ -1121,7 +1147,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                     onClick={() => router.push('/settings/account')}
                     title={userFullName || 'Account'}
                     aria-label="Account"
-                    style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(60,110,60,0.25)', borderRadius: '50%', cursor: 'pointer', color: 'var(--muted)', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, fontWeight: 600, fontSize: '14px', transition: 'all 0.15s' }}
+                    style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(60,110,60,0.25)', borderRadius: '50%', cursor: 'pointer', color: 'var(--muted)', width: '36px', height: '36px', minWidth: '36px', maxWidth: '36px', minHeight: '36px', maxHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, fontWeight: 600, fontSize: '14px', transition: 'all 0.15s', padding: 0, flexShrink: 0, appearance: 'none', WebkitAppearance: 'none', aspectRatio: '1 / 1' }}
                     onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.5)'; e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = '#fff' }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.25)'; e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'rgba(255,255,255,0.7)' }}
                 >

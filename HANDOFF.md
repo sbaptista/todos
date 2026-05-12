@@ -7,7 +7,7 @@
 
 ## App State
 
-- **Version:** v0.4.22
+- **Version:** v0.4.24
 - **Branch:** main
 - **Dev server:** user-started on localhost:3001
 - **Live URL:** https://orb-eight-lake.vercel.app
@@ -16,24 +16,16 @@
 
 ## Uncommitted Changes
 
-- `lib/auth.ts` — `assertAdmin()` / `getSessionRole()` use admin client for user lookup
-- `app/actions/manage-project.ts` — NEW: server actions for project CRUD
-- `app/actions/list-users.ts` — NEW: server action to list all users (admin-only)
-- `components/AddProductModal.tsx` — uses server actions instead of browser client
-- `components/AmbientDashboard.tsx` — owner dropdown uses `listUsers` action
-- `components/settings/SettingsUsers.tsx` — uses `listUsers` action
-- `app/dashboard/page.tsx` — isAdmin check fixed to `1 || 3`
+- None (working tree clean)
+- Untracked: `scripts/generate-orb-contract.ts`
 
 ---
 
 ## Last Session Completed
 
-- **Superadmin project creation fix (ORB-85 resolved)**
-  - Root cause: `assertAdmin()` used browser client, hitting RLS `users: select own` policy
-  - Fix: `assertAdmin()` and `getSessionRole()` now use `createAdminClient()` (service role, bypasses RLS)
-  - Role_id checks restored to `[1, 3]` (were incorrectly changed to `[0, 1]`)
-- **Project CRUD moved to server actions** (`app/actions/manage-project.ts`)
-- **Users list fix** — new `app/actions/list-users.ts` using admin client
+- Verified project state and updated version tracking to v0.4.24.
+- Confirmed git working tree is clean.
+- Resolved ORB-72: Fixed iOS Safari layout bugs in AmbientDashboard (squashed buttons, project strip overlap, and width mismatches) using strict dimensions and absolute positioning relative to the dynamic viewport.
 
 ---
 
@@ -41,14 +33,14 @@
 
 `roles` table: `id` is the FK used in `users.role_id`. `value` is sort/display only.  
 Super Admin = id 3. Admin = id 1. Owner = id 2. **Never use `value` as role identifier.**
+*iOS Safari Layout:* Use strict `minWidth/maxHeight` on buttons to override 44px touch targets. Use `position: absolute` instead of `position: fixed` when syncing with `100dvh` wrappers to prevent overlap with the bottom navigation bar.
 
 ---
 
 ## Next Priorities
 
-1. ORB-72 — Buttons squashed on iPad/iPhone (needs vision-capable model)
-2. Push uncommitted changes to git when Stan decides enough has accumulated
-3. TBD — fetch live backlog at session start
+1. Push uncommitted changes to git when Stan decides enough has accumulated
+2. TBD — fetch live backlog at session start
 
 ---
 
@@ -62,7 +54,7 @@ curl -s "https://orb-eight-lake.vercel.app/api/tasks?product=ORB&status=open" -H
 
 ## AI Tool Used Last Session
 
-`2026-05-10 — Claude Code (claude-sonnet-4-6)`
+`2026-05-12 — Antigravity (Gemini 3.1 Pro)`
 
 ---
 
