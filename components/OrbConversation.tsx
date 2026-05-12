@@ -415,15 +415,17 @@ export default function OrbConversation({
                 ref={threadRef}
                 style={{
                     flex: 1,
+                    minHeight: 0,
                     overflowY: 'auto',
                     overflowX: 'hidden',
                     WebkitOverflowScrolling: 'touch',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: '4px',
-                    padding: 'clamp(200px, 34vh, 280px) 0 8px 0',
+                    padding: '0 0 8px 0',
                 }}
             >
+                <div style={{ flexShrink: 0, height: 'clamp(200px, 34vh, 280px)' }} />
                 {messages.map(msg => (
                         msg.type === 'user' ? (
                             <div

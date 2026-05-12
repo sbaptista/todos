@@ -7,7 +7,7 @@
 
 ## App State
 
-- **Version:** v0.4.24
+- **Version:** v0.4.25
 - **Branch:** main
 - **Dev server:** user-started on localhost:3001
 - **Live URL:** https://orb-eight-lake.vercel.app
@@ -23,9 +23,10 @@
 
 ## Last Session Completed
 
-- Verified project state and updated version tracking to v0.4.24.
+- Verified project state and updated version tracking to v0.4.25.
 - Confirmed git working tree is clean.
 - Resolved ORB-72: Fixed iOS Safari layout bugs in AmbientDashboard (squashed buttons, project strip overlap, and width mismatches) using strict dimensions and absolute positioning relative to the dynamic viewport.
+- Resolved ORB-80: Fixed disappearing input field on iOS Safari keyboard open by repairing flexbox shrink behavior (`minHeight: 0` and spacer div) and utilizing `100dvh` for responsive docking.
 
 ---
 
