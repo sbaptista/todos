@@ -7,7 +7,7 @@
 
 ## App State
 
-- **Version:** v0.4.25
+- **Version:** v0.4.26
 - **Branch:** main
 - **Dev server:** user-started on localhost:3001
 - **Live URL:** https://orb-eight-lake.vercel.app
@@ -17,16 +17,18 @@
 ## Uncommitted Changes
 
 - None (working tree clean)
-- Untracked: `scripts/generate-orb-contract.ts`
 
 ---
 
 ## Last Session Completed
 
-- Verified project state and updated version tracking to v0.4.25.
+- Verified project state and updated version tracking to v0.4.26.
 - Confirmed git working tree is clean.
-- Resolved ORB-72: Fixed iOS Safari layout bugs in AmbientDashboard (squashed buttons, project strip overlap, and width mismatches) using strict dimensions and absolute positioning relative to the dynamic viewport.
-- Resolved ORB-80: Fixed disappearing input field on iOS Safari keyboard open by repairing flexbox shrink behavior (`minHeight: 0` and spacer div) and utilizing `100dvh` for responsive docking.
+- Resolved ORB-80 (Architectural Alignment): Transitioned `docs/api-spec.yaml` to be the single source of truth for the API and Orb. 
+  - Added `x-orb-agent-contract` to hold system voice, valid values, and explicit integrity rules.
+  - Added `x-orb-tool` extensions to map REST paths (`create_todo`, `update_todo`, `delete_todo`) to Anthropic tool schemas.
+  - Added `x-orb-internal-tools` to manage native agent capabilities (`query_todos`, `report_friction`, etc.).
+  - Built `scripts/generate-orb-contract.ts` to dynamically assemble `lib/orb-contract.ts`, applying parameter overrides and confidence metadata.
 
 ---
 

@@ -6,14 +6,75 @@ info:
     Machine-readable spec for the Orb task management API.
     Agents and integrations MUST consult this spec to know what is
     and is not possible before attempting any action.
-  x-orb-agent-contract: |
-    This spec covers the REST API for external access (curl, developer AIs).
-    Orb's internal conversational tools are defined in lib/orb-contract.ts.
-    The two interfaces share the same data model but differ in:
-    - Authentication: REST uses API key header; Orb uses Supabase RLS session
-    - Addressing: REST uses UUIDs; Orb uses task codes like ORB-73
-    - Deletion: REST soft-deletes (sets deleted_at); Orb hard-deletes
-    - Query: REST hits the database; Orb filters in-memory context
+  x-orb-agent-contract:
+    voice: |
+      Brief, direct. Plain text only. NO markdown.
+    
+    integrity:
+      - "Never confirm an action succeeded without checking the tool response. If it contains { error: ... }, tell the user what went wrong."
+      - If the user asks for something your tools cannot do, say so directly and suggest a workaround if one exists. Never silently skip or fabricate.
+      - Known limitations are documented in each tool's description. Respect them.
+      - When you notice a recurring gap between what users expect and what you can do, use report_friction to log the observation. Use sparingly — one report per novel pattern, not every interaction.
+    
+    scope:
+      default_project: ORB
+      behavior: Only discuss or query this project's todos unless the user explicitly asks about another project or says "all".
+    
+    valid_values:
+      statuses: [open, in progress, on hold, closed]
+      priorities:
+        1: Urgent
+        2: High
+        4: Medium
+        5: Low
+
+  x-orb-internal-tools:
+    query_todos:
+      confidence: well-tested
+      description: 'Find todos matching criteria. Use code for single-todo lookup (e.g. "ORB-73"). Otherwise filters by status, product, priority, or text. Returns open tasks by default — pass status to include closed.'
+      input_schema:
+        type: object
+        properties:
+          code: { type: string, description: 'Exact task code for single-todo lookup, e.g. "ORB-62". Overrides all other filters.' }
+          product_code: { type: string }
+          status: { type: string }
+          priority_max: { type: integer }
+          text_match: { type: string }
+          max_results: { type: integer }
+    
+    client_action:
+      confidence: well-tested
+      description: 'Navigate or switch UI state. Use switch_project to change the active project, open_settings to go to settings, open_help for help.'
+      input_schema:
+        type: object
+        properties:
+          action: { type: string, enum: ['switch_project', 'open_settings', 'open_help'] }
+          target: { type: string, description: 'Project code for switch_project.' }
+        required: ['action']
+
+    search_knowledge:
+      confidence: well-tested
+      description: 'Search the Knowledge Repository for lessons, decisions, and distilled insights from closed tasks. Optionally scope to a specific project.'
+      input_schema:
+        type: object
+        properties:
+          query: { type: string, description: 'Search term.' }
+          product_code: { type: string, description: 'Scope search to a specific project.' }
+        required: ['query']
+
+    report_friction:
+      confidence: well-tested
+      description: 'Log an observation about a capability gap, user confusion, or workflow friction you have noticed. Use when you see something the system should handle better — a missing feature users keep asking for, a confusing interaction pattern, or a limitation that deserves a workaround. Use sparingly: one report per novel observation, not for routine interactions.'
+      input_schema:
+        type: object
+        properties:
+          category:
+            type: string
+            enum: ['capability_gap', 'user_confusion', 'data_quality', 'workflow_friction', 'suggestion']
+            description: 'Type of friction observed.'
+          summary: { type: string, description: 'One-sentence summary of the friction observed.' }
+          detail: { type: string, description: 'What the user asked for, what you tried, what went wrong or was missing, and any suggested improvement.' }
+        required: ['category', 'summary']
 
 servers:
   - url: https://orb-eight-lake.vercel.app
@@ -154,6 +215,20 @@ paths:
     post:
       operationId: createTask
       summary: Create a new task
+      x-orb-tool:
+        name: create_todo
+        confidence: well-tested
+        description: |
+          Create a new todo in a project. Defaults to the current project if product_code is omitted. Requires a title. Cannot create in a product that does not exist.
+        parameter_overrides:
+          product_code:
+            description: "Target project code (e.g. ORB, HELM). Defaults to current project if omitted."
+          title:
+            description: "Task title. Required."
+          priority_value:
+            description: "Priority level (1=urgent, 2=high, etc). Omit if unknown."
+          description:
+            description: "Task description."
       requestBody:
         required: true
         content:
@@ -198,6 +273,40 @@ paths:
 
         To move a task between products: POST to create in the target
         product, then DELETE the original.
+      x-orb-tool:
+        name: update_todo
+        confidence: well-tested
+        description: |
+          Update an existing todo by task code (e.g. ORB-73). Supports: title, status, priority, description, resolution_notes, urls. Cannot: move a task between products, change todo_number, set closed_at directly (closed_at is managed automatically when status changes to a closing state). If the user asks to move a task between products, explain the limitation and offer to create a new task in the target product + delete the original as a workaround.
+        parameters:
+          - name: code
+            in: custom
+            required: true
+            schema:
+              type: string
+            description: "Task code, e.g. \"ORB-73\"."
+          - name: title_match
+            in: custom
+            required: false
+            schema:
+              type: string
+            description: "Alternative: find task by partial title match."
+        parameter_overrides:
+          title:
+            name: new_title
+            description: "New title."
+          status:
+            name: new_status
+            description: "New status value."
+          priority_value:
+            name: new_priority
+            description: "New priority value."
+          description:
+            description: "Updated description."
+          resolution_notes:
+            description: "What was done to resolve the task. Populate when closing, not before."
+          urls:
+            description: "Related URLs."
       requestBody:
         required: true
         content:
@@ -222,6 +331,18 @@ paths:
       operationId: deleteTask
       summary: Soft-delete a task
       description: Sets deleted_at timestamp. Does not destroy the row.
+      x-orb-tool:
+        name: delete_todo
+        confidence: well-tested
+        description: |
+          Permanently delete a todo. Hard delete — irreversible. Only use when the user explicitly says to delete a specific task. Never delete as part of a workaround (e.g. move-between-projects) without the user confirming the deletion step separately. "Want me to do that?" is not sufficient — wait for an explicit "yes, delete it."
+        parameters:
+          - name: code
+            in: custom
+            required: true
+            schema:
+              type: string
+            description: "Task code, e.g. \"ORB-44\"."
       responses:
         "200":
           description: Soft-deleted.
