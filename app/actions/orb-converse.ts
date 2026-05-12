@@ -357,6 +357,28 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
             const returned = results.slice(0, 10).map((k: any) => ({ title: k.title, content: k.content, code: k.projects?.code }))
             output = { count: results.length, returned }
             stream.update({ speech: accumulatedSpeech, thought: `Found ${results.length} insights`, knowledgeResults: returned })
+          } else if (tc.name === 'add_knowledge') {
+            const admin = createAdminClient()
+            let pId = ctx.current?.id ?? null
+            if (input.product_code) {
+                const p = ctx.productList.find((pp: any) => pp.code?.toUpperCase() === String(input.product_code).toUpperCase())
+                if (p) pId = p.id
+            }
+            if (!pId) {
+                output = { error: 'Could not determine project to save knowledge to.' }
+            } else {
+                const { error } = await admin.from('knowledge_repo').insert({
+                    product_id: pId,
+                    title: input.title,
+                    content: input.content,
+                    tags: input.tags || []
+                })
+                if (error) output = { error: error.message }
+                else {
+                    output = { ok: true }
+                    stream.update({ speech: accumulatedSpeech, thought: 'Saved to knowledge repository' })
+                }
+            }
           } else if (tc.name === 'report_friction') {
             const admin = createAdminClient()
             const { error } = await admin.from('orb_friction').insert({

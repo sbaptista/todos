@@ -158,6 +158,7 @@ export const ORB_TOOL_LABELS: Record<string, string> = {
   delete_todo: 'Deleting task...',
   client_action: 'Navigating...',
   search_knowledge: 'Searching knowledge repository...',
+  add_knowledge: 'Saving to knowledge repository...',
   report_friction: 'Logging observation...',
 }
 `

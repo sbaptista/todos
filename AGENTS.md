@@ -13,6 +13,7 @@
 - After answering, read `HANDOFF.md` before using any tools or continuing.
 - Do not summarize. Do not say "ready." Do not ask "what do you need?" Answer every question directly.
 - If you cannot answer all accurately, do not proceed — say exactly which you're uncertain of.
+- When providing git commands or terminal scripts to the user, ALWAYS concatenate them with `&&` (e.g., `git add -A && git commit -m "..." && git push`) rather than listing them on separate lines, as the user's terminal environment requires it.
 
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know

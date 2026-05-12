@@ -7,7 +7,7 @@
 
 ## App State
 
-- **Version:** v0.4.26
+- **Version:** v0.4.27
 - **Branch:** main
 - **Dev server:** user-started on localhost:3001
 - **Live URL:** https://orb-eight-lake.vercel.app
@@ -22,13 +22,16 @@
 
 ## Last Session Completed
 
-- Verified project state and updated version tracking to v0.4.26.
+- Verified project state and updated version tracking to v0.4.27.
 - Confirmed git working tree is clean.
 - Resolved ORB-80 (Architectural Alignment): Transitioned `docs/api-spec.yaml` to be the single source of truth for the API and Orb. 
   - Added `x-orb-agent-contract` to hold system voice, valid values, and explicit integrity rules.
   - Added `x-orb-tool` extensions to map REST paths (`create_todo`, `update_todo`, `delete_todo`) to Anthropic tool schemas.
   - Added `x-orb-internal-tools` to manage native agent capabilities (`query_todos`, `report_friction`, etc.).
   - Built `scripts/generate-orb-contract.ts` to dynamically assemble `lib/orb-contract.ts`, applying parameter overrides and confidence metadata.
+- Resolved ORB-89: Gave Orb direct write access to the Knowledge Repository.
+  - Added `add_knowledge` internal tool to `api-spec.yaml` with explicit proactive-prompting instructions.
+  - Implemented backend database insertion in `app/actions/orb-converse.ts`.
 
 ---
 

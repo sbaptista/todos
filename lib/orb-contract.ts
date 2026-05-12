@@ -177,6 +177,38 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
     }
   },
   {
+    "name": "add_knowledge",
+    "description": "[Confidence: well-tested] Write an insight, decision, or reference material directly to the Knowledge Repository. Use this to preserve important information from the conversation without creating a task. Defaults to the current project if product_code is omitted. You should proactively ask the user \"Would you like me to save this to the knowledge repository?\" when a valuable decision or insight is reached.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "product_code": {
+          "type": "string",
+          "description": "Target project code (e.g. ORB). Defaults to current project if omitted."
+        },
+        "title": {
+          "type": "string",
+          "description": "Short title or summary of the insight."
+        },
+        "content": {
+          "type": "string",
+          "description": "Detailed content of the insight, decision, or reference material."
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Optional tags to categorize the knowledge."
+        }
+      },
+      "required": [
+        "title",
+        "content"
+      ]
+    }
+  },
+  {
     "name": "report_friction",
     "description": "[Confidence: well-tested] Log an observation about a capability gap, user confusion, or workflow friction you have noticed. Use when you see something the system should handle better — a missing feature users keep asking for, a confusing interaction pattern, or a limitation that deserves a workaround. Use sparingly: one report per novel observation, not for routine interactions.",
     "input_schema": {
@@ -217,5 +249,6 @@ export const ORB_TOOL_LABELS: Record<string, string> = {
   delete_todo: 'Deleting task...',
   client_action: 'Navigating...',
   search_knowledge: 'Searching knowledge repository...',
+  add_knowledge: 'Saving to knowledge repository...',
   report_friction: 'Logging observation...',
 }
