@@ -43,7 +43,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
 async function buildContext(supabase: any, currentProductId: string, scopeToProduct: boolean = true) {
   const [{ data: products }, { data: todos }, { data: statuses }, { data: priorities }, { data: knowledge }] = await Promise.all([
     supabase.from('projects').select('id, name, code').order('sort_order'),
-    supabase.from('todos').select('id, todo_number, title, status, priority_value, product_id, closed_at').is('deleted_at', null),
+    supabase.from('todos').select('id, todo_number, title, description, status, priority_value, product_id, closed_at, resolution_notes').is('deleted_at', null),
     supabase.from('statuses').select('*').order('sort_order'),
     supabase.from('priorities').select('*').order('value'),
     supabase.from('knowledge_repo').select('*, projects(code)').order('created_at', { ascending: false }),
@@ -212,7 +212,10 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
             const limit = input.max_results ?? 10
             const returned = results.slice(0, limit).map((t: any) => {
               const p = ctx.productList.find((pp: any) => pp.id === t.product_id)
-              return { id: t.id, code: `${p?.code ?? p?.name}-${t.todo_number}`, title: t.title, status: t.status, priority_value: t.priority_value }
+              const out: any = { id: t.id, code: `${p?.code ?? p?.name}-${t.todo_number}`, title: t.title, status: t.status, priority_value: t.priority_value }
+              if (t.description) out.description = t.description
+              if (t.resolution_notes) out.resolution_notes = t.resolution_notes
+              return out
             })
             output = { count: results.length, returned }
             stream.update({ speech: accumulatedSpeech, thought: `Found ${results.length} items`, results: returned, queryLabel: req.input })
