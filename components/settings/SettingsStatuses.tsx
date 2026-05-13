@@ -10,69 +10,6 @@ type StatusForm = { name: string; is_closed: boolean }
 
 const EMPTY_FORM: StatusForm = { name: '', is_closed: false }
 
-const inputStyle: React.CSSProperties = {
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--r)',
-  padding: '10px var(--sp-md)',
-  fontSize: 'var(--fs-input)',
-  background: 'var(--bg)',
-  color: 'var(--text)',
-  outline: 'none',
-  boxSizing: 'border-box',
-  width: '100%',
-  transition: 'border-color var(--transition)',
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 'var(--fs-xs)',
-  fontWeight: 'var(--fw-medium)',
-  color: 'var(--text3)',
-  marginBottom: 'var(--sp-xs)',
-}
-
-const primaryBtnStyle = (disabled: boolean): React.CSSProperties => ({
-  background: 'var(--success)',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 'var(--r)',
-  padding: '8px var(--sp-lg)',
-  fontSize: 'var(--fs-sm)',
-  fontWeight: 'var(--fw-medium)',
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  opacity: disabled ? 0.6 : 1,
-})
-
-const cancelBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  fontSize: 'var(--fs-sm)',
-  color: 'var(--muted)',
-  cursor: 'pointer',
-  padding: '8px var(--sp-md)',
-}
-
-const rowActionBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  fontSize: 'var(--fs-sm)',
-  color: 'var(--muted)',
-  cursor: 'pointer',
-  padding: '4px var(--sp-sm)',
-  flexShrink: 0,
-  transition: 'all var(--transition)',
-}
-
-const moveBtnStyle = (disabled: boolean): React.CSSProperties => ({
-  ...rowActionBtnStyle,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '4px',
-  color: disabled ? 'var(--border)' : 'var(--text3)',
-  cursor: disabled ? 'default' : 'pointer',
-})
-
 const ArrowUp = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <path d="m18 15-6-6-6 6"/>
@@ -84,16 +21,6 @@ const ArrowDown = () => (
     <path d="m6 9 6 6 6-6"/>
   </svg>
 )
-
-const dangerConfirmBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  fontSize: 'var(--fs-sm)',
-  color: 'var(--error)',
-  fontWeight: 'var(--fw-medium)',
-  cursor: 'pointer',
-  padding: '8px var(--sp-md)',
-}
 
 export default function SettingsStatuses() {
   const supabase = useMemo(() => createClient(), [])
@@ -115,15 +42,14 @@ export default function SettingsStatuses() {
       supabase.from('todos').select('status'),
     ])
     setStatuses(statusRes.data ?? [])
-    
-    // Count todos per status name
+
     const counts: Record<string, number> = {}
     todoRes.data?.forEach(t => {
       if (t.status) {
         counts[t.status] = (counts[t.status] || 0) + 1
       }
     })
-    
+
     const idCounts: Record<string, number> = {}
     statusRes.data?.forEach(s => {
       idCounts[s.id] = counts[s.name] || 0
@@ -169,7 +95,7 @@ export default function SettingsStatuses() {
       })
       .select()
       .single()
-    
+
     setSaving(false)
     if (err) { setError(err.message); return }
     if (data) { toast.success('Status added.'); setStatuses(prev => [...prev, data as Status]) }
@@ -192,7 +118,7 @@ export default function SettingsStatuses() {
       .eq('id', id)
       .select()
       .single()
-    
+
     setSaving(false)
     if (err) { setError(err.message); return }
     if (data) { toast.success('Status saved.'); setStatuses(prev => prev.map(s => s.id === id ? data as Status : s)) }
@@ -209,7 +135,7 @@ export default function SettingsStatuses() {
 
     const higher = statuses.filter(s => s.sort_order > target.sort_order)
     if (higher.length > 0) {
-      await Promise.all(higher.map(s => 
+      await Promise.all(higher.map(s =>
         supabase.from('statuses')
           .update({ sort_order: s.sort_order - 1 })
           .eq('id', s.id)
@@ -236,19 +162,16 @@ export default function SettingsStatuses() {
     setError('')
 
     try {
-      // Step 1: Use a temporary sort order for s1 to avoid unique constraint collision
       const tempOrder = -999
       const { error: err1 } = await supabase.from('statuses').update({ sort_order: tempOrder }).eq('id', s1.id)
       if (err1) throw err1
 
-      // Step 2: Set s2 to s1's original order
       const { error: err2 } = await supabase.from('statuses').update({ sort_order: s1.sort_order }).eq('id', s2.id)
       if (err2) {
         await supabase.from('statuses').update({ sort_order: s1.sort_order }).eq('id', s1.id)
         throw err2
       }
 
-      // Step 3: Set s1 to s2's original order
       const { error: err3 } = await supabase.from('statuses').update({ sort_order: s2.sort_order }).eq('id', s1.id)
       if (err3) throw err3
 
@@ -260,170 +183,144 @@ export default function SettingsStatuses() {
     }
   }
 
-  if (loading) return (
-    <div style={{ padding: 'var(--sp-3xl)', fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>
-      Loading…
-    </div>
-  )
+  if (loading) return <div className="s-loading">Loading…</div>
 
   return (
-    <div className="settings-page" style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-xl)' }}>
-        <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-bold)', color: 'var(--text)', margin: 0 }}>
-          Statuses
-        </h2>
+    <div className="settings-page s-page">
+      <div className="s-header">
+        <h2 className="s-title">Statuses</h2>
         {!showAdd && (
-          <button onClick={startAdd} style={{
-            background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--r)',
-            padding: '7px var(--sp-md)', fontSize: 'var(--fs-sm)', color: 'var(--text2)', cursor: 'pointer',
-          }}>
+          <button className="btn-outline" onClick={startAdd}>
             + Add Status
           </button>
         )}
       </div>
 
-      {error && (
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--error)', margin: '0 0 var(--sp-md)' }}>
-          {error}
-        </p>
-      )}
+      {error && <p className="s-error">{error}</p>}
 
-      <div style={{ background: 'var(--bg2)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div className="s-list">
         {showAdd && (
-          <div key="add-form" style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: 'var(--sp-lg) var(--sp-xl)' }}>
-            <div style={{ marginBottom: 'var(--sp-md)' }}>
-              <label style={labelStyle}>Name *</label>
+          <div className="s-form">
+            <div className="mb-md">
+              <label className="label">Name *</label>
               <input
-                style={inputStyle}
+                className="input"
                 value={addForm.name}
                 onChange={e => setAddForm({ ...addForm, name: e.target.value })}
                 autoFocus
                 placeholder="Status name (e.g. open, in_progress)"
               />
             </div>
-            <div style={{ marginBottom: 'var(--sp-md)', display: 'flex', alignItems: 'center', gap: 'var(--sp-sm)' }}>
+            <div className="flex-center gap-sm mb-md">
               <input
                 type="checkbox"
                 id="add-is-closed"
+                className="checkbox"
                 checked={addForm.is_closed}
                 onChange={e => setAddForm({ ...addForm, is_closed: e.target.checked })}
-                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
               />
-              <label htmlFor="add-is-closed" style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer' }}>
+              <label htmlFor="add-is-closed" className="label" style={{ marginBottom: 0, cursor: 'pointer' }}>
                 Is Closed (Todo is finished)
               </label>
             </div>
-            <div style={{ display: 'flex', gap: 'var(--sp-sm)' }}>
-              <button onClick={handleAdd} disabled={saving} style={primaryBtnStyle(saving)}>
+            <div className="flex-row gap-sm">
+              <button className="btn-primary" onClick={handleAdd} disabled={saving}>
                 {saving ? 'Adding…' : 'Add Status'}
               </button>
-              <button onClick={() => setShowAdd(false)} style={cancelBtnStyle}>Cancel</button>
+              <button className="btn-cancel" onClick={() => setShowAdd(false)}>Cancel</button>
             </div>
           </div>
         )}
 
         {statuses.map((s, idx) => (
           editingId === s.id ? (
-            <div key={`status-edit-${s.id}`} style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: 'var(--sp-lg) var(--sp-xl)' }}>
-              <div style={{ marginBottom: 'var(--sp-md)' }}>
-                <label style={labelStyle}>Name *</label>
+            <div key={`status-edit-${s.id}`} className="s-form">
+              <div className="mb-md">
+                <label className="label">Name *</label>
                 <input
-                  style={inputStyle}
+                  className="input"
                   value={editForm.name}
                   onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                   autoFocus
                 />
               </div>
-              <div style={{ marginBottom: 'var(--sp-md)', display: 'flex', alignItems: 'center', gap: 'var(--sp-sm)' }}>
+              <div className="flex-center gap-sm mb-md">
                 <input
                   type="checkbox"
                   id={`edit-is-closed-${s.id}`}
+                  className="checkbox"
                   checked={editForm.is_closed}
                   onChange={e => setEditForm({ ...editForm, is_closed: e.target.checked })}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                 />
-                <label htmlFor={`edit-is-closed-${s.id}`} style={{ ...labelStyle, marginBottom: 0, cursor: 'pointer' }}>
+                <label htmlFor={`edit-is-closed-${s.id}`} className="label" style={{ marginBottom: 0, cursor: 'pointer' }}>
                   Is Closed (Todo is finished)
                 </label>
               </div>
-              <div style={{ display: 'flex', gap: 'var(--sp-sm)' }}>
-                <button onClick={() => handleSave(s.id)} disabled={saving} style={primaryBtnStyle(saving)}>
+              <div className="flex-row gap-sm">
+                <button className="btn-primary" onClick={() => handleSave(s.id)} disabled={saving}>
                   {saving ? 'Saving…' : 'Save'}
                 </button>
-                <button onClick={() => setEditingId(null)} style={cancelBtnStyle}>Cancel</button>
+                <button className="btn-cancel" onClick={() => setEditingId(null)}>Cancel</button>
               </div>
             </div>
           ) : confirmDeleteId === s.id ? (
-            <div key={`status-del-${s.id}`} style={{ background: 'rgba(139, 32, 32, 0.05)', padding: '10px var(--sp-xl)', display: 'flex', alignItems: 'center', gap: 'var(--sp-md)', borderBottom: '1px solid var(--border)' }}>
-              <span style={{ fontSize: 'var(--fs-sm)', flex: 1 }}>
+            <div key={`status-del-${s.id}`} className="s-row-delete">
+              <span className="text-sm flex-1">
                 Delete <strong>{s.name}</strong>?
                 {(todoCounts[s.id] ?? 0) > 0 && (
-                  <span style={{ color: 'var(--muted)', marginLeft: 'var(--sp-xs)' }}>
+                  <span className="text-muted" style={{ marginLeft: 'var(--sp-xs)' }}>
                     Cannot delete — {todoCounts[s.id]} todos use this status.
                   </span>
                 )}
               </span>
               {(todoCounts[s.id] ?? 0) === 0 ? (
                 <>
-                  <button onClick={() => handleDelete(s.id)} disabled={saving} style={dangerConfirmBtnStyle}>Confirm</button>
-                  <button onClick={() => setConfirmDeleteId(null)} style={cancelBtnStyle}>Cancel</button>
+                  <button className="btn-danger-confirm" onClick={() => handleDelete(s.id)} disabled={saving}>Confirm</button>
+                  <button className="btn-cancel" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
                 </>
               ) : (
-                <button onClick={() => setConfirmDeleteId(null)} style={cancelBtnStyle}>OK</button>
+                <button className="btn-cancel" onClick={() => setConfirmDeleteId(null)}>OK</button>
               )}
             </div>
           ) : (
             <div
               key={`status-row-${s.id}`}
-              className="settings-list-row"
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-md)', padding: '10px var(--sp-xl)', borderBottom: '1px solid var(--border)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
-              onMouseLeave={e => (e.currentTarget.style.background = '')}
+              className="settings-list-row s-row"
             >
-              <div style={{ width: '24px', fontSize: 'var(--fs-xs)', color: 'var(--muted)', fontWeight: 600 }}>
+              <div className="text-xs text-muted" style={{ width: '24px', fontWeight: 600 }}>
                 {s.sort_order}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-sm)' }}>
-                  <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text)', fontWeight: 500 }}>{s.name}</p>
-                  {s.is_closed && (
-                    <span style={{ fontSize: '10px', background: 'var(--bg3)', color: 'var(--text3)', padding: '1px 6px', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Closed
-                    </span>
-                  )}
+              <div className="s-row-info">
+                <div className="flex-center gap-sm">
+                  <p style={{ margin: 0, fontWeight: 500 }} className="text-sm">{s.name}</p>
+                  {s.is_closed && <span className="badge">Closed</span>}
                 </div>
               </div>
-              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', flexShrink: 0 }}>
+              <span className="s-row-meta">
                 {todoCounts[s.id] ?? 0} todos
               </span>
 
-              <div className="settings-row-actions" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+              <div className="settings-row-actions flex-center" style={{ gap: '2px' }}>
                 <button
+                  className="btn-move"
                   onClick={() => handleMove(s.id, 'up')}
                   disabled={idx === 0 || saving}
-                  style={moveBtnStyle(idx === 0 || saving)}
-                  onMouseEnter={e => idx > 0 && !saving && (e.currentTarget.style.color = 'var(--success)')}
-                  onMouseLeave={e => idx > 0 && !saving && (e.currentTarget.style.color = 'var(--text3)')}
                   title="Move Up"
                 >
                   <ArrowUp />
                 </button>
                 <button
+                  className="btn-move"
                   onClick={() => handleMove(s.id, 'down')}
                   disabled={idx === statuses.length - 1 || saving}
-                  style={moveBtnStyle(idx === statuses.length - 1 || saving)}
-                  onMouseEnter={e => idx < statuses.length - 1 && !saving && (e.currentTarget.style.color = 'var(--success)')}
-                  onMouseLeave={e => idx < statuses.length - 1 && !saving && (e.currentTarget.style.color = 'var(--text3)')}
                   title="Move Down"
                 >
                   <ArrowDown />
                 </button>
-                <button onClick={() => startEdit(s)} style={rowActionBtnStyle}>Edit</button>
+                <button className="btn-row-action" onClick={() => startEdit(s)}>Edit</button>
                 <button
+                  className="btn-row-action btn-row-delete"
                   onClick={() => { setConfirmDeleteId(s.id); setEditingId(null) }}
-                  style={rowActionBtnStyle}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--error)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
                 >
                   Delete
                 </button>

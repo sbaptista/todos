@@ -31,9 +31,9 @@ export default function SettingsData() {
   const loadAudit = useCallback(async () => {
     setAuditLoading(true)
     setAuditError('')
-    
+
     const res = await getAuditLogs(auditPage, PAGE_SIZE)
-    
+
     if (res.error) {
       setAuditError(res.error)
     } else {
@@ -115,7 +115,6 @@ export default function SettingsData() {
       return
     }
 
-    // 1. Download wrapped archive file
     const archivePayload = { archived_at: new Date().toISOString(), todos: result.data }
     const blob = new Blob([JSON.stringify(archivePayload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -127,12 +126,10 @@ export default function SettingsData() {
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
 
-    // 2. Confirm Purge
     if (confirm(`Archive downloaded (${result.count} tasks). Permanently delete these records from Supabase now?`)) {
       const purgeResult = await purgeArchivedTasks(result.data.map((t: any) => t.id))
       if (purgeResult.success) {
         toast.success('Archival complete. Database purged.')
-        // 3. Offer knowledge distillation for tasks that have resolution notes
         const candidates = result.data.filter((t: any) => t.resolution_notes?.trim())
         if (candidates.length > 0) {
           setDistillQueue(candidates)
@@ -157,74 +154,40 @@ export default function SettingsData() {
     return String(value)
   }
 
-  const cardStyle: React.CSSProperties = {
-    background: 'var(--bg2)',
-    borderRadius: 'var(--r-lg)',
-    border: '1px solid var(--border)',
-    padding: 'var(--sp-xl)',
-  }
-
   return (
-    <div className="settings-page" style={{ padding: 'var(--sp-2xl)', maxWidth: '960px' }}>
-      <h2 style={{
-        fontSize: 'var(--fs-lg)',
-        fontWeight: 'var(--fw-bold)',
-        color: 'var(--text)',
-        margin: '0 0 var(--sp-2xl)',
-      }}>
-        Data Management
-      </h2>
+    <div className="settings-page s-page-wide">
+      <h2 className="s-title mb-2xl">Data Management</h2>
 
       {/* 1. Backup & Recovery */}
-      <div style={{ marginBottom: 'var(--sp-3xl)' }}>
-        <h3 style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--sp-md)' }}>
-          Backup & Recovery
-        </h3>
-        <div style={cardStyle}>
-          <div className="settings-card-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-xl)' }}>
-            <div style={{ flex: 1 }}>
-              <h4 style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--sp-xs)' }}>
-                System Archive
-              </h4>
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', margin: 0 }}>
+      <div className="mb-3xl">
+        <h3 className="s-section-title">Backup & Recovery</h3>
+        <div className="s-card">
+          <div className="s-card-row settings-card-row">
+            <div className="flex-1">
+              <h4 className="s-card-title">System Archive</h4>
+              <p className="s-card-desc">
                 Portability layer for your entire workspace. Export includes all projects, tasks, and knowledge entries. Import restores or merges from any exported file.
               </p>
             </div>
-            <div className="settings-card-actions" style={{ display: 'flex', gap: 'var(--sp-md)', flexShrink: 0 }}>
+            <div className="settings-card-actions flex-row gap-md shrink-0">
               <button
+                className="btn-outline"
                 onClick={handleExport}
                 disabled={exporting}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--r)',
-                  padding: '8px var(--sp-md)',
-                  fontSize: 'var(--fs-sm)',
-                  color: 'var(--text2)',
-                  cursor: exporting ? 'not-allowed' : 'pointer',
-                  opacity: exporting ? 0.6 : 1,
-                  transition: 'all var(--transition)',
-                }}
               >
                 {exporting ? 'Exporting…' : 'Export Full'}
               </button>
 
-              <label style={{
+              <label className="btn-outline" style={{
                 display: 'inline-block',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--r)',
-                padding: '8px var(--sp-md)',
-                fontSize: 'var(--fs-sm)',
-                color: 'var(--text2)',
                 cursor: importing ? 'not-allowed' : 'pointer',
                 opacity: importing ? 0.6 : 1,
-                transition: 'all var(--transition)',
               }}>
                 {importing ? 'Importing…' : 'Import Archive'}
-                <input 
-                  type="file" 
-                  accept=".json" 
-                  onChange={handleImport} 
+                <input
+                  type="file"
+                  accept=".json"
+                  onChange={handleImport}
                   disabled={importing}
                   style={{ display: 'none' }}
                 />
@@ -235,66 +198,38 @@ export default function SettingsData() {
       </div>
 
       {/* 2. Data Lifecycle */}
-      <div style={{ marginBottom: 'var(--sp-3xl)' }}>
-        <h3 style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 'var(--sp-md)' }}>
-          Data Lifecycle
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-lg)' }}>
-          {/* Todos Archival */}
-          <div style={cardStyle}>
-            <div className="settings-card-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-xl)' }}>
-              <div style={{ flex: 1 }}>
-                <h4 style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--sp-xs)' }}>
-                  Task Archival
-                </h4>
-                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', margin: 0 }}>
+      <div className="mb-3xl">
+        <h3 className="s-section-title">Data Lifecycle</h3>
+        <div className="flex-col gap-lg">
+          <div className="s-card">
+            <div className="s-card-row settings-card-row">
+              <div className="flex-1">
+                <h4 className="s-card-title">Task Archival</h4>
+                <p className="s-card-desc">
                   Bulk export and purge closed tasks older than 30 days. Keeps the live database lean and fast.
                 </p>
               </div>
               <button
+                className="btn-outline shrink-0"
                 onClick={handleArchive}
                 disabled={exporting}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--r)',
-                  padding: '8px var(--sp-md)',
-                  fontSize: 'var(--fs-sm)',
-                  color: 'var(--text2)',
-                  cursor: exporting ? 'not-allowed' : 'pointer',
-                  opacity: exporting ? 0.6 : 1,
-                  transition: 'all var(--transition)',
-                  flexShrink: 0,
-                }}
               >
                 {exporting ? 'Working…' : 'Archive & Purge'}
               </button>
             </div>
           </div>
 
-          {/* Knowledge Repo Link */}
-          <div style={cardStyle}>
-            <div className="settings-card-row" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--sp-xl)' }}>
-              <div style={{ flex: 1 }}>
-                <h4 style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text)', margin: '0 0 var(--sp-xs)' }}>
-                  Knowledge Repository
-                </h4>
-                <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', margin: 0 }}>
+          <div className="s-card">
+            <div className="s-card-row settings-card-row">
+              <div className="flex-1">
+                <h4 className="s-card-title">Knowledge Repository</h4>
+                <p className="s-card-desc">
                   Manage, search, and archive curated insights and historical decisions.
                 </p>
               </div>
               <button
+                className="btn-outline shrink-0"
                 onClick={() => window.location.href = '/settings/knowledge'}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--r)',
-                  padding: '8px var(--sp-md)',
-                  fontSize: 'var(--fs-sm)',
-                  color: 'var(--text2)',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
               >
                 Manage Repo
               </button>
@@ -303,7 +238,7 @@ export default function SettingsData() {
         </div>
       </div>
 
-      {/* Distillation queue — fires after Archive & Purge for todos with resolution notes */}
+      {/* Distillation queue */}
       {distillQueue.length > 0 && distillIndex < distillQueue.length && (() => {
         const todo = distillQueue[distillIndex]
         const position = distillQueue.length > 1 ? `${distillIndex + 1} of ${distillQueue.length} — ` : ''
@@ -324,50 +259,24 @@ export default function SettingsData() {
 
       {/* 3. Audit Log */}
       <div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 var(--sp-md)' }}>
-          <h3 style={{
-            fontSize: 'var(--fs-sm)',
-            fontWeight: 'var(--fw-medium)',
-            color: 'var(--text2)',
-            margin: 0,
-          }}>
+        <div className="flex-between mb-md">
+          <h3 className="text-sm" style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text2)', margin: 0 }}>
             Audit Log
           </h3>
           {isDev && (
-            <div style={{ display: 'flex', gap: 'var(--sp-sm)' }}>
+            <div className="flex-row gap-sm">
               {diagnostic && (
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(diagnostic)
-                  }}
-                  style={{
-                    background: 'none',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--r)',
-                    padding: '4px 10px',
-                    fontSize: 'var(--fs-xs)',
-                    color: 'var(--text3)',
-                    cursor: 'pointer',
-                  }}
-                >
+                <button className="btn-dev" onClick={() => navigator.clipboard.writeText(diagnostic)}>
                   Copy
                 </button>
               )}
               <button
+                className="btn-dev"
                 onClick={async () => {
                   setDiagnostic('Running…')
                   const r = await diagnoseAudit()
                   setDiagnostic(JSON.stringify(r, null, 2))
                   loadAudit()
-                }}
-                style={{
-                  background: 'none',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--r)',
-                  padding: '4px 10px',
-                  fontSize: 'var(--fs-xs)',
-                  color: 'var(--text3)',
-                  cursor: 'pointer',
                 }}
               >
                 Diagnose
@@ -377,85 +286,31 @@ export default function SettingsData() {
         </div>
 
         {isDev && diagnostic && (
-          <pre style={{
-            background: 'var(--bg2)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--r)',
-            padding: 'var(--sp-md)',
-            fontSize: 'var(--fs-xs)',
-            color: 'var(--text2)',
-            margin: '0 0 var(--sp-md)',
-            overflow: 'auto',
-            maxHeight: '400px',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            userSelect: 'text',
-            WebkitUserSelect: 'text',
-            fontFamily: 'var(--font-mono, monospace)',
-          }}>
-            {diagnostic}
-          </pre>
+          <pre className="diagnostic-pre">{diagnostic}</pre>
         )}
 
-        {auditError && (
-          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--error)', marginBottom: 'var(--sp-md)' }}>
-            {auditError}
-          </p>
-        )}
+        {auditError && <p className="s-error">{auditError}</p>}
 
         {auditLoading ? (
-          <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>Loading…</div>
+          <div className="s-loading" style={{ padding: 0 }}>Loading…</div>
         ) : auditLog.length === 0 ? (
-          <div style={{
-            ...cardStyle,
-            textAlign: 'center',
-            padding: 'var(--sp-3xl)',
-            fontSize: 'var(--fs-sm)',
-            color: 'var(--muted)',
-          }}>
-            No audit log entries found.
-          </div>
+          <div className="s-card s-empty">No audit log entries found.</div>
         ) : (
-          <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+          <div className="s-card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', fontSize: 'var(--fs-xs)', borderCollapse: 'collapse' }}>
+              <table className="audit-table">
                 <thead>
                   <tr style={{ background: 'var(--bg3)', borderBottom: '1px solid var(--border)' }}>
                     {auditColumns.map(col => (
-                      <th
-                        key={col}
-                        style={{
-                          textAlign: 'left',
-                          padding: '8px var(--sp-md)',
-                          fontWeight: 'var(--fw-medium)',
-                          color: 'var(--text3)',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {col}
-                      </th>
+                      <th key={col} className="audit-th">{col}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {auditLog.map((row, i) => (
-                    <tr
-                      key={i}
-                      style={{ borderBottom: '1px solid var(--border)' }}
-                    >
+                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                       {auditColumns.map(col => (
-                        <td
-                          key={col}
-                          style={{
-                            padding: '8px var(--sp-md)',
-                            color: 'var(--text2)',
-                            maxWidth: '280px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          }}
-                          title={formatCell(row[col])}
-                        >
+                        <td key={col} className="audit-td" title={formatCell(row[col])}>
                           {formatCell(row[col])}
                         </td>
                       ))}
@@ -465,41 +320,19 @@ export default function SettingsData() {
               </table>
             </div>
 
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: 'var(--sp-sm) var(--sp-lg)',
-              borderTop: '1px solid var(--border)',
-            }}>
+            <div className="flex-between" style={{ padding: 'var(--sp-sm) var(--sp-lg)', borderTop: '1px solid var(--border)' }}>
               <button
+                className="btn-pager"
                 onClick={() => setAuditPage(p => Math.max(0, p - 1))}
                 disabled={auditPage === 0}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: 'var(--fs-xs)',
-                  color: 'var(--text3)',
-                  cursor: auditPage === 0 ? 'not-allowed' : 'pointer',
-                  opacity: auditPage === 0 ? 0.3 : 1,
-                }}
               >
                 ← Previous
               </button>
-              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)' }}>
-                Page {auditPage + 1}
-              </span>
+              <span className="text-xs text-muted">Page {auditPage + 1}</span>
               <button
+                className="btn-pager"
                 onClick={() => setAuditPage(p => p + 1)}
                 disabled={auditLog.length < PAGE_SIZE}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: 'var(--fs-xs)',
-                  color: 'var(--text3)',
-                  cursor: auditLog.length < PAGE_SIZE ? 'not-allowed' : 'pointer',
-                  opacity: auditLog.length < PAGE_SIZE ? 0.3 : 1,
-                }}
               >
                 Next →
               </button>

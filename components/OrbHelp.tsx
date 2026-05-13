@@ -10,69 +10,6 @@ type Topic = {
   content: React.ReactNode
 }
 
-const s = {
-  h2: {
-    fontSize: 'var(--fs-base)',
-    fontWeight: 600,
-    color: 'var(--text2)',
-    margin: '0 0 10px',
-    letterSpacing: '0.03em',
-  } as React.CSSProperties,
-
-  p: {
-    fontSize: 'var(--fs-base)',
-    color: 'var(--text2)',
-    lineHeight: 1.6,
-    margin: '0 0 16px',
-  } as React.CSSProperties,
-
-  li: {
-    fontSize: 'var(--fs-sm)',
-    color: 'var(--text2)',
-    lineHeight: 1.6,
-    marginBottom: '6px',
-  } as React.CSSProperties,
-
-  mono: {
-    fontFamily: 'monospace',
-    fontSize: 'var(--fs-xs)',
-    background: 'var(--bg3)',
-    padding: '1px 6px',
-    borderRadius: '4px',
-    color: 'var(--text)',
-  } as React.CSSProperties,
-
-  section: {
-    marginBottom: '28px',
-  } as React.CSSProperties,
-
-  keyRow: {
-    display: 'flex',
-    alignItems: 'baseline',
-    gap: '16px',
-    padding: '9px 0',
-    borderBottom: '1px solid var(--border)',
-  } as React.CSSProperties,
-
-  keyCell: {
-    fontFamily: 'monospace',
-    fontSize: 'var(--fs-xs)',
-    background: 'var(--bg3)',
-    border: '1px solid var(--border)',
-    borderRadius: '4px',
-    padding: '2px 8px',
-    color: 'var(--text)',
-    whiteSpace: 'nowrap' as const,
-    minWidth: '120px',
-    flexShrink: 0,
-  } as React.CSSProperties,
-
-  descCell: {
-    fontSize: 'var(--fs-sm)',
-    color: 'var(--text2)',
-  } as React.CSSProperties,
-}
-
 const TOPICS: Topic[] = [
   {
     id: 'ask',
@@ -80,82 +17,82 @@ const TOPICS: Topic[] = [
     icon: '◎',
     content: (
       <div>
-        <p style={s.p}>Type plain English. The orb handles the rest.</p>
+        <p className="help-p">Type plain English. The orb handles the rest.</p>
 
-        <div style={s.section}>
-          <h2 style={s.h2}>Create</h2>
-          <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
-            <li style={s.li}>"Add a note to review the API docs, high priority"</li>
-            <li style={s.li}>"Remind me to follow up on the proposal"</li>
-            <li style={s.li}>"[Project] needs a login page"</li>
+        <div className="help-section">
+          <h2 className="help-h2">Create</h2>
+          <ul className="help-ul">
+            <li className="help-li">"Add a note to review the API docs, high priority"</li>
+            <li className="help-li">"Remind me to follow up on the proposal"</li>
+            <li className="help-li">"[Project] needs a login page"</li>
           </ul>
         </div>
 
-        <div style={s.section}>
-          <h2 style={s.h2}>Query</h2>
-          <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
-            <li style={s.li}>"What's most urgent right now?"</li>
-            <li style={s.li}>"Show me all open [project] todos"</li>
-            <li style={s.li}>"What did I say about the auth work?"</li>
+        <div className="help-section">
+          <h2 className="help-h2">Query</h2>
+          <ul className="help-ul">
+            <li className="help-li">"What's most urgent right now?"</li>
+            <li className="help-li">"Show me all open [project] todos"</li>
+            <li className="help-li">"What did I say about the auth work?"</li>
           </ul>
         </div>
 
-        <div style={s.section}>
-          <h2 style={s.h2}>Update</h2>
-          <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
-            <li style={s.li}>"Mark [project]-14 as done"</li>
-            <li style={s.li}>"Move the invoice todo to high priority"</li>
-            <li style={s.li}>"Set the accessibility task to in progress"</li>
+        <div className="help-section">
+          <h2 className="help-h2">Update</h2>
+          <ul className="help-ul">
+            <li className="help-li">"Mark [project]-14 as done"</li>
+            <li className="help-li">"Move the invoice todo to high priority"</li>
+            <li className="help-li">"Set the accessibility task to in progress"</li>
           </ul>
         </div>
 
-        <div style={s.section}>
-          <h2 style={s.h2}>
+        <div className="help-section">
+          <h2 className="help-h2">
             Delete{' '}
-            <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 400, color: 'var(--muted)', letterSpacing: '0.04em' }}>coming soon</span>
+            <span className="text-xs text-muted" style={{ fontWeight: 400, letterSpacing: '0.04em' }}>coming soon</span>
           </h2>
-          <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
-            <li style={{ ...s.li, color: 'var(--muted)' }}>"Delete the invoice todo"</li>
-            <li style={{ ...s.li, color: 'var(--muted)' }}>"Remove all done items from [project]"</li>
+          <ul className="help-ul">
+            <li className="help-li text-muted">"Delete the invoice todo"</li>
+            <li className="help-li text-muted">"Remove all done items from [project]"</li>
           </ul>
         </div>
 
-        <div style={s.section}>
-          <h2 style={s.h2}>
+        <div className="help-section">
+          <h2 className="help-h2">
             Archive{' '}
-            <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 400, color: 'var(--muted)', letterSpacing: '0.04em' }}>coming soon</span>
+            <span className="text-xs text-muted" style={{ fontWeight: 400, letterSpacing: '0.04em' }}>coming soon</span>
           </h2>
-          <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
-            <li style={{ ...s.li, color: 'var(--muted)' }}>"Archive everything closed in [project]"</li>
-            <li style={{ ...s.li, color: 'var(--muted)' }}>"Archive [project]-8"</li>
+          <ul className="help-ul">
+            <li className="help-li text-muted">"Archive everything closed in [project]"</li>
+            <li className="help-li text-muted">"Archive [project]-8"</li>
           </ul>
         </div>
 
-        <div style={s.section}>
-          <h2 style={s.h2}>List</h2>
-          <p style={{ ...s.p, margin: 0 }}>Tap or click the orb to open the full todo list for the selected project.</p>
+        <div className="help-section">
+          <h2 className="help-h2">List</h2>
+          <p className="help-p" style={{ margin: 0 }}>Tap or click the orb to open the full todo list for the selected project.</p>
         </div>
 
-        <div style={s.section}>
-          <h2 style={s.h2}>Navigation</h2>
-          <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
-            <li style={s.li}>"Switch to [project]" or <span style={s.mono}>/switch [project]</span></li>
-            <li style={s.li}>"Open settings" or <span style={s.mono}>/settings</span></li>
-            <li style={s.li}>Edit current project: <span style={s.mono}>/edit</span></li>
-            <li style={s.li}>Edit a specific project: <span style={s.mono}>/edit [project]</span></li>
+        <div className="help-section">
+          <h2 className="help-h2">Navigation</h2>
+          <ul className="help-ul">
+            <li className="help-li">"Switch to [project]" or <span className="help-mono">/switch [project]</span></li>
+            <li className="help-li">"Open settings" or <span className="help-mono">/settings</span></li>
+            <li className="help-li">Edit current project: <span className="help-mono">/edit</span></li>
+            <li className="help-li">Edit a specific project: <span className="help-mono">/edit [project]</span></li>
           </ul>
-          <p style={{ ...s.p, marginTop: '10px', marginBottom: 0, fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>
-            Type <span style={s.mono}>/</span> in the input field to see all available commands.
+          <p className="help-p text-sm text-muted" style={{ marginTop: '10px', marginBottom: 0 }}>
+            Type <span className="help-mono">/</span> in the input field to see all available commands.
           </p>
         </div>
 
 
-        <div style={s.section}>
-          <h2 style={s.h2}>Ask anything</h2>
-          <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
-            <li style={s.li}>"How do I use the keyboard?"</li>
-            <li style={s.li}>"What does URGENT mean?"</li>
-            <li style={s.li}>"What projects do I have?"</li>
+        <div className="help-section">
+          <h2 className="help-h2">Ask anything</h2>
+          <ul className="help-ul">
+            <li className="help-li">"How do I use the keyboard?"</li>
+            <li className="help-li">"What does URGENT mean?"</li>
+            <li className="help-li">"What projects do I have?"</li>
           </ul>
         </div>
       </div>
@@ -167,7 +104,7 @@ const TOPICS: Topic[] = [
     icon: '⌨',
     content: (
       <div>
-        <p style={s.p}>Full keyboard navigation is supported throughout the app.</p>
+        <p className="help-p">Full keyboard navigation is supported throughout the app.</p>
 
         <div style={{ borderTop: '1px solid var(--border)' }}>
           {([
@@ -177,14 +114,14 @@ const TOPICS: Topic[] = [
             ['?', 'Open this help page'],
             ['Escape', 'Close any open panel or overlay'],
           ] as [string, string][]).map(([key, desc]) => (
-            <div key={key} style={s.keyRow}>
-              <span style={s.keyCell}>{key}</span>
-              <span style={s.descCell}>{desc}</span>
+            <div key={key} className="help-key-row">
+              <span className="help-key-cell">{key}</span>
+              <span className="help-desc-cell">{desc}</span>
             </div>
           ))}
         </div>
 
-        <p style={{ ...s.p, marginTop: '20px', fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>
+        <p className="help-p text-sm text-muted" style={{ marginTop: '20px' }}>
           You can also ask the orb: "How do I use the keyboard?" and it will explain.
         </p>
       </div>
@@ -196,37 +133,37 @@ const TOPICS: Topic[] = [
     icon: '●',
     content: (
       <div>
-        <p style={s.p}>The orb reflects your current workload for the selected project.</p>
+        <p className="help-p">The orb reflects your current workload for the selected project.</p>
 
-        <div style={s.section}>
-          <h2 style={s.h2}>States</h2>
+        <div className="help-section">
+          <h2 className="help-h2">States</h2>
           <div style={{ borderTop: '1px solid var(--border)' }}>
             {([
               ['CALM', 'All open items are low priority or the backlog is light'],
               ['ACTIVE', 'More than 5 open items'],
               ['URGENT', 'One or more P1 (urgent priority) items are open'],
             ] as [string, string][]).map(([state, desc]) => (
-              <div key={state} style={s.keyRow}>
-                <span style={{ ...s.keyCell, fontFamily: 'var(--font-ui)', letterSpacing: '0.06em' }}>{state}</span>
-                <span style={s.descCell}>{desc}</span>
+              <div key={state} className="help-key-row">
+                <span className="help-key-cell" style={{ fontFamily: 'var(--font-ui)', letterSpacing: '0.06em' }}>{state}</span>
+                <span className="help-desc-cell">{desc}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div style={s.section}>
-          <h2 style={s.h2}>Signals</h2>
-          <p style={s.p}>
-            Urgency is communicated through multiple signals simultaneously — color, glow size, animation speed, and solar flares in urgent mode. Any one signal can be removed (or disabled via <span style={s.mono}>prefers-reduced-motion</span>) without losing the information.
+        <div className="help-section">
+          <h2 className="help-h2">Signals</h2>
+          <p className="help-p">
+            Urgency is communicated through multiple signals simultaneously — color, glow size, animation speed, and solar flares in urgent mode. Any one signal can be removed (or disabled via <span className="help-mono">prefers-reduced-motion</span>) without losing the information.
           </p>
         </div>
 
-        <div style={s.section}>
-          <h2 style={s.h2}>Navigation</h2>
-          <ul style={{ padding: '0 0 0 20px', margin: 0 }}>
-            <li style={s.li}>The number in the center is your open todo count for the selected project.</li>
-            <li style={s.li}>Tap or click the orb to open the full todo list.</li>
-            <li style={s.li}>The project pills at the bottom switch which backlog you are viewing.</li>
+        <div className="help-section">
+          <h2 className="help-h2">Navigation</h2>
+          <ul className="help-ul">
+            <li className="help-li">The number in the center is your open todo count for the selected project.</li>
+            <li className="help-li">Tap or click the orb to open the full todo list.</li>
+            <li className="help-li">The project pills at the bottom switch which backlog you are viewing.</li>
           </ul>
         </div>
       </div>
@@ -238,16 +175,16 @@ const TOPICS: Topic[] = [
     icon: '◌',
     content: (
       <div>
-        <p style={s.p}>
+        <p className="help-p">
           Orb is a personal project issue tracker built around a single idea: your work should have a presence, not just a list.
         </p>
-        <p style={s.p}>
+        <p className="help-p">
           Most todo apps put you in charge of the list. Orb puts the orb in charge of your attention. The orb reads your open work across all your projects and reflects it back — calm when things are light, active when the backlog builds, urgent when something needs your attention now. Color, motion, glow, and animation all carry the same signal independently, so nothing gets lost.
         </p>
-        <p style={s.p}>
+        <p className="help-p">
           The orb is also conversational. Type plain English and it handles the rest — create a todo, ask what's most pressing, update a priority, mark something done. You don't navigate menus or fill out forms. You just talk to it.
         </p>
-        <p style={{ ...s.p, marginBottom: 0 }}>
+        <p className="help-p" style={{ marginBottom: 0 }}>
           Under the hood, the orb is powered by AI. It understands context and intent, not just keywords. "What's the most important thing right now?" reasons over your full backlog across all projects to answer.
         </p>
       </div>
@@ -274,91 +211,26 @@ export default function OrbHelp({ onClose }: { onClose: () => void }) {
   const selected = TOPICS.find(t => t.id === selectedId)
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Help"
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 60,
-        background: 'var(--bg)',
-        display: 'flex',
-        fontFamily: 'var(--font-ui)',
-        WebkitFontSmoothing: 'antialiased',
-      }}
-    >
+    <div role="dialog" aria-modal="true" aria-label="Help" className="panel-overlay">
       {/* Full-width top bar */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        height: '52px',
-        background: 'var(--bg2)',
-        borderBottom: '1px solid var(--border)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--sp-md)',
-        padding: '0 var(--sp-2xl)',
-        zIndex: 1,
-      }}>
-        <button
-          onClick={onClose}
-          autoFocus
-          style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--muted)',
-            cursor: 'pointer',
-            padding: '6px 0',
-            fontSize: 'var(--fs-sm)',
-            fontFamily: 'var(--font-ui)',
-            whiteSpace: 'nowrap',
-          }}
-          aria-label="Close help"
-        >
+      <div className="panel-topbar">
+        <button onClick={onClose} autoFocus className="panel-back" aria-label="Close help">
           ← back
         </button>
-        <span style={{ flex: 1, textAlign: 'center', fontSize: 'var(--fs-sm)', fontWeight: 500, color: 'var(--text2)' }}>
-          Help
-        </span>
+        <span className="panel-title">Help</span>
       </div>
 
       {/* Sidebar + content below the top bar */}
-      <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flex: 1, marginTop: '52px', overflow: 'hidden' }}>
+      <div className="panel-body" style={{ flexDirection: isMobile ? 'column' : 'row' }}>
 
         {isMobile ? (
-          <nav style={{
-            display: 'flex',
-            gap: '8px',
-            padding: '10px var(--sp-lg)',
-            overflowX: 'auto',
-            flexShrink: 0,
-            borderBottom: '1px solid var(--border)',
-            background: 'var(--bg2)',
-            WebkitOverflowScrolling: 'touch',
-          }}>
+          <nav className="help-mobile-nav">
             {TOPICS.map(t => (
               <button
                 key={t.id}
                 onClick={() => setSelectedId(t.id)}
                 aria-current={selectedId === t.id ? 'page' : undefined}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 14px',
-                  background: selectedId === t.id ? 'var(--pill-active-bg)' : 'transparent',
-                  border: `1.5px solid ${selectedId === t.id ? 'var(--pill-active-color)' : 'var(--border)'}`,
-                  borderRadius: '20px',
-                  color: selectedId === t.id ? 'var(--pill-active-color)' : 'var(--text2)',
-                  fontSize: 'var(--fs-sm)',
-                  fontFamily: 'var(--font-ui)',
-                  whiteSpace: 'nowrap',
-                  cursor: 'pointer',
-                  flexShrink: 0,
-                }}
+                className="help-mobile-pill"
               >
                 <span style={{ fontSize: '13px', opacity: 0.7 }}>{t.icon}</span>
                 {t.label}
@@ -373,18 +245,9 @@ export default function OrbHelp({ onClose }: { onClose: () => void }) {
 
       {/* Content area */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        {/* Topic content */}
         {selected && (
           <div style={{ padding: isMobile ? 'var(--sp-xl) var(--sp-lg)' : 'var(--sp-3xl) var(--sp-2xl)', maxWidth: '620px' }}>
-            <h1 style={{
-              fontSize: 'var(--fs-xl)',
-              fontWeight: 600,
-              color: 'var(--text)',
-              margin: '0 0 var(--sp-2xl)',
-              lineHeight: 1.2,
-            }}>
-              {selected.label}
-            </h1>
+            <h1 className="help-h1">{selected.label}</h1>
             {selected.content}
           </div>
         )}

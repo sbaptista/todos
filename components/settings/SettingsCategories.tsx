@@ -11,73 +11,6 @@ type CatForm = { name: string; product_id: string; sort_order: string }
 
 const EMPTY_FORM: CatForm = { name: '', product_id: '', sort_order: '0' }
 
-const inputStyle: React.CSSProperties = {
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--r)',
-  padding: '10px var(--sp-md)',
-  fontSize: 'var(--fs-input)',
-  background: 'var(--bg)',
-  color: 'var(--text)',
-  outline: 'none',
-  boxSizing: 'border-box',
-  width: '100%',
-  transition: 'border-color var(--transition)',
-}
-
-const selectStyle: React.CSSProperties = {
-  ...inputStyle,
-  cursor: 'pointer',
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 'var(--fs-xs)',
-  fontWeight: 'var(--fw-medium)',
-  color: 'var(--text3)',
-  marginBottom: 'var(--sp-xs)',
-}
-
-const primaryBtnStyle = (disabled: boolean): React.CSSProperties => ({
-  background: 'var(--success)',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 'var(--r)',
-  padding: '8px var(--sp-lg)',
-  fontSize: 'var(--fs-sm)',
-  fontWeight: 'var(--fw-medium)',
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  opacity: disabled ? 0.6 : 1,
-})
-
-const cancelBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  fontSize: 'var(--fs-sm)',
-  color: 'var(--muted)',
-  cursor: 'pointer',
-  padding: '8px var(--sp-md)',
-}
-
-const rowActionBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  fontSize: 'var(--fs-xs)',
-  color: 'var(--muted)',
-  cursor: 'pointer',
-  padding: '4px var(--sp-sm)',
-  flexShrink: 0,
-}
-
-const dangerConfirmBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  fontSize: 'var(--fs-sm)',
-  color: 'var(--error)',
-  fontWeight: 'var(--fw-medium)',
-  cursor: 'pointer',
-  padding: '8px var(--sp-md)',
-}
-
 export default function SettingsCategories() {
   const supabase = useMemo(() => createClient(), [])
   const toast = useToast()
@@ -200,58 +133,48 @@ export default function SettingsCategories() {
     submitLabel: string
   }) {
     return (
-      <div style={{
-        background: 'var(--bg)',
-        borderBottom: '1px solid var(--border)',
-        padding: 'var(--sp-lg) var(--sp-xl)',
-      }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-md)', marginBottom: 'var(--sp-md)' }}>
+      <div className="s-form">
+        <div className="grid-2col mb-md">
           <div>
-            <label style={labelStyle}>Name *</label>
+            <label className="label">Name *</label>
             <input
-              style={inputStyle}
+              className="input"
               value={form.name}
               onChange={e => onChange({ ...form, name: e.target.value })}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
               autoFocus
               placeholder="Category name"
             />
           </div>
           <div>
-            <label style={labelStyle}>Sort Order</label>
+            <label className="label">Sort Order</label>
             <input
               type="number"
-              style={inputStyle}
+              className="input"
               value={form.sort_order}
               onChange={e => onChange({ ...form, sort_order: e.target.value })}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
           </div>
         </div>
-        <div style={{ marginBottom: 'var(--sp-md)' }}>
-          <label style={labelStyle}>Product</label>
+        <div className="mb-md">
+          <label className="label">Product</label>
           <select
-            style={selectStyle}
+            className="select"
             value={form.product_id}
             onChange={e => onChange({ ...form, product_id: e.target.value })}
-            onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-            onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
           >
             <option value="">Global</option>
             {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
-        <div style={{ display: 'flex', gap: 'var(--sp-sm)' }}>
+        <div className="flex-row gap-sm">
           <button
+            className="btn-primary"
             onClick={onSubmit}
             disabled={saving}
-            style={primaryBtnStyle(saving)}
           >
             {saving ? 'Saving…' : submitLabel}
           </button>
-          <button onClick={onCancel} style={cancelBtnStyle}>
+          <button className="btn-cancel" onClick={onCancel}>
             Cancel
           </button>
         </div>
@@ -259,104 +182,40 @@ export default function SettingsCategories() {
     )
   }
 
-  if (loading) return (
-    <div style={{ padding: 'var(--sp-3xl)', fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>
-      Loading…
-    </div>
-  )
+  if (loading) return <div className="s-loading">Loading…</div>
 
   return (
-    <div style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-xl)' }}>
-        <h2 style={{
-          fontSize: 'var(--fs-lg)',
-          fontWeight: 'var(--fw-bold)',
-          color: 'var(--text)',
-          margin: 0,
-        }}>
-          Categories
-        </h2>
+    <div className="s-page">
+      <div className="s-header">
+        <h2 className="s-title">Categories</h2>
         {!showAdd && (
-          <button
-            onClick={startAdd}
-            style={{
-              background: 'none',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--r)',
-              padding: '7px var(--sp-md)',
-              fontSize: 'var(--fs-sm)',
-              color: 'var(--text2)',
-              cursor: 'pointer',
-            }}
-          >
+          <button className="btn-outline" onClick={startAdd}>
             + Add Category
           </button>
         )}
       </div>
 
-      {/* Product scope selector */}
-      <div style={{ display: 'flex', gap: 'var(--sp-sm)', marginBottom: 'var(--sp-xl)', flexWrap: 'wrap' }}>
+      <div className="flex-row gap-sm mb-xl" style={{ flexWrap: 'wrap' }}>
         <button
+          className={`pill ${scope === '' ? 'pill-active' : ''}`}
           onClick={() => setScope('')}
-          style={{
-            fontSize: 'var(--fs-sm)',
-            padding: '6px 14px',
-            borderRadius: '20px',
-            cursor: 'pointer',
-            ...(scope === ''
-              ? {
-                  background: 'var(--pill-active-bg)',
-                  border: '1px solid var(--pill-active-border)',
-                  color: 'var(--pill-active-color)',
-                }
-              : {
-                  border: '1px solid var(--border)',
-                  color: 'var(--text3)',
-                  background: 'transparent',
-                }),
-          }}
         >
           Global
         </button>
         {products.map(p => (
           <button
             key={p.id}
+            className={`pill ${scope === p.id ? 'pill-active' : ''}`}
             onClick={() => setScope(p.id)}
-            style={{
-              fontSize: 'var(--fs-sm)',
-              padding: '6px 14px',
-              borderRadius: '20px',
-              cursor: 'pointer',
-              ...(scope === p.id
-                ? {
-                    background: 'var(--pill-active-bg)',
-                    border: '1px solid var(--pill-active-border)',
-                    color: 'var(--pill-active-color)',
-                  }
-                : {
-                    border: '1px solid var(--border)',
-                    color: 'var(--text3)',
-                    background: 'transparent',
-                  }),
-            }}
           >
             {p.name}
           </button>
         ))}
       </div>
 
-      {error && (
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--error)', margin: '0 0 var(--sp-md)' }}>
-          {error}
-        </p>
-      )}
+      {error && <p className="s-error">{error}</p>}
 
-      <div style={{
-        background: 'var(--bg2)',
-        borderRadius: 'var(--r-lg)',
-        border: '1px solid var(--border)',
-        overflow: 'hidden',
-      }}>
+      <div className="s-list">
         {showAdd && (
           <CatFormComp
             form={addForm}
@@ -368,9 +227,7 @@ export default function SettingsCategories() {
         )}
 
         {displayed.length === 0 && !showAdd ? (
-          <p style={{ padding: 'var(--sp-3xl)', textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>
-            No categories in this scope.
-          </p>
+          <p className="s-empty">No categories in this scope.</p>
         ) : (
           displayed.map(c =>
             editingId === c.id ? (
@@ -383,18 +240,11 @@ export default function SettingsCategories() {
                 submitLabel="Save"
               />
             ) : confirmDeleteId === c.id ? (
-              <div key={c.id} style={{
-                background: 'rgba(139, 32, 32, 0.05)',
-                padding: '10px var(--sp-xl)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--sp-md)',
-                borderBottom: '1px solid var(--border)',
-              }}>
-                <span style={{ fontSize: 'var(--fs-sm)', flex: 1 }}>
+              <div key={c.id} className="s-row-delete">
+                <span className="text-sm flex-1">
                   Delete <strong>{c.name}</strong>?
                   {(todoCounts[c.id] ?? 0) > 0 && (
-                    <span style={{ color: 'var(--muted)', marginLeft: 'var(--sp-xs)' }}>
+                    <span className="text-muted" style={{ marginLeft: 'var(--sp-xs)' }}>
                       Cannot delete — {todoCounts[c.id]} todo{todoCounts[c.id] !== 1 ? 's' : ''} use this category.
                     </span>
                   )}
@@ -402,59 +252,38 @@ export default function SettingsCategories() {
                 {(todoCounts[c.id] ?? 0) === 0 ? (
                   <>
                     <button
+                      className="btn-danger-confirm"
                       onClick={() => handleDelete(c.id)}
                       disabled={saving}
-                      style={{ ...dangerConfirmBtnStyle, opacity: saving ? 0.6 : 1 }}
+                      style={{ opacity: saving ? 0.6 : 1 }}
                     >
                       Confirm
                     </button>
-                    <button
-                      onClick={() => setConfirmDeleteId(null)}
-                      style={cancelBtnStyle}
-                    >
+                    <button className="btn-cancel" onClick={() => setConfirmDeleteId(null)}>
                       Cancel
                     </button>
                   </>
                 ) : (
-                  <button
-                    onClick={() => setConfirmDeleteId(null)}
-                    style={cancelBtnStyle}
-                  >
+                  <button className="btn-cancel" onClick={() => setConfirmDeleteId(null)}>
                     OK
                   </button>
                 )}
               </div>
             ) : (
-              <div
-                key={c.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--sp-md)',
-                  padding: '10px var(--sp-xl)',
-                  borderBottom: '1px solid var(--border)',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
-                onMouseLeave={e => (e.currentTarget.style.background = '')}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text)' }}>{c.name}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: 'var(--fs-xs)', color: 'var(--muted)' }}>sort: {c.sort_order}</p>
+              <div key={c.id} className="s-row">
+                <div className="s-row-info">
+                  <p style={{ margin: 0 }} className="text-sm">{c.name}</p>
+                  <p style={{ margin: '2px 0 0' }} className="text-xs text-muted">sort: {c.sort_order}</p>
                 </div>
-                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', flexShrink: 0 }}>
+                <span className="s-row-meta">
                   {todoCounts[c.id] ?? 0} todos
                 </span>
-                <button
-                  onClick={() => startEdit(c)}
-                  style={rowActionBtnStyle}
-                >
+                <button className="btn-row-action" onClick={() => startEdit(c)}>
                   Edit
                 </button>
                 <button
+                  className="btn-row-action btn-row-delete"
                   onClick={() => { setConfirmDeleteId(c.id); setEditingId(null) }}
-                  style={rowActionBtnStyle}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--error)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
                 >
                   Delete
                 </button>

@@ -6,27 +6,6 @@ import { createProject, updateProject, deleteProject } from '@/app/actions/manag
 
 type Project = { id: string; name: string; code: string | null; description: string | null; created_by: string }
 
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  border: '1px solid var(--border)',
-  borderRadius: 'var(--r)',
-  padding: '10px var(--sp-md)',
-  fontSize: 'var(--fs-input)',
-  background: 'var(--bg)',
-  color: 'var(--text)',
-  outline: 'none',
-  boxSizing: 'border-box',
-  transition: 'border-color var(--transition)',
-}
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 'var(--fs-xs)',
-  fontWeight: 'var(--fw-medium)',
-  color: 'var(--text3)',
-  marginBottom: 'var(--sp-xs)',
-}
-
 export default function AddProductModal({
   onClose,
   onCreated,
@@ -107,149 +86,84 @@ export default function AddProductModal({
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(42, 51, 42, 0.3)' }}
-        onClick={onClose}
-      />
+      <div className="modal-backdrop" onClick={onClose} />
 
-      {/* Modal */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="apm-title"
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 50,
-          width: '100%',
-          maxWidth: '400px',
-          background: 'var(--bg2)',
-          borderRadius: 'var(--r-xl)',
-          border: '1px solid var(--border)',
-          boxShadow: 'var(--shadow-lg)',
-          padding: 'var(--sp-2xl)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-xl)' }}>
-          <h2 id="apm-title" style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-bold)', color: 'var(--text)', margin: 0 }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="apm-title" className="apm-modal">
+        <div className="apm-title-row">
+          <h2 id="apm-title" className="apm-title">
             {isEdit ? 'Edit project' : 'New project'}
           </h2>
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '4px', lineHeight: 1 }}
-            aria-label="Close"
-          >
+          <button onClick={onClose} className="close-btn" aria-label="Close">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-lg)' }}>
+        <form onSubmit={handleSubmit} className="apm-form">
           <div>
-            <label htmlFor="apm-name" style={labelStyle}>Name *</label>
+            <label htmlFor="apm-name" className="pf-label" style={{ marginBottom: 'var(--sp-xs)' }}>Name *</label>
             <input
               id="apm-name"
-              style={inputStyle}
+              className="pf-input"
               value={name}
               onChange={e => handleNameChange(e.target.value)}
               placeholder="My project"
               autoFocus
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
           </div>
 
           <div>
-            <label htmlFor="apm-code" style={labelStyle}>Code</label>
+            <label htmlFor="apm-code" className="pf-label" style={{ marginBottom: 'var(--sp-xs)' }}>Code</label>
             <input
               id="apm-code"
-              style={{ ...inputStyle, fontFamily: 'monospace' }}
+              className="pf-input"
+              style={{ fontFamily: 'monospace' }}
               value={code}
               onChange={e => handleCodeChange(e.target.value)}
               placeholder="PROJ"
               maxLength={6}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
           </div>
 
           <div>
-            <label htmlFor="apm-desc" style={labelStyle}>Description</label>
+            <label htmlFor="apm-desc" className="pf-label" style={{ marginBottom: 'var(--sp-xs)' }}>Description</label>
             <textarea
               id="apm-desc"
               rows={3}
-              style={{ ...inputStyle, resize: 'none', lineHeight: 1.5 }}
+              className="pf-textarea"
+              style={{ resize: 'none' }}
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="What this project is about"
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
           </div>
 
-          {error && (
-            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--error)', margin: 0 }}>{error}</p>
-          )}
+          {error && <p className="text-sm text-error" style={{ margin: 0 }}>{error}</p>}
 
-          <div style={{ display: 'flex', gap: 'var(--sp-md)', alignItems: 'center', marginTop: 'var(--sp-xs)' }}>
+          <div className="apm-footer">
             {isEdit && !confirmDelete && (
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(true)}
-                style={{ background: 'none', border: 'none', fontSize: 'var(--fs-sm)', color: 'var(--error)', cursor: 'pointer', padding: '8px 0', marginRight: 'auto' }}
-              >
+              <button type="button" onClick={() => setConfirmDelete(true)} className="apm-delete-btn">
                 Delete
               </button>
             )}
             {isEdit && confirmDelete && (
               <>
-                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text3)', marginRight: 'auto' }}>Sure?</span>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={saving}
-                  style={{ background: 'none', border: 'none', fontSize: 'var(--fs-sm)', color: 'var(--error)', fontWeight: 'var(--fw-medium)', cursor: 'pointer', padding: '8px var(--sp-sm)' }}
-                >
+                <span className="text-sm" style={{ color: 'var(--text3)', marginRight: 'auto' }}>Sure?</span>
+                <button type="button" onClick={handleDelete} disabled={saving} className="text-btn text-error" style={{ fontWeight: 'var(--fw-medium)' }}>
                   {saving ? 'Deleting…' : 'Yes, delete'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmDelete(false)}
-                  style={{ background: 'none', border: 'none', fontSize: 'var(--fs-sm)', color: 'var(--text3)', cursor: 'pointer', padding: '8px var(--sp-sm)' }}
-                >
+                <button type="button" onClick={() => setConfirmDelete(false)} className="text-btn">
                   Cancel
                 </button>
               </>
             )}
             {!confirmDelete && (
               <>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  style={{ background: 'none', border: 'none', fontSize: 'var(--fs-sm)', color: 'var(--text3)', cursor: 'pointer', padding: '8px var(--sp-md)', marginLeft: isEdit ? 0 : 'auto' }}
-                >
+                <button type="button" onClick={onClose} className="text-btn" style={{ marginLeft: isEdit ? 0 : 'auto' }}>
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  style={{
-                    background: 'var(--success)',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 'var(--r)',
-                    padding: '8px var(--sp-xl)',
-                    fontSize: 'var(--fs-sm)',
-                    fontWeight: 'var(--fw-medium)',
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                    opacity: saving ? 0.6 : 1,
-                    transition: 'opacity var(--transition)',
-                  }}
-                >
+                <button type="submit" disabled={saving} className="apm-submit">
                   {saving ? (isEdit ? 'Saving…' : 'Creating…') : (isEdit ? 'Save' : 'Create')}
                 </button>
               </>

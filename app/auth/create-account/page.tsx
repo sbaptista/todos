@@ -42,37 +42,50 @@ export default function CreateAccountPage() {
   }
 
   return (
-    <main style={{ maxWidth: 400, margin: '100px auto', padding: '0 24px' }}>
-      <h1>Create your account</h1>
-      <p>Just a couple more details to get started.</p>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: 16 }}>
-          <label htmlFor="firstName">First name</label><br />
-          <input
-            id="firstName"
-            type="text"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            required
-            style={{ width: '100%', padding: '8px', marginTop: 4, boxSizing: 'border-box' }}
-          />
+    <div className="auth-page">
+      <div className="auth-wrap" style={{ maxWidth: '400px' }}>
+        <div className="auth-card">
+          <div className="auth-header">
+            <h1 className="auth-title">Create your account</h1>
+            <p className="auth-subtitle">Just a couple more details to get started.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="auth-field">
+              <label htmlFor="firstName" className="auth-label">First name</label>
+              <input
+                id="firstName"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+                className="auth-input"
+              />
+            </div>
+            <div className="auth-field">
+              <label htmlFor="lastName" className="auth-label">Last name</label>
+              <input
+                id="lastName"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+                className="auth-input"
+              />
+            </div>
+
+            <button type="submit" disabled={loading} className="auth-submit">
+              {loading ? 'Saving…' : 'Continue'}
+            </button>
+          </form>
+
+          {error && (
+            <div className="auth-error">
+              <p className="text-sm text-error" style={{ margin: 0 }}>{error}</p>
+            </div>
+          )}
         </div>
-        <div style={{ marginBottom: 16 }}>
-          <label htmlFor="lastName">Last name</label><br />
-          <input
-            id="lastName"
-            type="text"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            required
-            style={{ width: '100%', padding: '8px', marginTop: 4, boxSizing: 'border-box' }}
-          />
-        </div>
-        <button type="submit" disabled={loading} style={{ padding: '8px 16px' }}>
-          {loading ? 'Saving…' : 'Continue'}
-        </button>
-      </form>
-      {error && <p style={{ color: 'red', marginTop: 16 }}>{error}</p>}
-    </main>
+      </div>
+    </div>
   )
 }

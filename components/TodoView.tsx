@@ -217,121 +217,27 @@ export default function TodoView({ productId }: { productId: string }) {
 
   const currentProduct = products.find(p => p.id === productId)
 
-  // ── Styles ────────────────────────────────────────────────────────────────
-
-  const s = {
-    page: {
-      minHeight: '100vh',
-      background: 'var(--bg)',
-      fontFamily: 'var(--font-ui)',
-      WebkitFontSmoothing: 'antialiased' as const,
-    } as React.CSSProperties,
-
-    topBar: {
-      position: 'sticky' as const,
-      top: 0,
-      zIndex: 10,
-      background: 'var(--bg2)',
-      borderBottom: '1px solid var(--border)',
-      padding: '0 var(--sp-2xl)',
-      height: '52px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 'var(--sp-md)',
-    } as React.CSSProperties,
-
-    filterBar: {
-      background: 'var(--bg2)',
-      borderBottom: '1px solid var(--border)',
-      padding: 'var(--sp-md) var(--sp-2xl)',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 'var(--sp-sm)',
-      flexWrap: 'wrap' as const,
-    } as React.CSSProperties,
-
-    select: {
-      fontFamily: 'var(--font-ui)',
-      fontSize: 'var(--fs-sm)',
-      background: 'var(--bg)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--r)',
-      padding: '6px 10px',
-      color: 'var(--text2)',
-      outline: 'none',
-      cursor: 'pointer',
-      WebkitAppearance: 'none' as const,
-      appearance: 'none' as const,
-    } as React.CSSProperties,
-
-    listWrap: {
-      maxWidth: 'var(--content-max)',
-      margin: '0 auto',
-      padding: 'var(--sp-xl) var(--sp-2xl)',
-    } as React.CSSProperties,
-
-    listCard: {
-      background: 'var(--bg2)',
-      borderRadius: 'var(--r-lg)',
-      border: '1px solid var(--border)',
-      overflow: 'hidden',
-    } as React.CSSProperties,
-  }
-
   return (
-    <div id="main-content" style={s.page}>
+    <div id="main-content" className="tv-page">
 
       {/* Top bar */}
-      <div style={s.topBar}>
-        <Link href="/dashboard" style={{
-          fontSize: 'var(--fs-sm)',
-          color: 'var(--muted)',
-          textDecoration: 'none',
-          whiteSpace: 'nowrap',
-        }}>
+      <div className="tv-topbar">
+        <Link href="/dashboard" className="tv-back">
           ← Back
         </Link>
 
         {!isAll && currentProduct && (
-          <span style={{
-            fontSize: 'var(--fs-sm)',
-            fontWeight: 500,
-            color: 'var(--text2)',
-            flex: 1,
-            textAlign: 'center',
-          }}>
-            {currentProduct.name}
-          </span>
+          <span className="tv-title">{currentProduct.name}</span>
         )}
         {isAll && (
-          <span style={{
-            fontSize: 'var(--fs-sm)',
-            fontWeight: 500,
-            color: 'var(--text2)',
-            flex: 1,
-            textAlign: 'center',
-          }}>
-            All Products
-          </span>
+          <span className="tv-title">All Products</span>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-sm)' }}>
+        <div className="tv-toolbar">
           {/* Sort toggle: asc ↔ desc by todo number */}
           <button
+            className="tv-toolbar-btn"
             onClick={() => setSortAsc(v => !v)}
-            style={{
-              background: 'transparent',
-              border: `1px solid var(--border)`,
-              borderRadius: 'var(--r)',
-              padding: '5px 10px',
-              fontSize: 'var(--fs-sm)',
-              color: 'var(--muted)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-              fontFamily: 'var(--font-ui)',
-            }}
             aria-label={sortAsc ? 'Sort newest first' : 'Sort oldest first'}
             title={sortAsc ? 'Oldest first' : 'Newest first'}
           >
@@ -346,49 +252,20 @@ export default function TodoView({ productId }: { productId: string }) {
 
           {/* Filter toggle */}
           <button
+            className="tv-toolbar-btn"
+            aria-pressed={showFilters}
             onClick={() => setShowFilters(f => !f)}
-            style={{
-              position: 'relative',
-              background: showFilters ? 'var(--pill-active-bg)' : 'transparent',
-              border: `1px solid ${showFilters ? 'var(--pill-active-border)' : 'var(--border)'}`,
-              borderRadius: 'var(--r)',
-              padding: '5px 10px',
-              fontSize: 'var(--fs-sm)',
-              color: showFilters ? 'var(--pill-active-color)' : 'var(--muted)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '5px',
-            }}
             aria-label="Toggle filters"
           >
             Filter
-            <span style={{
-              background: 'var(--pill-active-color)',
-              color: 'var(--bg2)',
-              borderRadius: '10px',
-              fontSize: '10px',
-              fontWeight: 700,
-              padding: '1px 5px',
-              lineHeight: 1.4,
-            }}>
-              {filtered.length}
-            </span>
+            <span className="tv-badge">{filtered.length}</span>
           </button>
 
           {/* Configure — product only */}
           {!isAll && currentProduct && (
             <button
+              className="tv-icon-btn"
               onClick={() => setShowProductConfig(true)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--muted)',
-                cursor: 'pointer',
-                padding: '4px',
-                display: 'flex',
-                alignItems: 'center',
-              }}
               aria-label="Configure project"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -404,35 +281,17 @@ export default function TodoView({ productId }: { productId: string }) {
 
           {/* Select mode toggle */}
           <button
+            className="tv-toolbar-btn"
+            aria-pressed={selectMode}
             onClick={toggleSelectMode}
-            style={{
-              background: selectMode ? 'var(--pill-active-bg)' : 'transparent',
-              border: `1px solid ${selectMode ? 'var(--pill-active-border)' : 'var(--border)'}`,
-              borderRadius: 'var(--r)',
-              padding: '5px 10px',
-              fontSize: 'var(--fs-sm)',
-              color: selectMode ? 'var(--pill-active-color)' : 'var(--muted)',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-ui)',
-            }}
           >
             Select
           </button>
 
           {/* New todo */}
           <button
+            className="tv-toolbar-primary"
             onClick={() => setShowNewTodo(true)}
-            style={{
-              background: 'var(--pill-active-bg)',
-              border: '1px solid var(--pill-active-border)',
-              borderRadius: 'var(--r)',
-              padding: '5px 14px',
-              fontSize: 'var(--fs-sm)',
-              fontWeight: 500,
-              color: 'var(--pill-active-color)',
-              cursor: 'pointer',
-              fontFamily: 'var(--font-ui)',
-            }}
           >
             + New
           </button>
@@ -441,11 +300,11 @@ export default function TodoView({ productId }: { productId: string }) {
 
       {/* Filter bar — collapsed by default */}
       {showFilters && (
-        <div style={s.filterBar}>
+        <div className="tv-filterbar">
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value)}
-            style={s.select}
+            className="tv-select"
             aria-label="Filter by status"
           >
             <option value="active">Active only</option>
@@ -459,31 +318,31 @@ export default function TodoView({ productId }: { productId: string }) {
           <select
             value={filterPriority}
             onChange={e => setFilterPriority(e.target.value)}
-            style={s.select}
+            className="tv-select"
             aria-label="Filter by priority"
           >
             <option value="all">All priorities</option>
             {priorities.map(p => <option key={p.value} value={String(p.value)}>{p.label}</option>)}
           </select>
 
-          <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-xs)', color: 'var(--muted)' }}>
+          <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>
             {filtered.length} todo{filtered.length !== 1 ? 's' : ''}
           </span>
         </div>
       )}
 
       {/* List */}
-      <div style={s.listWrap}>
+      <div className="tv-list-wrap">
         {loading ? (
-          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--muted)', textAlign: 'center', padding: 'var(--sp-3xl) 0' }}>
+          <p className="text-sm text-muted" style={{ textAlign: 'center', padding: 'var(--sp-3xl) 0' }}>
             Loading…
           </p>
         ) : filtered.length === 0 ? (
-          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--muted)', textAlign: 'center', padding: 'var(--sp-3xl) 0' }}>
+          <p className="text-sm text-muted" style={{ textAlign: 'center', padding: 'var(--sp-3xl) 0' }}>
             {filterStatus === 'active' ? 'Nothing open — you\'re clear.' : 'No todos found.'}
           </p>
         ) : (
-          <div style={s.listCard}>
+          <div className="tv-list-card">
             {filtered.map((todo, i) => {
               const isHovered   = hoveredId === todo.id
               const isSelected  = selectedTodo?.id === todo.id
@@ -506,34 +365,19 @@ export default function TodoView({ productId }: { productId: string }) {
                     if (e.key === 'Enter' || e.key === ' ')
                       selectMode ? toggleId(todo.id) : setSelectedTodo(todo)
                   }}
+                  className="tv-row"
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--sp-md)',
-                    padding: 'var(--sp-md) var(--sp-lg)',
                     borderTop: i > 0 ? '1px solid var(--border)' : 'none',
-                    background: isChecked
+                    background: isChecked || isSelected
                       ? 'var(--pill-active-bg)'
-                      : isSelected
-                        ? 'var(--pill-active-bg)'
-                        : isHovered ? 'var(--bg3)' : 'transparent',
-                    cursor: 'pointer',
-                    transition: 'background var(--transition)',
+                      : isHovered ? 'var(--bg3)' : 'transparent',
                   }}
                 >
                   {/* Checkbox (select mode) or status bar */}
                   {selectMode ? (
-                    <div style={{
-                      flexShrink: 0,
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
+                    <div className="tv-checkbox" style={{
                       border: `1.5px solid ${isChecked ? 'var(--pill-active-color)' : 'var(--border)'}`,
                       background: isChecked ? 'var(--pill-active-bg)' : 'transparent',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all var(--transition)',
                     }}>
                       {isChecked && (
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -542,22 +386,14 @@ export default function TodoView({ productId }: { productId: string }) {
                       )}
                     </div>
                   ) : (
-                    <div style={{
-                      width: '3px',
-                      alignSelf: 'stretch',
-                      borderRadius: '2px',
-                      flexShrink: 0,
+                    <div className="tv-status-bar" style={{
                       background: STATUS_COLOR[todo.status],
                       opacity: isDone ? 0.4 : 1,
                     }} />
                   )}
 
                   {/* Priority dot */}
-                  <div style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    flexShrink: 0,
+                  <div className="tv-priority-dot" style={{
                     background: todo.priority_value != null
                       ? (PRIORITY_DOT[todo.priority_value] ?? 'var(--muted)')
                       : 'transparent',
@@ -565,24 +401,17 @@ export default function TodoView({ productId }: { productId: string }) {
                   }} />
 
                   {/* Title + meta */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{
+                  <div className="flex-1" style={{ minWidth: 0 }}>
+                    <p className="tv-todo-title" style={{
                       fontSize: 'var(--fs-base)',
                       color: isDone ? 'var(--muted)' : 'var(--text)',
                       textDecoration: isDone ? 'line-through' : 'none',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
                     }}>
                       {todo.title}
                     </p>
 
                     {todoRef && (
-                      <p style={{
-                        fontSize: 'var(--fs-xs)',
-                        color: 'var(--muted)',
-                        marginTop: '2px',
-                      }}>
+                      <p className="text-xs text-muted" style={{ marginTop: '2px' }}>
                         {todoRef}
                       </p>
                     )}
@@ -591,20 +420,11 @@ export default function TodoView({ productId }: { productId: string }) {
                   {/* Done toggle — hidden in select mode */}
                   {!selectMode && (
                     <button
+                      className="tv-done-toggle"
                       onClick={e => handleToggleDone(e, todo)}
                       style={{
-                        flexShrink: 0,
-                        width: '20px',
-                        height: '20px',
-                        minHeight: '20px',
-                        borderRadius: '50%',
                         border: `1.5px solid ${isDone ? 'var(--status-done)' : 'var(--border)'}`,
                         background: isDone ? 'var(--status-done)' : 'transparent',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        transition: 'all var(--transition)',
                         opacity: isHovered || isSelected || isDone ? 1 : 0,
                       }}
                       aria-label={isDone ? 'Mark open' : 'Mark done'}
@@ -624,23 +444,11 @@ export default function TodoView({ productId }: { productId: string }) {
 
         {/* Done section — collapsed by default, only shown in active filter mode */}
         {filterStatus === 'active' && doneTodos.length > 0 && (
-          <div style={{ marginTop: 'var(--sp-lg)' }}>
+          <div className="tv-done-section">
             <button
+              className="tv-done-header"
               onClick={() => setShowDone(d => !d)}
               aria-expanded={showDone}
-              style={{
-                width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--sp-sm)',
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 'var(--sp-sm) 0',
-                color: 'var(--muted)',
-                fontFamily: 'var(--font-ui)',
-                fontSize: 'var(--fs-sm)',
-              }}
             >
               <span style={{
                 fontSize: '10px',
@@ -652,7 +460,7 @@ export default function TodoView({ productId }: { productId: string }) {
             </button>
 
             {showDone && (
-              <div style={{ ...s.listCard, marginTop: 'var(--sp-sm)', opacity: 0.7 }}>
+              <div className="tv-list-card" style={{ marginTop: 'var(--sp-sm)', opacity: 0.7 }}>
                 {doneTodos.map((todo, i) => {
                   const isHovered  = hoveredId === todo.id
                   const isSelected = selectedTodo?.id === todo.id
@@ -674,33 +482,18 @@ export default function TodoView({ productId }: { productId: string }) {
                         if (e.key === 'Enter' || e.key === ' ')
                           selectMode ? toggleId(todo.id) : setSelectedTodo(todo)
                       }}
+                      className="tv-row tv-row-done"
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 'var(--sp-md)',
-                        padding: 'var(--sp-sm) var(--sp-lg)',
                         borderTop: i > 0 ? '1px solid var(--border)' : 'none',
-                        background: isChecked
+                        background: isChecked || isSelected
                           ? 'var(--pill-active-bg)'
-                          : isSelected
-                            ? 'var(--pill-active-bg)'
-                            : isHovered ? 'var(--bg3)' : 'transparent',
-                        cursor: 'pointer',
-                        transition: 'background var(--transition)',
+                          : isHovered ? 'var(--bg3)' : 'transparent',
                       }}
                     >
                       {selectMode ? (
-                        <div style={{
-                          flexShrink: 0,
-                          width: '20px',
-                          height: '20px',
-                          borderRadius: '50%',
+                        <div className="tv-checkbox" style={{
                           border: `1.5px solid ${isChecked ? 'var(--pill-active-color)' : 'var(--border)'}`,
                           background: isChecked ? 'var(--pill-active-bg)' : 'transparent',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'all var(--transition)',
                         }}>
                           {isChecked && (
                             <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -709,48 +502,29 @@ export default function TodoView({ productId }: { productId: string }) {
                           )}
                         </div>
                       ) : (
-                        <div style={{
-                          width: '3px',
-                          alignSelf: 'stretch',
-                          borderRadius: '2px',
-                          flexShrink: 0,
+                        <div className="tv-status-bar" style={{
                           background: STATUS_COLOR['done'],
                           opacity: 0.3,
                         }} />
                       )}
-                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0 }} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{
-                          fontSize: 'var(--fs-sm)',
-                          color: 'var(--muted)',
-                          textDecoration: 'line-through',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}>
+                      <div className="tv-priority-dot" />
+                      <div className="flex-1" style={{ minWidth: 0 }}>
+                        <p className="tv-todo-title text-sm text-muted" style={{ textDecoration: 'line-through' }}>
                           {todo.title}
                         </p>
                         {todoRef && (
-                          <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', marginTop: '2px' }}>
+                          <p className="text-xs text-muted" style={{ marginTop: '2px' }}>
                             {todoRef}
                           </p>
                         )}
                       </div>
                       {!selectMode && (
                         <button
+                          className="tv-done-toggle"
                           onClick={e => handleToggleDone(e, todo)}
                           style={{
-                            flexShrink: 0,
-                            width: '20px',
-                            height: '20px',
-                            minHeight: '20px',
-                            borderRadius: '50%',
                             border: '1.5px solid var(--status-done)',
                             background: 'var(--status-done)',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
                             opacity: isHovered || isSelected ? 1 : 0.5,
                           }}
                           aria-label="Mark open"
@@ -822,57 +596,16 @@ export default function TodoView({ productId }: { productId: string }) {
 
       {/* Bulk action bar */}
       {selectMode && (
-        <div style={{
-          position: 'fixed',
-          bottom: 'calc(var(--sab) + 44px)',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          background: 'var(--bg2)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--r-xl)',
-          padding: '10px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--sp-md)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          zIndex: 20,
-          fontFamily: 'var(--font-ui)',
-          fontSize: 'var(--fs-sm)',
-          whiteSpace: 'nowrap',
-        }}>
+        <div className="tv-bulk-bar">
           {confirmBulkDelete ? (
             <>
-              <span style={{ color: 'var(--error)' }}>
+              <span className="text-error">
                 Delete {selectedIds.length} todo{selectedIds.length !== 1 ? 's' : ''}?
               </span>
-              <button
-                onClick={handleBulkDelete}
-                style={{
-                  background: 'var(--error)',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: 'var(--r)',
-                  padding: '5px 12px',
-                  fontSize: 'var(--fs-sm)',
-                  fontFamily: 'var(--font-ui)',
-                  cursor: 'pointer',
-                  fontWeight: 500,
-                }}
-              >
+              <button className="tv-bulk-confirm" onClick={handleBulkDelete}>
                 Confirm
               </button>
-              <button
-                onClick={() => setConfirmBulkDelete(false)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--muted)',
-                  fontSize: 'var(--fs-sm)',
-                  fontFamily: 'var(--font-ui)',
-                  cursor: 'pointer',
-                  padding: '5px 4px',
-                }}
-              >
+              <button className="tv-bulk-btn text-muted" onClick={() => setConfirmBulkDelete(false)}>
                 Cancel
               </button>
             </>
@@ -881,65 +614,32 @@ export default function TodoView({ productId }: { productId: string }) {
               <span style={{ color: 'var(--text2)', minWidth: '72px' }}>
                 {selectedIds.length} selected
               </span>
-              <button
-                onClick={toggleSelectAll}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--muted)',
-                  fontSize: 'var(--fs-sm)',
-                  fontFamily: 'var(--font-ui)',
-                  cursor: 'pointer',
-                  padding: '5px 4px',
-                }}
-              >
+              <button className="tv-bulk-btn text-muted" onClick={toggleSelectAll}>
                 {[...filtered, ...(showDone ? doneTodos : [])].every(t => selectedIds.includes(t.id))
                   ? 'Deselect all'
                   : 'Select all'}
               </button>
               <button
+                className="tv-toolbar-btn"
+                aria-pressed={selectedIds.length > 0}
                 onClick={handleBulkMarkDone}
                 disabled={selectedIds.length === 0}
-                style={{
-                  background: selectedIds.length > 0 ? 'var(--pill-active-bg)' : 'transparent',
-                  border: `1px solid ${selectedIds.length > 0 ? 'var(--pill-active-border)' : 'var(--border)'}`,
-                  borderRadius: 'var(--r)',
-                  padding: '5px 12px',
-                  fontSize: 'var(--fs-sm)',
-                  fontFamily: 'var(--font-ui)',
-                  color: selectedIds.length > 0 ? 'var(--pill-active-color)' : 'var(--muted)',
-                  cursor: selectedIds.length > 0 ? 'pointer' : 'default',
-                }}
+                style={{ cursor: selectedIds.length > 0 ? 'pointer' : 'default' }}
               >
                 Mark done
               </button>
               <button
+                className="tv-bulk-btn"
                 onClick={() => setConfirmBulkDelete(true)}
                 disabled={selectedIds.length === 0}
                 style={{
-                  background: 'transparent',
-                  border: 'none',
                   color: selectedIds.length > 0 ? 'var(--error)' : 'var(--muted)',
-                  fontSize: 'var(--fs-sm)',
-                  fontFamily: 'var(--font-ui)',
                   cursor: selectedIds.length > 0 ? 'pointer' : 'default',
-                  padding: '5px 4px',
                 }}
               >
                 Delete
               </button>
-              <button
-                onClick={toggleSelectMode}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--muted)',
-                  fontSize: 'var(--fs-sm)',
-                  fontFamily: 'var(--font-ui)',
-                  cursor: 'pointer',
-                  padding: '5px 4px',
-                }}
-              >
+              <button className="tv-bulk-btn text-muted" onClick={toggleSelectMode}>
                 Cancel
               </button>
             </>
@@ -948,21 +648,8 @@ export default function TodoView({ productId }: { productId: string }) {
       )}
 
       {/* Version */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: 'calc(12px + var(--sab)) 20px 12px',
-        pointerEvents: 'none',
-      }}>
-        <span style={{
-          fontSize: 'var(--fs-version)',
-          color: 'var(--muted)',
-          letterSpacing: '0.05em',
-        }}>
-          Orb {VERSION}
-        </span>
+      <div className="tv-version-footer">
+        <span className="tv-version-text">Orb {VERSION}</span>
       </div>
     </div>
   )

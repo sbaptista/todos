@@ -67,68 +67,63 @@ function InlineTodoEditor({
     onDelete(todo.id)
   }
 
-  const field: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: '5px' }
-  const label: React.CSSProperties = { fontSize: 'var(--fs-xs)', fontWeight: 500, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.04em' }
-  const input: React.CSSProperties = { fontFamily: 'var(--font-ui)', fontSize: 'var(--fs-base)', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '8px 12px', color: 'var(--text)', outline: 'none' }
-  const textarea: React.CSSProperties = { ...input, resize: 'vertical', minHeight: '60px' }
-
   return (
-    <div style={{ padding: 'var(--sp-xl)', background: 'var(--bg2)', borderTop: '1px dashed var(--border)', display: 'flex', flexDirection: 'column', gap: 'var(--sp-lg)' }}>
-      <div style={field}>
-        <label style={label}>Title</label>
-        <input style={input} value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))} />
+    <div className="qr-editor">
+      <div className="pf-field">
+        <label className="pf-label">Title</label>
+        <input className="pf-input" value={form.title} onChange={e => setForm(f => ({...f, title: e.target.value}))} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-md)' }}>
-        <div style={field}>
-          <label style={label}>Status</label>
-          <select style={input} value={form.status} onChange={e => setForm(f => ({...f, status: e.target.value as Todo['status']}))}>
+      <div className="grid-2col">
+        <div className="pf-field">
+          <label className="pf-label">Status</label>
+          <select className="pf-select" value={form.status} onChange={e => setForm(f => ({...f, status: e.target.value as Todo['status']}))}>
             <option value="open">Open</option>
             <option value="in_progress">In Progress</option>
             <option value="on_hold">On Hold</option>
             <option value="done">Done</option>
           </select>
         </div>
-        <div style={field}>
-          <label style={label}>Priority</label>
-          <select style={input} value={form.priority_value ?? ''} onChange={e => setForm(f => ({...f, priority_value: e.target.value ? Number(e.target.value) : null}))}>
+        <div className="pf-field">
+          <label className="pf-label">Priority</label>
+          <select className="pf-select" value={form.priority_value ?? ''} onChange={e => setForm(f => ({...f, priority_value: e.target.value ? Number(e.target.value) : null}))}>
             <option value="">None</option>
             {priorities.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </div>
       </div>
 
-      <div style={field}>
-        <label style={label}>Description</label>
-        <textarea style={textarea} value={form.description ?? ''} onChange={e => setForm(f => ({...f, description: e.target.value}))} />
+      <div className="pf-field">
+        <label className="pf-label">Description</label>
+        <textarea className="pf-textarea" value={form.description ?? ''} onChange={e => setForm(f => ({...f, description: e.target.value}))} />
       </div>
 
       {isDone && (
-        <div style={field}>
-          <label style={label}>Resolution Notes</label>
-          <textarea style={textarea} value={form.resolution_notes ?? ''} placeholder="What was done to resolve this…" onChange={e => setForm(f => ({...f, resolution_notes: e.target.value}))} />
+        <div className="pf-field">
+          <label className="pf-label">Resolution Notes</label>
+          <textarea className="pf-textarea" value={form.resolution_notes ?? ''} placeholder="What was done to resolve this…" onChange={e => setForm(f => ({...f, resolution_notes: e.target.value}))} />
         </div>
       )}
 
-      <div style={field}>
-        <label style={label}>URLs (one per line)</label>
-        <textarea style={{...textarea, fontFamily: 'monospace', fontSize: 'var(--fs-sm)'}} value={urlInput} onChange={e => setUrlInput(e.target.value)} />
+      <div className="pf-field">
+        <label className="pf-label">URLs (one per line)</label>
+        <textarea className="pf-textarea" style={{ fontFamily: 'monospace', fontSize: 'var(--fs-sm)', minHeight: '60px' }} value={urlInput} onChange={e => setUrlInput(e.target.value)} />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'var(--sp-md)' }}>
+      <div className="qr-editor-footer">
         {confirmDelete ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-sm)' }}>
-            <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--error)' }}>Are you sure?</span>
-            <button onClick={handleDelete} disabled={deleting} style={{ fontSize: 'var(--fs-xs)', background: 'var(--error)', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer' }}>{deleting ? 'Deleting...' : 'Yes, Delete'}</button>
-            <button onClick={() => setConfirmDelete(false)} style={{ fontSize: 'var(--fs-xs)', background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>Cancel</button>
+          <div className="flex-row flex-center" style={{ gap: 'var(--sp-sm)' }}>
+            <span className="text-xs text-error">Are you sure?</span>
+            <button className="tv-bulk-confirm" onClick={handleDelete} disabled={deleting}>{deleting ? 'Deleting...' : 'Yes, Delete'}</button>
+            <button className="text-btn" onClick={() => setConfirmDelete(false)}>Cancel</button>
           </div>
         ) : (
-          <button onClick={() => setConfirmDelete(true)} style={{ fontSize: 'var(--fs-xs)', background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer' }}>Delete</button>
+          <button className="text-btn" onClick={() => setConfirmDelete(true)}>Delete</button>
         )}
 
-        <div style={{ display: 'flex', gap: 'var(--sp-sm)' }}>
-          <button onClick={onCancel} style={{ fontSize: 'var(--fs-sm)', background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: '6px 12px' }}>Cancel</button>
-          <button onClick={handleSave} disabled={saving} style={{ fontSize: 'var(--fs-sm)', background: 'var(--pill-active-bg)', border: '1px solid var(--pill-active-border)', color: 'var(--pill-active-color)', borderRadius: 'var(--r)', padding: '6px 16px', cursor: 'pointer' }}>{saving ? 'Saving...' : 'Save'}</button>
+        <div className="flex-row" style={{ gap: 'var(--sp-sm)' }}>
+          <button className="text-btn" onClick={onCancel}>Cancel</button>
+          <button className="save-btn" onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</button>
         </div>
       </div>
     </div>
@@ -176,70 +171,18 @@ export default function QueryResultsModal({
 
   return (
     <>
-      {/* Backdrop */}
-      <div
-        style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.25)' }}
-        onClick={onClose}
-      />
+      <div className="modal-backdrop" onClick={onClose} />
 
-      {/* Modal */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Query results"
-        style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 50,
-          width: '100%',
-          maxWidth: '480px',
-          maxHeight: '70dvh',
-          background: 'var(--bg2)',
-          borderRadius: 'var(--r-xl)',
-          border: '1px solid var(--border)',
-          boxShadow: 'var(--shadow-lg)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
+      <div role="dialog" aria-modal="true" aria-label="Query results" className="modal-center">
         {/* Header */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--sp-md)',
-          padding: 'var(--sp-lg) var(--sp-xl)',
-          borderBottom: '1px solid var(--border)',
-          flexShrink: 0,
-        }}>
-          <p style={{
-            flex: 1,
-            margin: 0,
-            fontSize: 'var(--fs-sm)',
-            color: 'var(--text3)',
-            fontFamily: 'var(--font-ui)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>
-            {queryLabel}
-          </p>
+        <div className="modal-header">
+          <p className="qr-label">{queryLabel}</p>
           <button
             onClick={handleCopy}
             aria-label="Copy list"
             title="Copy list"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: copied ? 'var(--success)' : 'var(--muted)',
-              cursor: 'pointer',
-              padding: '4px',
-              lineHeight: 1,
-              flexShrink: 0,
-              transition: 'color var(--transition)',
-            }}
+            className="qr-copy-btn"
+            style={{ color: copied ? 'var(--success)' : undefined }}
           >
             {copied ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -252,19 +195,7 @@ export default function QueryResultsModal({
               </svg>
             )}
           </button>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--muted)',
-              cursor: 'pointer',
-              padding: '4px',
-              lineHeight: 1,
-              flexShrink: 0,
-            }}
-          >
+          <button onClick={onClose} aria-label="Close" className="close-btn">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
@@ -272,82 +203,23 @@ export default function QueryResultsModal({
         </div>
 
         {/* Content */}
-        <div style={{ overflowY: 'auto', flex: 1 }}>
+        <div className="modal-body">
           {fullText ? (
-            <div style={{
-              padding: 'var(--sp-xl)',
-              fontSize: 'var(--fs-base)',
-              color: 'var(--text2)',
-              fontFamily: 'var(--font-ui)',
-              lineHeight: 1.6,
-              whiteSpace: 'pre-wrap',
-            }}>
-              {fullText}
-            </div>
+            <div className="qr-fulltext">{fullText}</div>
           ) : items.length === 0 ? (
-            <p style={{ padding: 'var(--sp-2xl)', textAlign: 'center', fontSize: 'var(--fs-sm)', color: 'var(--muted)', margin: 0 }}>
-              No results
-            </p>
+            <p className="qr-empty">No results</p>
           ) : (
             items.map((item, i) => (
               <div key={item.id} style={{ display: 'flex', flexDirection: 'column', borderBottom: i < items.length - 1 ? '1px solid var(--border)' : 'none' }}>
                 <button
                   onClick={() => selectedTodo?.id === item.id ? setSelectedTodo(null) : openTodo(item)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--sp-md)',
-                    width: '100%',
-                    padding: 'var(--sp-md) var(--sp-xl)',
-                    background: selectedTodo?.id === item.id ? 'var(--bg3)' : 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'background var(--transition)',
-                  }}
-                  onMouseEnter={e => { if (selectedTodo?.id !== item.id) e.currentTarget.style.background = 'var(--bg3, var(--bg))' }}
-                  onMouseLeave={e => { if (selectedTodo?.id !== item.id) e.currentTarget.style.background = 'none' }}
+                  className="qr-row"
+                  aria-expanded={selectedTodo?.id === item.id}
                 >
-                  {/* Priority dot */}
-                  <span style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: item.priority_value ? PRIORITY_DOT[item.priority_value] ?? 'var(--muted)' : 'var(--border)',
-                    flexShrink: 0,
-                  }} />
-
-                  {/* Code */}
-                  <span style={{
-                    fontFamily: 'monospace',
-                    fontSize: 'var(--fs-xs)',
-                    color: 'var(--muted)',
-                    flexShrink: 0,
-                    minWidth: '64px',
-                  }}>
-                    {item.code}
-                  </span>
-
-                  {/* Title */}
-                  <span style={{
-                    flex: 1,
-                    fontSize: 'var(--fs-sm)',
-                    color: 'var(--text)',
-                    fontFamily: 'var(--font-ui)',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}>
-                    {item.title}
-                  </span>
-
-                  {/* Status */}
-                  <span style={{
-                    fontSize: 'var(--fs-xs)',
-                    color: STATUS_COLOR[item.status] ?? 'var(--muted)',
-                    flexShrink: 0,
-                    textTransform: 'capitalize',
-                  }}>
+                  <span className="tv-priority-dot" style={{ background: item.priority_value ? PRIORITY_DOT[item.priority_value] ?? 'var(--muted)' : 'var(--border)' }} />
+                  <span className="qr-code">{item.code}</span>
+                  <span className="qr-title">{item.title}</span>
+                  <span className="qr-status" style={{ color: STATUS_COLOR[item.status] ?? 'var(--muted)' }}>
                     {item.status.replace('_', ' ')}
                   </span>
                 </button>
@@ -371,8 +243,6 @@ export default function QueryResultsModal({
           )}
         </div>
       </div>
-
-      {/* Inline Editor removes need for TodoPanel */}
     </>
   )
 }

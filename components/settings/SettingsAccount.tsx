@@ -27,9 +27,8 @@ export default function SettingsAccount() {
       try {
         let user
         const { data: userData, error: userError } = await supabase.auth.getUser()
-        
+
         if (userError?.message?.includes('Lock')) {
-          // Fallback if another request is already refreshing the token
           const { data: sessionData } = await supabase.auth.getSession()
           user = sessionData.session?.user
         } else {
@@ -40,13 +39,13 @@ export default function SettingsAccount() {
         setUserId(user.id)
         setEmail(user.email ?? '')
         setNewEmail(user.email ?? '')
-        
+
         const { data: profile } = await supabase
           .from('users')
           .select('first_name, last_name')
           .eq('id', user.id)
           .single()
-          
+
         if (profile) {
           setFirstName(profile.first_name ?? '')
           setLastName(profile.last_name ?? '')
@@ -100,111 +99,52 @@ export default function SettingsAccount() {
     lastName.trim() !== origLastName.current ||
     newEmail.trim() !== email
 
-  if (loading) return (
-    <div style={{ padding: 'var(--sp-3xl)', fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>
-      Loading…
-    </div>
-  )
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    border: '1px solid var(--border)',
-    borderRadius: 'var(--r)',
-    padding: '10px var(--sp-md)',
-    fontSize: 'var(--fs-input)',
-    background: 'var(--bg)',
-    color: 'var(--text)',
-    outline: 'none',
-    boxSizing: 'border-box',
-    transition: 'border-color var(--transition)',
-  }
-
-  const cardStyle: React.CSSProperties = {
-    background: 'var(--bg2)',
-    borderRadius: 'var(--r-lg)',
-    border: '1px solid var(--border)',
-    padding: 'var(--sp-xl)',
-    marginBottom: 'var(--sp-md)',
-  }
-
-  const labelStyle: React.CSSProperties = {
-    display: 'block',
-    fontSize: 'var(--fs-xs)',
-    fontWeight: 'var(--fw-medium)',
-    color: 'var(--text3)',
-    marginBottom: 'var(--sp-xs)',
-  }
+  if (loading) return <div className="s-loading">Loading…</div>
 
   return (
-    <div className="settings-page" style={{ padding: 'var(--sp-2xl)', maxWidth: '480px' }}>
-      <h2 style={{
-        fontSize: 'var(--fs-lg)',
-        fontWeight: 'var(--fw-bold)',
-        color: 'var(--text)',
-        margin: '0 0 var(--sp-2xl)',
-      }}>
-        Account
-      </h2>
+    <div className="settings-page s-page" style={{ maxWidth: '480px' }}>
+      <h2 className="s-title mb-2xl">Account</h2>
 
-      <div style={cardStyle}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-lg)' }}>
-          <div className="settings-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-md)' }}>
+      <div className="s-card mb-md">
+        <div className="flex-col gap-lg">
+          <div className="settings-grid-2col grid-2col">
             <div>
-              <label style={labelStyle}>First Name</label>
+              <label className="label">First Name</label>
               <input
-                style={inputStyle}
+                className="input"
                 value={firstName}
                 onChange={e => setFirstName(e.target.value)}
-                onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
               />
             </div>
             <div>
-              <label style={labelStyle}>Last Name</label>
+              <label className="label">Last Name</label>
               <input
-                style={inputStyle}
+                className="input"
                 value={lastName}
                 onChange={e => setLastName(e.target.value)}
-                onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
               />
             </div>
           </div>
 
           <div>
-            <label style={labelStyle}>Email</label>
+            <label className="label">Email</label>
             <input
-              style={inputStyle}
+              className="input"
               value={newEmail}
               onChange={e => setNewEmail(e.target.value)}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-              onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
             />
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', margin: 'var(--sp-xs) 0 0' }}>
+            <p className="text-xs text-muted" style={{ margin: 'var(--sp-xs) 0 0' }}>
               A confirmation email will be sent to the new address.
             </p>
           </div>
 
-          {error && (
-            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--error)', margin: 0 }}>{error}</p>
-          )}
+          {error && <p className="text-sm text-error" style={{ margin: 0 }}>{error}</p>}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-md)' }}>
+          <div className="flex-center gap-md">
             <button
+              className="btn-primary"
               onClick={handleSave}
               disabled={saving || !hasChanges}
-              style={{
-                background: 'var(--success)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 'var(--r)',
-                padding: '8px var(--sp-lg)',
-                fontSize: 'var(--fs-sm)',
-                fontWeight: 'var(--fw-medium)',
-                cursor: saving || !hasChanges ? 'not-allowed' : 'pointer',
-                opacity: saving || !hasChanges ? 0.6 : 1,
-                transition: 'opacity var(--transition)',
-              }}
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -212,40 +152,17 @@ export default function SettingsAccount() {
         </div>
       </div>
 
-      <div style={cardStyle}>
-        <h3 style={{
-          fontSize: 'var(--fs-sm)',
-          fontWeight: 'var(--fw-medium)',
-          color: 'var(--text2)',
-          margin: '0 0 var(--sp-xs)',
-        }}>
+      <div className="s-card mb-md">
+        <h3 className="text-sm" style={{ fontWeight: 'var(--fw-medium)', color: 'var(--text2)', margin: '0 0 var(--sp-xs)' }}>
           Sign Out
         </h3>
-        <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', margin: '0 0 var(--sp-md)' }}>
+        <p className="text-xs text-muted mb-md" style={{ margin: 0 }}>
           You will be redirected to the login page.
         </p>
         <button
+          className="btn-sign-out"
           onClick={handleLogout}
           disabled={loggingOut}
-          style={{
-            background: 'none',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--r)',
-            padding: '8px var(--sp-md)',
-            fontSize: 'var(--fs-sm)',
-            color: 'var(--text2)',
-            cursor: loggingOut ? 'not-allowed' : 'pointer',
-            opacity: loggingOut ? 0.6 : 1,
-            transition: 'all var(--transition)',
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.borderColor = 'rgba(139,32,32,0.4)'
-            e.currentTarget.style.color = 'var(--error)'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.borderColor = 'var(--border)'
-            e.currentTarget.style.color = 'var(--text2)'
-          }}
         >
           {loggingOut ? 'Signing out…' : 'Sign Out'}
         </button>

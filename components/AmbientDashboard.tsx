@@ -556,14 +556,8 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
     const orbScale     = (isInputFocused && isMobile) ? 0.45 : 1.0
 
     if (loading) return (
-        <div style={{
-            minHeight: '100vh',
-            background: 'var(--bg)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-        }}>
-            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>Loading…</p>
+        <div className="dash-loading">
+            <p className="text-sm text-muted">Loading…</p>
         </div>
     )
 
@@ -572,36 +566,13 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
     return (
         <>
         <MuralCanvas key={selectedId} urgency={urgency} />
-        <div style={{
-            height: '100dvh',
-            overflow: 'hidden',
-            position: 'relative',
-        }}>
+        <div className="dash-main">
 
             {/* ── Star Wars fade mask ── */}
-            <div style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 'clamp(160px, 28vh, 220px)',
-                background: 'linear-gradient(to bottom, var(--bg) 0%, var(--bg) 20%, transparent 100%)',
-                zIndex: 9,
-                pointerEvents: 'none',
-            }} />
+            <div className="dash-fade" />
 
             {/* ── Orb ── */}
-            <div style={{
-                position: 'fixed',
-                top: 'clamp(20px, 5vh, 44px)',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                zIndex: 10,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                pointerEvents: 'none',
-            }}>
+            <div className="dash-orb-wrap">
                 <div
                     onClick={() => {
                         if (noProject) {
@@ -769,13 +740,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
             </div>
 
             {/* ── Conversation outer ── */}
-            <div style={{
-                height: '100%',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'flex-end',
-                padding: '0 16px clamp(100px, 14vh, 140px) 16px',
-            }}>
+            <div className="dash-conversation">
                 <OrbConversation
                     messages={messages}
                     input={input}
@@ -796,73 +761,16 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
             </div>
 
             {/* ── Project strip ── */}
-            <div style={{
-                position: 'absolute',
-                bottom: 'calc(clamp(100px, 14vh, 140px) - 54px)',
-                left: 0,
-                right: 0,
-                zIndex: 20,
-                width: '100%',
-                padding: '0 16px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-            }}>
-                <div style={{
-                    width: '100%',
-                    maxWidth: '420px',
-                    display: 'flex',
-                    background: 'rgba(255, 255, 255, 0.96)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--r-xl)',
-                    boxShadow: 'var(--shadow-md)',
-                    ...(displayProducts.length === 0 ? { justifyContent: 'center' } : {}),
-                }}>
+            <div className="dash-strip">
+                <div className="dash-strip-inner" style={displayProducts.length === 0 ? { justifyContent: 'center' } : undefined}>
                     {displayProducts.length > 0 && (
-                        <div style={{
-                            flex: 1,
-                            position: 'relative',
-                            overflow: 'hidden',
-                            display: 'flex',
-                        }}>
+                        <div className="dash-strip-scroll-wrap">
                             {canScrollLeft && (
-                                <div style={{
-                                    position: 'absolute',
-                                    left: 0,
-                                    top: 0,
-                                    bottom: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    zIndex: 3,
-                                    pointerEvents: 'none',
-                                }}>
+                                <div className="dash-scroll-anchor dash-scroll-anchor-left">
                                     <button
                                         type="button"
+                                        className="scroll-arrow"
                                         onClick={() => scrollProjects('left')}
-                                        style={{
-                                            pointerEvents: 'auto',
-                                            width: '24px',
-                                            height: '24px',
-                                            minWidth: '24px',
-                                            maxWidth: '24px',
-                                            minHeight: '24px',
-                                            maxHeight: '24px',
-                                            borderRadius: '50%',
-                                            border: '1.5px solid var(--border)',
-                                            background: 'rgba(255,255,255,0.9)',
-                                            color: 'var(--muted)',
-                                            cursor: 'pointer',
-                                            padding: 0,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                                            flexShrink: 0,
-                                            appearance: 'none',
-                                            WebkitAppearance: 'none',
-                                            aspectRatio: '1 / 1',
-                                        }}
                                         aria-label="Scroll left"
                                     >
                                         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -874,68 +782,25 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                             <div
                                 ref={projectScrollRef}
                                 onScroll={updateProjectScrollState}
-                                style={{
-                                    flex: 1,
-                                    overflowX: 'auto',
-                                    WebkitOverflowScrolling: 'touch',
-                                    display: 'flex',
-                                    gap: '4px',
-                                    padding: '6px 8px',
-                                    minHeight: '36px',
-                                    maskImage: 'linear-gradient(to right, transparent 0, black 8px, black calc(100% - 8px), transparent 100%)',
-                                    WebkitMaskImage: 'linear-gradient(to right, transparent 0, black 8px, black calc(100% - 8px), transparent 100%)',
-                                }}
+                                className="dash-strip-scroll"
                             >
                                 {displayProducts.map(p => (
-                                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                                    <div key={p.id} className="dash-strip-item">
                                         <button
                                             type="button"
+                                            className="dash-strip-pill"
+                                            aria-current={p.id === selectedId ? 'true' : undefined}
                                             onClick={() => { setSelectedId(p.id); setScopeToProduct(true) }}
                                             title={`Switch to ${p.code ?? p.name}`}
-                                            style={{
-                                                fontFamily: 'var(--font-ui)',
-                                                fontSize: '11px',
-                                                fontWeight: 500,
-                                                letterSpacing: '0.04em',
-                                                padding: '5px 14px',
-                                                borderRadius: '7px',
-                                                border: '1.5px solid var(--pill-active-border)',
-                                                color: p.id === selectedId ? 'var(--pill-active-color)' : 'var(--text2)',
-                                                background: p.id === selectedId ? 'var(--pill-active-bg)' : 'transparent',
-                                                cursor: 'pointer',
-                                                whiteSpace: 'nowrap',
-                                                transition: 'all var(--transition)',
-                                            }}
                                         >
                                             {p.code ?? p.name}
                                         </button>
                                         {p.id === selectedId && (
                                             <button
                                                 type="button"
+                                                className="edit-btn"
                                                 onClick={(e) => { e.stopPropagation(); setShowEditProduct(true) }}
                                                 title="Edit project"
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    width: '24px',
-                                                    height: '24px',
-                                                    minWidth: '24px',
-                                                    maxWidth: '24px',
-                                                    minHeight: '24px',
-                                                    maxHeight: '24px',
-                                                    borderRadius: '50%',
-                                                    border: '1.5px solid var(--border)',
-                                                    background: 'transparent',
-                                                    color: 'var(--muted)',
-                                                    cursor: 'pointer',
-                                                    padding: 0,
-                                                    transition: 'all 0.15s',
-                                                    flexShrink: 0,
-                                                    appearance: 'none',
-                                                    WebkitAppearance: 'none',
-                                                    aspectRatio: '1 / 1',
-                                                }}
                                             >
                                                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -946,42 +811,11 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                                 ))}
                             </div>
                             {canScrollRight && (
-                                <div style={{
-                                    position: 'absolute',
-                                    right: 0,
-                                    top: 0,
-                                    bottom: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    zIndex: 3,
-                                    pointerEvents: 'none',
-                                }}>
+                                <div className="dash-scroll-anchor dash-scroll-anchor-right">
                                     <button
                                         type="button"
+                                        className="scroll-arrow"
                                         onClick={() => scrollProjects('right')}
-                                        style={{
-                                            pointerEvents: 'auto',
-                                            width: '24px',
-                                            height: '24px',
-                                            minWidth: '24px',
-                                            maxWidth: '24px',
-                                            minHeight: '24px',
-                                            maxHeight: '24px',
-                                            borderRadius: '50%',
-                                            border: '1.5px solid var(--border)',
-                                            background: 'rgba(255,255,255,0.9)',
-                                            color: 'var(--muted)',
-                                            cursor: 'pointer',
-                                            padding: 0,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                                            flexShrink: 0,
-                                            appearance: 'none',
-                                            WebkitAppearance: 'none',
-                                            aspectRatio: '1 / 1',
-                                        }}
                                         aria-label="Scroll right"
                                     >
                                         <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
@@ -992,81 +826,38 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                             )}
                         </div>
                     )}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        flexShrink: 0,
-                        gap: '0',
-                        padding: '0 8px',
-                        position: 'relative',
-                    }}>
+                    <div className="dash-strip-actions">
                         {isAdmin && (
                             <>
                                 <button
                                     type="button"
+                                    className="strip-link"
                                     onClick={() => setShowOwnerDropdown(d => !d)}
                                     title="Filter by project owner"
-                                    style={{
-                                        fontFamily: 'var(--font-ui)',
-                                        fontSize: '11px',
-                                        fontWeight: 500,
-                                        padding: '0 8px 0 0',
-                                        border: 'none',
-                                        background: 'none',
-                                        color: ownerFilter ? 'var(--pill-active-color)' : 'var(--link)',
-                                        cursor: 'pointer',
-                                        whiteSpace: 'nowrap',
-                                        lineHeight: '28px',
-                                        textDecoration: 'underline',
-                                        textUnderlineOffset: '2px',
-                                    }}
-                                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--link-hover)' }}
-                                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--link)' }}
+                                    style={{ padding: '0 8px 0 0', color: ownerFilter ? 'var(--pill-active-color)' : undefined }}
                                 >
                                     {ownerFilter ? (owners.find(o => o.id === ownerFilter)?.name ?? 'Owner') : (userFullName || 'Me')}
                                 </button>
                                 {showOwnerDropdown && (
                                     <>
                                         <div
-                                            style={{ position: 'fixed', inset: 0, zIndex: 29 }}
+                                            className="dropdown-backdrop"
                                             onClick={() => setShowOwnerDropdown(false)}
                                         />
-                                        <div style={{
-                                            position: 'absolute',
-                                            bottom: '100%',
-                                            right: 0,
-                                            marginBottom: '4px',
-                                            zIndex: 30,
-                                            background: 'var(--bg2)',
-                                            border: '1px solid var(--border)',
-                                            borderRadius: 'var(--r)',
-                                            boxShadow: 'var(--shadow-lg)',
-                                            padding: '4px 0',
-                                            minWidth: '120px',
-                                        }}>
+                                        <div className="dropdown-menu">
                                             {owners.map(o => (
                                                 <button
                                                     key={o.id}
                                                     type="button"
+                                                    className="dropdown-item"
                                                     onClick={() => {
                                                         setOwnerFilter(o.id === ownerFilter ? null : o.id)
                                                         setShowOwnerDropdown(false)
                                                     }}
                                                     style={{
-                                                        display: 'block',
-                                                        width: '100%',
-                                                        textAlign: 'left',
-                                                        background: o.id === ownerFilter ? 'var(--pill-active-bg)' : 'transparent',
-                                                        border: 'none',
-                                                        padding: '6px 12px',
-                                                        fontSize: 'var(--fs-sm)',
+                                                        background: o.id === ownerFilter ? 'var(--pill-active-bg)' : undefined,
                                                         color: o.id === ownerFilter ? 'var(--pill-active-color)' : 'var(--text)',
-                                                        cursor: 'pointer',
-                                                        fontFamily: 'var(--font-ui)',
-                                                        whiteSpace: 'nowrap',
                                                     }}
-                                                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--pill-active-bg)' }}
-                                                    onMouseLeave={e => { e.currentTarget.style.background = o.id === ownerFilter ? 'var(--pill-active-bg)' : 'transparent' }}
                                                 >
                                                     {o.name}
                                                 </button>
@@ -1077,28 +868,14 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                             </>
                         )}
                         {displayProducts.length > 0 && (
-                            <span style={{ color: 'var(--muted)', fontSize: '11px', lineHeight: '28px' }}>|</span>
+                            <span className="dash-separator">|</span>
                         )}
                         <button
                             type="button"
+                            className={`strip-link${displayProducts.length === 0 ? ' strip-link-accent' : ''}`}
                             onClick={() => setShowAddProduct(true)}
                             title="Add a new project"
-                            style={{
-                                fontFamily: 'var(--font-ui)',
-                                fontSize: '11px',
-                                fontWeight: 500,
-                                padding: '0 0 0 8px',
-                                border: 'none',
-                                background: 'none',
-                                color: displayProducts.length === 0 ? '#ED7654' : 'var(--link)',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap',
-                                lineHeight: '28px',
-                                textDecoration: 'underline',
-                                textUnderlineOffset: '2px',
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.color = 'var(--link-hover)' }}
-                            onMouseLeave={e => { e.currentTarget.style.color = displayProducts.length === 0 ? '#ED7654' : 'var(--link)' }}
+                            style={{ padding: '0 0 0 8px' }}
                         >
                             Add Project
                         </button>
@@ -1106,23 +883,13 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                 </div>
             </div>
 
-            {/* ── Top right — help + settings + sign out ── */}
-            <div style={{
-                position: 'absolute',
-                top: 'calc(var(--sp-lg) + var(--sat))',
-                right: 'var(--sp-lg)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 'var(--sp-md)',
-                zIndex: 20,
-            }}>
+            {/* ── Top right — help + settings + account ── */}
+            <div className="dash-nav">
                 <button
+                    className="nav-btn"
                     onClick={() => setShowHelp(true)}
                     title="Help"
                     aria-label="Help"
-                    style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(60,110,60,0.25)', borderRadius: '50%', cursor: 'pointer', color: 'var(--muted)', width: '36px', height: '36px', minWidth: '36px', maxWidth: '36px', minHeight: '36px', maxHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'all 0.15s', padding: 0, flexShrink: 0, appearance: 'none', WebkitAppearance: 'none', aspectRatio: '1 / 1' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.5)'; e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = '#fff' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.25)'; e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'rgba(255,255,255,0.7)' }}
                 >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="10"/>
@@ -1132,11 +899,9 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                 </button>
                 <Link
                     href="/settings"
+                    className="nav-btn"
                     title="Settings"
                     aria-label="Settings"
-                    style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(60,110,60,0.25)', borderRadius: '50%', color: 'var(--muted)', width: '36px', height: '36px', minWidth: '36px', maxWidth: '36px', minHeight: '36px', maxHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, transition: 'all 0.15s', padding: 0, flexShrink: 0, appearance: 'none', WebkitAppearance: 'none', aspectRatio: '1 / 1' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.5)'; e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = '#fff' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.25)'; e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'rgba(255,255,255,0.7)' }}
                 >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="3"/>
@@ -1144,27 +909,18 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                     </svg>
                 </Link>
                 <button
+                    className="nav-btn"
                     onClick={() => router.push('/settings/account')}
                     title={userFullName || 'Account'}
                     aria-label="Account"
-                    style={{ background: 'rgba(255,255,255,0.7)', border: '1.5px solid rgba(60,110,60,0.25)', borderRadius: '50%', cursor: 'pointer', color: 'var(--muted)', width: '36px', height: '36px', minWidth: '36px', maxWidth: '36px', minHeight: '36px', maxHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1, fontWeight: 600, fontSize: '14px', transition: 'all 0.15s', padding: 0, flexShrink: 0, appearance: 'none', WebkitAppearance: 'none', aspectRatio: '1 / 1' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.5)'; e.currentTarget.style.color = 'var(--text2)'; e.currentTarget.style.background = '#fff' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(60,110,60,0.25)'; e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.background = 'rgba(255,255,255,0.7)' }}
+                    style={{ fontWeight: 600, fontSize: '14px' }}
                 >
                     {userName.charAt(0).toUpperCase()}
                 </button>
             </div>
 
             {/* ── Version ── */}
-            <div style={{
-                position: 'fixed',
-                bottom: '14px',
-                left: '20px',
-                zIndex: 20,
-                fontSize: 'var(--fs-version)',
-                color: 'var(--muted)',
-                pointerEvents: 'none',
-            }}>
+            <div className="dash-version">
                 Orb {VERSION}
             </div>
 

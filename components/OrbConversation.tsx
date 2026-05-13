@@ -42,31 +42,17 @@ function OrbCard({ msg, onShowResults }: { msg: ConversationMessage; onShowResul
     }
 
     return (
-        <div style={{
-            margin: '0 2px',
-            padding: '10px 14px',
-            background: 'transparent',
-            color: 'var(--text2)',
-            fontSize: 'var(--fs-sm)',
-            lineHeight: 1.5,
-            textAlign: 'left',
-            borderRadius: '4px',
-        }}>
+        <div className="oc-orb-card">
             {msg.thoughts && msg.thoughts.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', marginBottom: '4px' }}>
+                <div className="flex-col" style={{ gap: '1px', marginBottom: '4px' }}>
                     {msg.thoughts.map((t, i) => (
-                        <span key={i} style={{
-                            display: 'block',
-                            fontSize: 'var(--fs-xs)',
-                            color: 'var(--muted)',
-                            padding: '1px 0',
-                        }}>
+                        <span key={i} className="text-xs text-muted" style={{ display: 'block', padding: '1px 0' }}>
                             {'\u2022'} {t}
                         </span>
                     ))}
                 </div>
             )}
-            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+            <div className="flex-row" style={{ gap: '6px', alignItems: 'flex-start' }}>
                 <span style={{
                     flex: 1,
                     whiteSpace: 'pre-wrap',
@@ -90,21 +76,11 @@ function OrbCard({ msg, onShowResults }: { msg: ConversationMessage; onShowResul
                 </span>
                 <button
                     type="button"
+                    className="oc-copy-btn"
                     onClick={copy}
                     title="Copy response"
                     aria-label="Copy response"
-                    style={{
-                        flexShrink: 0,
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: copied ? 'var(--pill-active-color)' : 'var(--muted)',
-                        padding: '2px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        transition: 'color 0.2s',
-                        opacity: 0.5,
-                    }}
+                    style={{ color: copied ? 'var(--pill-active-color)' : 'var(--muted)' }}
                 >
                     {copied ? (
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -120,29 +96,12 @@ function OrbCard({ msg, onShowResults }: { msg: ConversationMessage; onShowResul
             </div>
             {msg.results && msg.results.length > 0 && (
                 <div style={{ marginTop: '8px' }}>
-                    <div style={{
-                        border: '1px solid var(--border)',
-                        borderRadius: 'var(--r)',
-                        background: 'var(--bg2)',
-                        overflow: 'hidden',
-                    }}>
+                    <div className="oc-results-card">
                         {msg.results.slice(0, 5).map(r => (
-                            <div key={r.id} style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '8px 12px',
-                                borderBottom: '1px solid var(--border)',
-                                cursor: 'pointer',
-                                transition: 'background 0.15s',
-                            }}
+                            <div key={r.id} className="oc-result-row"
                                 onClick={() => onShowResults(msg.results!, msg.queryLabel ?? '')}
                             >
-                                <span style={{
-                                    width: '6px',
-                                    height: '6px',
-                                    borderRadius: '50%',
-                                    flexShrink: 0,
+                                <span className="tv-priority-dot" style={{
                                     background: r.status === 'done' ? 'var(--muted)' : r.priority_value === 1 ? '#a05010' : '#5a3090',
                                 }} />
                                 <span style={{
@@ -154,19 +113,12 @@ function OrbCard({ msg, onShowResults }: { msg: ConversationMessage; onShowResul
                                 }}>
                                     {r.code || r.id.slice(0, 6)}
                                 </span>
-                                <span style={{
-                                    flex: 1,
-                                    fontSize: 'var(--fs-xs)',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                }}>
+                                <span className="truncate text-xs" style={{ flex: 1 }}>
                                     {r.title}
                                 </span>
-                                <span style={{
+                                <span className="shrink-0" style={{
                                     fontSize: '11px',
                                     textTransform: 'capitalize',
-                                    flexShrink: 0,
                                     color: r.status === 'done' ? '#6a8a6a' : '#4a7a4a',
                                 }}>
                                     {r.status}
@@ -174,9 +126,7 @@ function OrbCard({ msg, onShowResults }: { msg: ConversationMessage; onShowResul
                             </div>
                         ))}
                         {msg.results.length > 5 && (
-                            <div style={{
-                                fontSize: 'var(--fs-xs)',
-                                color: 'var(--muted)',
+                            <div className="text-xs text-muted" style={{
                                 padding: '6px 12px',
                                 textAlign: 'center',
                                 borderTop: '1px solid var(--border)',
@@ -187,20 +137,8 @@ function OrbCard({ msg, onShowResults }: { msg: ConversationMessage; onShowResul
                     </div>
                     <button
                         type="button"
+                        className="oc-show-list-btn"
                         onClick={() => onShowResults(msg.results!, msg.queryLabel ?? '')}
-                        style={{
-                            marginTop: '6px',
-                            fontFamily: 'var(--font-ui)',
-                            fontSize: 'var(--fs-xs)',
-                            fontWeight: 500,
-                            letterSpacing: '0.06em',
-                            padding: '5px 14px',
-                            borderRadius: '16px',
-                            border: '1px solid var(--pill-active-border)',
-                            color: 'var(--pill-active-color)',
-                            background: 'var(--pill-active-bg)',
-                            cursor: 'pointer',
-                        }}
                     >
                         Show list &middot; {msg.results.length}
                     </button>
@@ -398,56 +336,18 @@ export default function OrbConversation({
     }
 
     return (
-        <div style={{
-            width: '100%',
-            maxWidth: '420px',
-            height: '100%',
-            border: `1px solid ${inputFocused ? 'var(--border-focus)' : 'var(--border)'}`,
-            borderRadius: 'var(--r-xl)',
-            background: 'rgba(255, 255, 255, 0.96)',
-            boxShadow: 'var(--shadow-md)',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            transition: 'border-color 0.2s ease',
+        <div className="oc-wrap" style={{
+            borderColor: inputFocused ? 'var(--border-focus)' : undefined,
         }}>
-            <div
-                ref={threadRef}
-                style={{
-                    flex: 1,
-                    minHeight: 0,
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    WebkitOverflowScrolling: 'touch',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                    padding: '0 0 8px 0',
-                }}
-            >
-                <div style={{ flexShrink: 0, height: 'clamp(200px, 34vh, 280px)' }} />
+            <div ref={threadRef} className="oc-thread">
+                <div className="shrink-0" style={{ height: 'clamp(200px, 34vh, 280px)' }} />
                 {messages.map(msg => (
                         msg.type === 'user' ? (
                             <div
                                 key={msg.id}
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'flex-end',
-                                    margin: '0 2px',
-                                }}
+                                style={{ display: 'flex', justifyContent: 'flex-end', margin: '0 2px' }}
                             >
-                                <div style={{
-                                    maxWidth: '75%',
-                                    padding: '10px 14px',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: 'var(--r-xl)',
-                                    background: '#dae5da',
-                                    color: 'var(--text)',
-                                    fontSize: 'var(--fs-sm)',
-                                    lineHeight: 1.5,
-                                    textAlign: 'right',
-                                    wordBreak: 'break-word',
-                                }}>
+                                <div className="oc-user-bubble">
                                     {msg.text}
                                 </div>
                             </div>
@@ -457,45 +357,18 @@ export default function OrbConversation({
                 ))}
             </div>
 
-            <div style={{
-                flexShrink: 0,
-                margin: '0 2px 12px',
-            }}>
-                <div style={{
-                    border: `1px solid ${inputFocused ? 'var(--border-focus)' : 'var(--border)'}`,
-                    borderRadius: 'var(--r-xl)',
-                    background: '#fff',
-                    overflow: 'hidden',
-                    transition: 'border-color 0.2s ease',
+            <div className="oc-input-wrap">
+                <div className="oc-input-border" style={{
+                    borderColor: inputFocused ? 'var(--border-focus)' : undefined,
                 }}>
                     <form onSubmit={handleFormSubmit} style={{ position: 'relative' }}>
                         {showSlashMenu && (
-                            <div style={{
-                                position: 'absolute',
-                                bottom: '100%',
-                                left: '8px',
-                                marginBottom: '4px',
-                                background: 'var(--bg)',
-                                border: '1.5px solid rgba(60,110,60,0.35)',
-                                borderRadius: '6px',
-                                boxShadow: 'var(--shadow-md)',
-                                padding: '4px',
-                                zIndex: 50,
-                                minWidth: '200px',
-                            }}>
+                            <div className="oc-slash-menu">
                                 {activeSlashCommands.map((c, i) => (
                                     <div
                                         key={c.cmd}
-                                        style={{
-                                            padding: '6px 10px',
-                                            borderRadius: '4px',
-                                            background: slashIndex === i ? 'var(--bg2)' : 'transparent',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            gap: '12px',
-                                        }}
+                                        className="oc-slash-item"
+                                        style={{ background: slashIndex === i ? 'var(--bg2)' : 'transparent' }}
                                         onMouseDown={(e) => {
                                             e.preventDefault()
                                             fillCommand(c.cmd)
@@ -509,25 +382,14 @@ export default function OrbConversation({
                         )}
 
                         {!input && !submitting && (
-                            <div style={{
-                                position: 'absolute',
-                                top: '13px',
-                                left: '14px',
-                                pointerEvents: 'none',
-                                fontFamily: 'var(--font-ui)',
-                                fontSize: 'var(--fs-sm)',
-                                color: 'var(--muted)',
-                                lineHeight: 1.5,
-                                zIndex: 1,
-                                userSelect: 'none',
-                                whiteSpace: 'nowrap',
-                            }}>
+                            <div className="oc-placeholder">
                                 Ask the Orb...
                             </div>
                         )}
 
                         <textarea
                             ref={textareaRef}
+                            className="oc-textarea"
                             rows={1}
                             value={input}
                             onChange={e => { slashMenuDismissed.current = false; onInputChange(e.target.value); autoResize() }}
@@ -563,102 +425,48 @@ export default function OrbConversation({
                             onBlur={() => setInputFocused(false)}
                             disabled={submitting}
                             placeholder=""
-                            style={{
-                                width: '100%',
-                                fontFamily: 'var(--font-ui)',
-                                fontSize: 'var(--fs-sm)',
-                                background: 'transparent',
-                                border: 'none',
-                                padding: '12px 14px',
-                                color: 'var(--text)',
-                                outline: 'none',
-                                resize: 'none',
-                                lineHeight: 1.5,
-                                overflowY: 'hidden',
-                                boxSizing: 'border-box',
-                                minHeight: '44px',
-                                maxHeight: '120px',
-                            }}
                         />
 
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '4px 10px 8px',
-                            borderTop: '1px solid var(--border)',
-                        }}>
+                        <div className="oc-toolbar">
                             <button
                                 type="button"
+                                className="oc-tool-btn"
+                                aria-pressed={!scopeToProduct}
                                 onClick={() => onScopeChange(!scopeToProduct)}
                                 onMouseDown={(e) => e.preventDefault()}
                                 title={scopeToProduct ? 'Search all projects' : 'Search current project only'}
-                                style={{
-                                    fontFamily: 'var(--font-ui)',
-                                    fontSize: '10px',
-                                    fontWeight: 500,
-                                    letterSpacing: '0.06em',
-                                    padding: '3px 8px',
-                                    borderRadius: '6px',
-                                    border: `1px solid ${!scopeToProduct ? 'var(--pill-active-border)' : 'var(--border)'}`,
-                                    color: !scopeToProduct ? 'var(--pill-active-color)' : 'var(--muted)',
-                                    background: !scopeToProduct ? 'var(--pill-active-bg)' : 'transparent',
-                                    cursor: 'pointer',
-                                    transition: 'all var(--transition)',
-                                }}
+                                style={{ letterSpacing: '0.06em' }}
                             >
                                 All
                             </button>
 
                             <button
                                 type="button"
+                                className="oc-tool-btn"
                                 onClick={handleHistoryUp}
                                 onMouseDown={(e) => e.preventDefault()}
                                 disabled={history.length === 0}
                                 title="Previous command"
                                 aria-label="Previous command"
-                                style={{
-                                    fontFamily: 'var(--font-ui)',
-                                    fontSize: '10px',
-                                    fontWeight: 500,
-                                    padding: '3px 8px',
-                                    borderRadius: '6px',
-                                    border: '1px solid var(--border)',
-                                    color: 'var(--muted)',
-                                    background: 'transparent',
-                                    cursor: history.length === 0 ? 'default' : 'pointer',
-                                    opacity: history.length === 0 ? 0.35 : 1,
-                                    transition: 'all var(--transition)',
-                                }}
                             >
                                 &uarr;
                             </button>
                             <button
                                 type="button"
+                                className="oc-tool-btn"
                                 onClick={handleHistoryDown}
                                 onMouseDown={(e) => e.preventDefault()}
                                 disabled={historyIndex === -1}
                                 title="Next command"
                                 aria-label="Next command"
-                                style={{
-                                    fontFamily: 'var(--font-ui)',
-                                    fontSize: '10px',
-                                    fontWeight: 500,
-                                    padding: '3px 8px',
-                                    borderRadius: '6px',
-                                    border: '1px solid var(--border)',
-                                    color: 'var(--muted)',
-                                    background: 'transparent',
-                                    cursor: historyIndex === -1 ? 'default' : 'pointer',
-                                    opacity: historyIndex === -1 ? 0.35 : 1,
-                                    transition: 'all var(--transition)',
-                                }}
                             >
                                 &darr;
                             </button>
 
                             <button
                                 type="button"
+                                className="oc-tool-btn"
+                                aria-pressed={copiedInput}
                                 onClick={() => input.trim() && navigator.clipboard.writeText(input).then(() => {
                                     setCopiedInput(true)
                                     setTimeout(() => setCopiedInput(false), 1500)
@@ -667,19 +475,6 @@ export default function OrbConversation({
                                 disabled={!input.trim()}
                                 title="Copy input"
                                 aria-label="Copy input"
-                                style={{
-                                    fontFamily: 'var(--font-ui)',
-                                    fontSize: '10px',
-                                    fontWeight: 500,
-                                    padding: '3px 8px',
-                                    borderRadius: '6px',
-                                    border: '1px solid var(--border)',
-                                    color: copiedInput ? 'var(--pill-active-color)' : 'var(--muted)',
-                                    background: copiedInput ? 'var(--pill-active-bg)' : 'transparent',
-                                    cursor: input.trim() ? 'pointer' : 'default',
-                                    opacity: input.trim() ? 1 : 0.35,
-                                    transition: 'all var(--transition)',
-                                }}
                             >
                                 {copiedInput ? (
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -695,24 +490,13 @@ export default function OrbConversation({
 
                             <button
                                 type="button"
+                                className="oc-tool-btn"
+                                aria-pressed={copiedTranscript}
                                 onClick={copyTranscript}
                                 onMouseDown={(e) => e.preventDefault()}
                                 disabled={messages.length === 0}
                                 title="Copy transcript"
                                 aria-label="Copy transcript"
-                                style={{
-                                    fontFamily: 'var(--font-ui)',
-                                    fontSize: '10px',
-                                    fontWeight: 500,
-                                    padding: '3px 8px',
-                                    borderRadius: '6px',
-                                    border: '1px solid var(--border)',
-                                    color: copiedTranscript ? 'var(--pill-active-color)' : 'var(--muted)',
-                                    background: copiedTranscript ? 'var(--pill-active-bg)' : 'transparent',
-                                    cursor: messages.length === 0 ? 'default' : 'pointer',
-                                    opacity: messages.length === 0 ? 0.35 : 1,
-                                    transition: 'all var(--transition)',
-                                }}
                             >
                                 {copiedTranscript ? (
                                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -730,23 +514,16 @@ export default function OrbConversation({
 
                             <button
                                 type="button"
+                                className="oc-tool-btn"
                                 onClick={() => isListening ? stopListening() : startListening()}
                                 onMouseDown={(e) => e.preventDefault()}
                                 disabled={!supportsVoice || submitting}
                                 title={isListening ? 'Stop recording' : 'Voice input'}
                                 aria-label={isListening ? 'Stop recording' : 'Voice input'}
                                 style={{
-                                    fontFamily: 'var(--font-ui)',
-                                    fontSize: '10px',
-                                    fontWeight: 500,
-                                    padding: '3px 8px',
-                                    borderRadius: '6px',
-                                    border: '1px solid var(--border)',
-                                    color: isListening ? '#c00' : 'var(--muted)',
-                                    background: isListening ? 'rgba(200,0,0,0.06)' : 'transparent',
-                                    cursor: !supportsVoice || submitting ? 'default' : 'pointer',
+                                    color: isListening ? '#c00' : undefined,
+                                    background: isListening ? 'rgba(200,0,0,0.06)' : undefined,
                                     opacity: !supportsVoice || submitting ? 0.35 : 1,
-                                    transition: 'all var(--transition)',
                                 }}
                             >
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={isListening ? { animation: 'voice-pulse 1s ease-in-out infinite' } : undefined}>
@@ -757,26 +534,16 @@ export default function OrbConversation({
                                 </svg>
                             </button>
 
-                            <div style={{ flex: 1 }} />
+                            <div className="flex-1" />
 
                             <button
                                 type="submit"
+                                className="oc-tool-btn"
+                                aria-pressed={!!input.trim()}
                                 disabled={!input.trim() || submitting}
                                 title="Submit"
                                 aria-label="Submit"
-                                style={{
-                                    fontFamily: 'var(--font-ui)',
-                                    fontSize: '10px',
-                                    fontWeight: 500,
-                                    letterSpacing: '0.06em',
-                                    padding: '3px 10px',
-                                    borderRadius: '6px',
-                                    border: `1px solid ${input.trim() ? 'var(--pill-active-border)' : 'var(--border)'}`,
-                                    color: input.trim() ? 'var(--pill-active-color)' : 'var(--muted)',
-                                    background: input.trim() ? 'var(--pill-active-bg)' : 'transparent',
-                                    cursor: input.trim() ? 'pointer' : 'default',
-                                    transition: 'all var(--transition)',
-                                }}
+                                style={{ letterSpacing: '0.06em', padding: '3px 10px' }}
                             >
                                 &crarr;
                             </button>

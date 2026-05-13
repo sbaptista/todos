@@ -27,48 +27,6 @@ const SUPER_ADMIN_ROLE_ID = 3
 const PROTECTED_EMAILS = ['dev@localhost.me', 'owner@test.local']
 const EMPTY_INVITE_FORM = { email: '', firstName: '', lastName: '', roleId: 2 }
 
-const primaryBtnStyle = (disabled: boolean): React.CSSProperties => ({
-  background: 'var(--success)',
-  color: '#fff',
-  border: 'none',
-  borderRadius: 'var(--r)',
-  padding: '8px var(--sp-lg)',
-  fontSize: 'var(--fs-sm)',
-  fontWeight: 'var(--fw-medium)',
-  cursor: disabled ? 'not-allowed' : 'pointer',
-  opacity: disabled ? 0.6 : 1,
-})
-
-const cancelBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  fontSize: 'var(--fs-sm)',
-  color: 'var(--muted)',
-  cursor: 'pointer',
-  padding: '8px var(--sp-md)',
-}
-
-const rowActionBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  fontSize: 'var(--fs-sm)',
-  color: 'var(--muted)',
-  cursor: 'pointer',
-  padding: '4px var(--sp-sm)',
-  flexShrink: 0,
-  transition: 'all var(--transition)',
-}
-
-const dangerConfirmBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  fontSize: 'var(--fs-sm)',
-  color: 'var(--error)',
-  fontWeight: 'var(--fw-medium)',
-  cursor: 'pointer',
-  padding: '8px var(--sp-md)',
-}
-
 export default function SettingsUsers() {
   const toast = useToast()
 
@@ -191,38 +149,25 @@ export default function SettingsUsers() {
     load()
   }
 
-  if (loading) return (
-    <div style={{ padding: 'var(--sp-3xl)', fontSize: 'var(--fs-sm)', color: 'var(--muted)' }}>
-      Loading…
-    </div>
-  )
+  if (loading) return <div className="s-loading">Loading…</div>
 
   return (
-    <div className="settings-page" style={{ padding: 'var(--sp-2xl)', maxWidth: '600px', fontFamily: 'var(--font-ui)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--sp-xl)' }}>
-        <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-bold)', color: 'var(--text)', margin: 0 }}>
-          Users
-        </h2>
+    <div className="settings-page s-page">
+      <div className="s-header">
+        <h2 className="s-title">Users</h2>
         {!showInvite && (
-          <button onClick={startInvite} title="Invite a new user" style={{
-            background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--r)',
-            padding: '7px var(--sp-md)', fontSize: 'var(--fs-sm)', color: 'var(--text2)', cursor: 'pointer',
-          }}>
+          <button className="btn-outline" onClick={startInvite} title="Invite a new user">
             + Invite User
           </button>
         )}
       </div>
 
-      {error && (
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--error)', margin: '0 0 var(--sp-md)' }}>
-          {error}
-        </p>
-      )}
+      {error && <p className="s-error">{error}</p>}
 
-      <div style={{ background: 'var(--bg2)', borderRadius: 'var(--r-lg)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div className="s-list">
         {showInvite && (
-          <div key="invite-form" style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: 'var(--sp-lg) var(--sp-xl)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-md)', marginBottom: 'var(--sp-md)' }}>
+          <div className="s-form">
+            <div className="flex-col gap-md mb-md">
               <FormField label="Email" required error={inviteErrors.email}>
                 <input
                   type="email"
@@ -235,7 +180,7 @@ export default function SettingsUsers() {
                   autoFocus
                 />
               </FormField>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-md)' }}>
+              <div className="grid-2col">
                 <FormField label="First Name" required error={inviteErrors.firstName}>
                   <input
                     value={inviteForm.firstName}
@@ -269,14 +214,14 @@ export default function SettingsUsers() {
                 </select>
               </FormField>
             </div>
-            <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', margin: '0 0 var(--sp-md)' }}>
+            <p className="text-xs text-muted mb-md" style={{ margin: 0 }}>
               Invitation email delivery is not yet implemented. The user record will be created without sending an email.
             </p>
-            <div style={{ display: 'flex', gap: 'var(--sp-sm)' }}>
-              <button onClick={handleInvite} disabled={saving} style={primaryBtnStyle(saving)}>
+            <div className="flex-row gap-sm">
+              <button className="btn-primary" onClick={handleInvite} disabled={saving}>
                 {saving ? 'Creating…' : 'Create User'}
               </button>
-              <button onClick={() => setShowInvite(false)} style={cancelBtnStyle}>Cancel</button>
+              <button className="btn-cancel" onClick={() => setShowInvite(false)}>Cancel</button>
             </div>
           </div>
         )}
@@ -288,9 +233,9 @@ export default function SettingsUsers() {
 
           if (editingId === user.id) {
             return (
-              <div key={`user-edit-${user.id}`} style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)', padding: 'var(--sp-lg) var(--sp-xl)' }}>
+              <div key={`user-edit-${user.id}`} className="s-form">
                 {!protectedUser && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--sp-md)', marginBottom: 'var(--sp-md)' }}>
+                  <div className="grid-2col mb-md">
                     <FormField label="First Name" required error={editErrors.firstName}>
                       <input
                         value={editForm.firstName}
@@ -313,7 +258,7 @@ export default function SettingsUsers() {
                   </div>
                 )}
                 {protectedUser && (
-                  <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--muted)', margin: '0 0 var(--sp-md)' }}>
+                  <p className="text-sm text-muted mb-md" style={{ margin: 0 }}>
                     Name cannot be changed for this test user.
                   </p>
                 )}
@@ -328,11 +273,11 @@ export default function SettingsUsers() {
                     ))}
                   </select>
                 </FormField>
-                <div style={{ display: 'flex', gap: 'var(--sp-sm)', marginTop: 'var(--sp-md)' }}>
-                  <button onClick={() => handleSave(user.id, user.email)} disabled={saving} style={primaryBtnStyle(saving)}>
+                <div className="flex-row gap-sm mt-md">
+                  <button className="btn-primary" onClick={() => handleSave(user.id, user.email)} disabled={saving}>
                     {saving ? 'Saving…' : 'Save'}
                   </button>
-                  <button onClick={() => setEditingId(null)} style={cancelBtnStyle}>Cancel</button>
+                  <button className="btn-cancel" onClick={() => setEditingId(null)}>Cancel</button>
                 </div>
               </div>
             )
@@ -340,12 +285,12 @@ export default function SettingsUsers() {
 
           if (confirmDeleteId === user.id) {
             return (
-              <div key={`user-del-${user.id}`} style={{ background: 'rgba(139, 32, 32, 0.05)', padding: '10px var(--sp-xl)', display: 'flex', alignItems: 'center', gap: 'var(--sp-md)', borderBottom: '1px solid var(--border)' }}>
-                <span style={{ fontSize: 'var(--fs-sm)', flex: 1 }}>
+              <div key={`user-del-${user.id}`} className="s-row-delete">
+                <span className="text-sm flex-1">
                   Delete <strong>{[user.first_name, user.last_name].filter(Boolean).join(' ') || user.email}</strong>?
                 </span>
-                <button onClick={() => handleDelete(user.id)} disabled={saving} style={dangerConfirmBtnStyle}>Confirm</button>
-                <button onClick={() => setConfirmDeleteId(null)} style={cancelBtnStyle}>Cancel</button>
+                <button className="btn-danger-confirm" onClick={() => handleDelete(user.id)} disabled={saving}>Confirm</button>
+                <button className="btn-cancel" onClick={() => setConfirmDeleteId(null)}>Cancel</button>
               </div>
             )
           }
@@ -353,29 +298,18 @@ export default function SettingsUsers() {
           return (
             <div
               key={`user-row-${user.id}`}
-              className="settings-list-row"
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-md)', padding: '10px var(--sp-xl)', borderBottom: '1px solid var(--border)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg)')}
-              onMouseLeave={e => (e.currentTarget.style.background = '')}
+              className="settings-list-row s-row"
             >
-              <div style={{
-                width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(60,110,60,0.12)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '13px', fontWeight: 600, color: 'var(--success)', flexShrink: 0,
-              }}>
-                {avatarLetter}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <div className="avatar">{avatarLetter}</div>
+              <div className="s-row-info">
+                <div className="text-sm truncate">
                   {[user.first_name, user.last_name].filter(Boolean).join(' ') || '—'}
                 </div>
-                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)' }}>
-                  {user.email}
-                </div>
+                <div className="text-xs text-muted">{user.email}</div>
               </div>
 
               {isSuperAdmin ? (
-                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--success)', fontWeight: 'var(--fw-medium)', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                <span className="text-sm shrink-0" style={{ color: 'var(--success)', fontWeight: 'var(--fw-medium)', whiteSpace: 'nowrap' }}>
                   {roleName(user.role_id)}
                 </span>
               ) : (
@@ -397,16 +331,14 @@ export default function SettingsUsers() {
               )}
 
               {!isSuperAdmin && (
-                <div className="settings-row-actions" style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                <div className="settings-row-actions flex-center" style={{ gap: '2px' }}>
                   {!protectedUser && (
-                    <button onClick={() => startEdit(user)} style={rowActionBtnStyle} title="Edit user name and role">Edit</button>
+                    <button className="btn-row-action" onClick={() => startEdit(user)} title="Edit user name and role">Edit</button>
                   )}
                   {!protectedUser && (
                     <button
+                      className="btn-row-action btn-row-delete"
                       onClick={() => { setConfirmDeleteId(user.id); setEditingId(null) }}
-                      style={rowActionBtnStyle}
-                      onMouseEnter={e => (e.currentTarget.style.color = 'var(--error)')}
-                      onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}
                       title="Delete this user"
                     >
                       Delete
@@ -419,9 +351,7 @@ export default function SettingsUsers() {
         })}
 
         {users.length === 0 && (
-          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--muted)', textAlign: 'center', padding: 'var(--sp-xl) 0' }}>
-            No users found.
-          </p>
+          <p className="s-empty">No users found.</p>
         )}
       </div>
     </div>

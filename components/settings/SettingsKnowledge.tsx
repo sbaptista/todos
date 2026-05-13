@@ -31,71 +31,53 @@ export default function SettingsKnowledge() {
   }, [supabase])
 
   useVisibilityRefetch(() => loadKnowledge(false))
-  
-  useEffect(() => { 
-    loadKnowledge(true) 
+
+  useEffect(() => {
+    loadKnowledge(true)
   }, [loadKnowledge])
 
-  const cardStyle: React.CSSProperties = {
-    background: 'var(--bg2)',
-    borderRadius: 'var(--r-lg)',
-    border: '1px solid var(--border)',
-    overflow: 'hidden',
-  }
-
   return (
-    <div className="settings-page" style={{ padding: 'var(--sp-2xl)', maxWidth: '960px' }}>
-      <h2 style={{ fontSize: 'var(--fs-lg)', fontWeight: 'var(--fw-bold)', color: 'var(--text)', margin: '0 0 var(--sp-2xl)' }}>
-        Knowledge Repository
-      </h2>
+    <div className="settings-page s-page-wide">
+      <h2 className="s-title mb-2xl">Knowledge Repository</h2>
 
       {loading ? (
-        <div style={{ color: 'var(--muted)', fontSize: 'var(--fs-sm)' }}>Loading...</div>
+        <div className="s-loading">Loading...</div>
       ) : entries.length === 0 ? (
-        <div style={{ ...cardStyle, textAlign: 'center', padding: 'var(--sp-3xl)', color: 'var(--muted)', fontSize: 'var(--fs-sm)' }}>
+        <div className="s-card s-empty">
           No knowledge entries found. Distill some from your closed tasks!
         </div>
       ) : (
-        <div style={cardStyle}>
+        <div className="s-list">
           {entries.map((entry, i) => {
             const isExpanded = expandedId === entry.id
             return (
-              <div 
-                key={entry.id} 
+              <div
+                key={entry.id}
                 className="knowledge-row"
-                style={{ 
+                style={{
                   borderTop: i > 0 ? '1px solid var(--border)' : 'none',
                   transition: 'background var(--transition)',
                 }}
               >
-                <div 
+                <div
                   onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                  className="flex-between"
                   style={{
                     padding: 'var(--sp-md) var(--sp-lg)',
                     cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
                     background: isExpanded ? 'var(--bg3)' : 'transparent',
                   }}
                 >
                   <div style={{ minWidth: 0 }}>
-                    <p style={{ 
-                      fontSize: 'var(--fs-base)', 
-                      color: 'var(--text)', 
-                      margin: 0,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}>
+                    <p className="text-base truncate" style={{ color: 'var(--text)', margin: 0 }}>
                       {entry.title}
                     </p>
-                    <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--muted)', margin: '2px 0 0' }}>
+                    <p className="text-xs text-muted" style={{ margin: '2px 0 0' }}>
                       {entry.projects?.code || 'ORB'} · {new Date(entry.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <span style={{ 
-                    fontSize: '10px', 
+                  <span style={{
+                    fontSize: '10px',
                     color: 'var(--muted)',
                     transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
                     transition: 'transform var(--transition)'
@@ -103,35 +85,25 @@ export default function SettingsKnowledge() {
                     ▶
                   </span>
                 </div>
-                
+
                 {isExpanded && (
-                  <div style={{ 
+                  <div style={{
                     padding: '0 var(--sp-lg) var(--sp-lg)',
                     background: 'var(--bg3)',
                   }}>
-                    <div style={{ 
+                    <div className="text-sm" style={{
                       paddingTop: 'var(--sp-sm)',
                       borderTop: '1px solid var(--border)',
-                      fontSize: 'var(--fs-sm)', 
-                      color: 'var(--text2)', 
-                      whiteSpace: 'pre-wrap', 
-                      lineHeight: 1.5 
+                      color: 'var(--text2)',
+                      whiteSpace: 'pre-wrap',
+                      lineHeight: 1.5
                     }}>
                       {entry.content}
                     </div>
                     {entry.tags && entry.tags.length > 0 && (
-                      <div style={{ display: 'flex', gap: 'var(--sp-xs)', marginTop: 'var(--sp-md)' }}>
+                      <div className="flex-row gap-xs mt-md">
                         {entry.tags.map(tag => (
-                          <span key={tag} style={{
-                            fontSize: '10px',
-                            background: 'var(--bg2)',
-                            color: 'var(--text3)',
-                            padding: '2px 8px',
-                            borderRadius: '10px',
-                            border: '1px solid var(--border)',
-                          }}>
-                            {tag}
-                          </span>
+                          <span key={tag} className="knowledge-tag">{tag}</span>
                         ))}
                       </div>
                     )}

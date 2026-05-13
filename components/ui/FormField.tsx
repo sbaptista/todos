@@ -11,21 +11,15 @@ interface FormFieldProps {
 
 export function FormField({ label, error, hint, required, children, htmlFor }: FormFieldProps) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div className="flex-col" style={{ gap: '6px' }}>
       <label
         htmlFor={htmlFor}
-        style={{
-          fontSize: 'var(--fs-xs)',
-          fontWeight: 'var(--fw-medium)',
-          color: 'var(--text3)',
-          display: 'flex',
-          gap: '4px',
-          alignItems: 'center',
-        }}
+        className="label flex-center"
+        style={{ gap: '4px', marginBottom: 0 }}
       >
         {label}
         {required && (
-          <span style={{ color: 'var(--error)', fontSize: 'var(--fs-xs)' }} aria-hidden="true">*</span>
+          <span className="text-error text-xs" aria-hidden="true">*</span>
         )}
       </label>
 
@@ -34,13 +28,13 @@ export function FormField({ label, error, hint, required, children, htmlFor }: F
       </div>
 
       {error && (
-        <p role="alert" style={{ fontSize: 'var(--fs-sm)', color: 'var(--error)', margin: 0, lineHeight: 1.4 }}>
+        <p role="alert" className="text-sm text-error" style={{ margin: 0, lineHeight: 1.4 }}>
           {error}
         </p>
       )}
 
       {hint && !error && (
-        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--muted)', margin: 0, lineHeight: 1.4 }}>
+        <p className="text-sm text-muted" style={{ margin: 0, lineHeight: 1.4 }}>
           {hint}
         </p>
       )}

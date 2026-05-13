@@ -17,53 +17,15 @@ export default async function SettingsLayout({ children }: { children: React.Rea
   const isAdmin = currentUser?.role_id === 1 || currentUser?.role_id === 3
 
   return (
-    <div style={{
-      minHeight: '100dvh',
-      background: 'var(--bg)',
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: 'var(--font-ui)',
-      WebkitFontSmoothing: 'antialiased',
-    }}>
-      {/* Full-width top bar */}
-      <div style={{
-        height: '52px',
-        background: 'var(--bg2)',
-        borderBottom: '1px solid var(--border)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--sp-md)',
-        padding: '0 var(--sp-2xl)',
-        flexShrink: 0,
-      }}>
-        <Link
-          href="/dashboard"
-          style={{
-            fontSize: 'var(--fs-sm)',
-            color: 'var(--muted)',
-            textDecoration: 'none',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          ← back
-        </Link>
-        <span style={{
-          flex: 1,
-          textAlign: 'center',
-          fontSize: 'var(--fs-sm)',
-          fontWeight: 500,
-          color: 'var(--text2)',
-        }}>
-          Settings
-        </span>
+    <div className="sl-page">
+      <div className="sl-topbar">
+        <Link href="/dashboard" className="sl-back">← back</Link>
+        <span className="sl-title">Settings</span>
       </div>
 
-      {/* Sidebar + content */}
-      <div className="settings-shell" style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+      <div className="sl-body settings-shell">
         <SettingsSidebar isAdmin={isAdmin} />
-        <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
-          {children}
-        </main>
+        <main className="sl-main">{children}</main>
       </div>
     </div>
   )

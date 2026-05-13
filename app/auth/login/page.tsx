@@ -57,64 +57,18 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  const clickCodeStyle: React.CSSProperties = {
-    background: 'rgba(122, 80, 16, 0.1)',
-    padding: '1px 6px',
-    borderRadius: '4px',
-    fontFamily: 'monospace',
-    cursor: 'pointer',
-    outline: '1px dashed rgba(122, 80, 16, 0.3)',
-    transition: 'background 0.15s, outline-color 0.15s',
-  }
-
   return (
-    <div style={{
-      minHeight: '100dvh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--bg)',
-      padding: '0 var(--sp-lg)',
-    }}>
-      <div style={{ width: '100%', maxWidth: '360px' }}>
-
-        <div style={{
-          background: 'var(--bg2)',
-          borderRadius: 'var(--r-xl)',
-          border: '1px solid var(--border)',
-          boxShadow: 'var(--shadow-md)',
-          padding: 'var(--sp-3xl)',
-        }}>
-          <div style={{ marginBottom: 'var(--sp-3xl)', textAlign: 'center' }}>
-            <h1 style={{
-              fontSize: 'var(--fs-xl)',
-              fontWeight: 'var(--fw-bold)',
-              color: 'var(--text)',
-              margin: 0,
-            }}>
-              Orb
-            </h1>
-            <p style={{
-              marginTop: 'var(--sp-sm)',
-              fontSize: 'var(--fs-sm)',
-              color: 'var(--text3)',
-            }}>
-              Enter your email to receive a verification code
-            </p>
+    <div className="auth-page">
+      <div className="auth-wrap">
+        <div className="auth-card">
+          <div className="auth-header">
+            <h1 className="auth-title">Orb</h1>
+            <p className="auth-subtitle">Enter your email to receive a verification code</p>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-xl)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-xs)' }}>
-              <label
-                htmlFor="email"
-                style={{
-                  fontSize: 'var(--fs-sm)',
-                  fontWeight: 'var(--fw-medium)',
-                  color: 'var(--text2)',
-                }}
-              >
-                Email address
-              </label>
+          <form onSubmit={handleSubmit} className="auth-form">
+            <div className="auth-field">
+              <label htmlFor="email" className="auth-label">Email address</label>
               <input
                 id="email"
                 type="email"
@@ -122,81 +76,30 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@example.com"
-                style={{
-                  width: '100%',
-                  padding: '10px var(--sp-md)',
-                  borderRadius: 'var(--r)',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg)',
-                  color: 'var(--text)',
-                  fontSize: 'var(--fs-input)',
-                  outline: 'none',
-                  boxSizing: 'border-box',
-                  transition: 'border-color var(--transition)',
-                }}
-                onFocus={e => (e.currentTarget.style.borderColor = 'var(--border-focus)')}
-                onBlur={e => (e.currentTarget.style.borderColor = 'var(--border)')}
+                className="auth-input"
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                background: 'var(--success)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 'var(--r)',
-                padding: '12px',
-                fontSize: 'var(--fs-base)',
-                fontWeight: 'var(--fw-medium)',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.6 : 1,
-                transition: 'opacity var(--transition), background var(--transition)',
-              }}
-            >
+            <button type="submit" disabled={loading} className="auth-submit">
               {loading ? 'Sending…' : 'Send verification code'}
             </button>
           </form>
 
           {error && (
-            <div style={{
-              marginTop: 'var(--sp-lg)',
-              padding: 'var(--sp-md)',
-              borderRadius: 'var(--r)',
-              background: 'rgba(139, 32, 32, 0.07)',
-              border: '1px solid rgba(139, 32, 32, 0.2)',
-            }}>
-              <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--error)', margin: 0 }}>{error}</p>
+            <div className="auth-error">
+              <p className="text-sm text-error" style={{ margin: 0 }}>{error}</p>
             </div>
           )}
 
           {isDev && (
-            <div style={{
-              marginTop: 'var(--sp-md)',
-              padding: 'var(--sp-md)',
-              borderRadius: 'var(--r)',
-              background: 'rgba(122, 80, 16, 0.07)',
-              border: '1px solid rgba(122, 80, 16, 0.2)',
-            }}>
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning)', margin: 0, textAlign: 'center' }}>
+            <div className="auth-dev-banner">
+              <p className="text-xs" style={{ color: 'var(--warning)', margin: 0 }}>
                 <strong>Dev mode:</strong> use{' '}
-                <code
-                  onClick={() => setEmail('dev@dev.local')}
-                  style={clickCodeStyle}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(122, 80, 16, 0.2)'; e.currentTarget.style.outlineColor = 'rgba(122, 80, 16, 0.6)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(122, 80, 16, 0.1)'; e.currentTarget.style.outlineColor = 'rgba(122, 80, 16, 0.3)' }}
-                >
+                <code className="auth-dev-code" onClick={() => setEmail('dev@dev.local')}>
                   dev@dev.local
                 </code>{' '}
                 (admin) or{' '}
-                <code
-                  onClick={() => setEmail('owner@test.local')}
-                  style={clickCodeStyle}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(122, 80, 16, 0.2)'; e.currentTarget.style.outlineColor = 'rgba(122, 80, 16, 0.6)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(122, 80, 16, 0.1)'; e.currentTarget.style.outlineColor = 'rgba(122, 80, 16, 0.3)' }}
-                >
+                <code className="auth-dev-code" onClick={() => setEmail('owner@test.local')}>
                   owner@test.local
                 </code>{' '}
                 (owner)
@@ -204,24 +107,10 @@ export default function LoginPage() {
             </div>
           )}
         </div>
-
       </div>
 
-      {/* Bottom bar — matches ambient dashboard */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        padding: 'calc(12px + var(--sab)) 20px 12px',
-      }}>
-        <span style={{
-          fontSize: 'var(--fs-xs)',
-          color: 'var(--muted)',
-          letterSpacing: '0.05em',
-        }}>
-          Orb {VERSION}
-        </span>
+      <div className="auth-version">
+        <span className="auth-version-text">Orb {VERSION}</span>
       </div>
     </div>
   )
