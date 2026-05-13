@@ -7,7 +7,7 @@
 
 ## App State
 
-- **Version:** v0.4.28
+- **Version:** v0.4.29
 - **Branch:** main
 - **Dev server:** user-started on localhost:3001
 - **Live URL:** https://orb-eight-lake.vercel.app
@@ -22,7 +22,7 @@
 
 ## Last Session Completed
 
-- Verified project state and updated version tracking to v0.4.28.
+- Verified project state and updated version tracking to v0.4.29.
 - Confirmed git working tree is clean.
 - Resolved ORB-80 (Architectural Alignment): Transitioned `docs/api-spec.yaml` to be the single source of truth for the API and Orb. 
   - Added `x-orb-agent-contract` to hold system voice, valid values, and explicit integrity rules.
@@ -33,6 +33,8 @@
   - Added `add_knowledge` internal tool to `api-spec.yaml` with explicit proactive-prompting instructions.
   - Implemented backend database insertion in `app/actions/orb-converse.ts`.
 - Resolved ORB-81: Fixed `query_todos` not returning descriptions and resolution notes by adding them to the Supabase context SELECT query in `app/actions/orb-converse.ts`.
+- Resolved ORB-90: Restricting Orb Mutations in Production.
+  - Added strict environment check to `orb-converse.ts` to intercept `create_todo`, `update_todo`, and `delete_todo` and return an error payload ("This operation is not allowed") when `NODE_ENV === 'production'`.
 
 ---
 

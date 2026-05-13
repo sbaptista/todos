@@ -150,7 +150,11 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
           const input = JSON.parse(tc.input)
           let output: any
 
-          if (tc.name === 'create_todo') {
+          const isProd = process.env.NODE_ENV === 'production'
+          if (isProd && ['create_todo', 'update_todo', 'delete_todo'].includes(tc.name)) {
+            output = { error: 'This operation is not allowed' }
+            stream.update({ speech: accumulatedSpeech, thought: 'Action blocked' })
+          } else if (tc.name === 'create_todo') {
             const product = input.product_code
               ? ctx.productList.find((p: any) => p.code?.toUpperCase() === String(input.product_code).toUpperCase())
               : ctx.productList.find((p: any) => p.id === req.productId)
