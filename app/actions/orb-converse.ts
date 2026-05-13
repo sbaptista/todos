@@ -41,13 +41,27 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
 // ──────────────────────────────────────────────────────────────────────────
 
 async function buildContext(supabase: any, currentProductId: string, scopeToProduct: boolean = true) {
-  const [{ data: products }, { data: todos }, { data: statuses }, { data: priorities }, { data: knowledge }] = await Promise.all([
-    supabase.from('projects').select('id, name, code').order('sort_order'),
+  const [
+    { data: products }, 
+    { data: todos }, 
+    { data: statuses }, 
+    { data: priorities }, 
+    { data: knowledge },
+    { data: userAuth }
+  ] = await Promise.all([
+    supabase.from('projects').select('id, name, code, description').order('sort_order'),
     supabase.from('todos').select('id, todo_number, title, description, status, priority_value, product_id, closed_at, resolution_notes').is('deleted_at', null),
     supabase.from('statuses').select('*').order('sort_order'),
     supabase.from('priorities').select('*').order('value'),
     supabase.from('knowledge_repo').select('*, projects(code)').order('created_at', { ascending: false }),
+    supabase.auth.getUser()
   ])
+
+  let currentUser = null
+  if (userAuth?.user) {
+    const { data: userRecord } = await supabase.from('users').select('id, email, roles(name)').eq('id', userAuth.user.id).single()
+    currentUser = userRecord
+  }
 
   const productList  = (products   ?? [])
   const todoList     = (todos      ?? [])
@@ -57,17 +71,18 @@ async function buildContext(supabase: any, currentProductId: string, scopeToProd
   const current = productList.find((p: any) => p.id === currentProductId)
 
   const byProduct = productList.map((p: any) => {
+    const header = `${p.code ?? p.name}${p.description ? ` (${p.description})` : ''}`
     if (scopeToProduct && p.id !== currentProductId) {
-      return `${p.code ?? p.name}: (not in scope)`
+      return `${header}: (not in scope)`
     }
     const productTodos = todoList
       .filter((t: any) => t.product_id === p.id && !statusList.find((s: any) => s.name === t.status)?.is_closed)
       .map((t: any) => `  ${p.code ?? p.name}-${t.todo_number} [P${t.priority_value ?? '-'}] ${t.title}`)
       .join('\n')
-    return `${p.code ?? p.name}:\n${productTodos || '  (none open)'}`
+    return `${header}:\n${productTodos || '  (none open)'}`
   }).join('\n\n')
 
-  return { productList, todoList, statusList, priorityList, knowledgeList, current, contextString: byProduct }
+  return { productList, todoList, statusList, priorityList, knowledgeList, current, currentUser, contextString: byProduct }
 }
 
 export async function orbConverse(req: OrbRequest) {
@@ -80,6 +95,7 @@ export async function orbConverse(req: OrbRequest) {
       const statusNames = ctx.statusList.map((s: any) => s.name).join(', ')
       const priorityInfo = ctx.priorityList.map((p: any) => `${p.value}:${p.label}`).join(', ')
 
+      const isProd = process.env.NODE_ENV === 'production'
       let messages: any[] = [
         ...(req.history?.map(h => ({ role: h.role, content: h.text })) ?? []),
         { role: 'user', content: req.input }
@@ -99,6 +115,8 @@ export async function orbConverse(req: OrbRequest) {
           max_tokens: 1024,
           system: `You are the voice of the orb — the conversational layer of Orb.
 VOICE: Brief, direct. Plain text only. NO markdown.
+${isProd ? '\nENVIRONMENT: You are in the PRODUCTION environment. You are strictly in read-only mode for tasks. You CANNOT create, update, or delete tasks. If the user asks you to modify a task, you MUST REJECT the request immediately by saying exactly "This operation is not allowed." DO NOT use query_todos or any other tool to try to look up the task. DO NOT try to be helpful. Just reject it.' : ''}
+${ctx.currentUser ? `\nUSER CONTEXT: You are talking to ${ctx.currentUser.email} (Role: ${ctx.currentUser.roles?.name || 'Unknown'}).` : ''}
 
 ${ORB_INTEGRITY_RULES}
 
@@ -125,7 +143,10 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
             accumulatedSpeech = baseSpeech + currentTurnSpeech 
             stream.update({ speech: accumulatedSpeech, isStreaming: true })
           } else if (chunk.type === 'content_block_start' && chunk.content_block.type === 'tool_use') {
-             const label = ORB_TOOL_LABELS[chunk.content_block.name] || 'Thinking...'
+             let label = ORB_TOOL_LABELS[chunk.content_block.name] || 'Thinking...'
+             if (isProd && ['create_todo', 'update_todo', 'delete_todo'].includes(chunk.content_block.name)) {
+                 label = 'Operation not allowed'
+             }
              stream.update({ speech: accumulatedSpeech, thought: label, isStreaming: true })
              toolCalls.push({ id: chunk.content_block.id, name: chunk.content_block.name, input: '' })
           } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'input_json_delta') {
@@ -147,13 +168,13 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
 
         const toolOutputs: any[] = []
         for (const tc of toolCalls) {
+          const isProd = process.env.NODE_ENV === 'production'
           const input = JSON.parse(tc.input)
           let output: any
 
-          const isProd = process.env.NODE_ENV === 'production'
           if (isProd && ['create_todo', 'update_todo', 'delete_todo'].includes(tc.name)) {
-            output = { error: 'This operation is not allowed' }
-            stream.update({ speech: accumulatedSpeech, thought: 'Action blocked' })
+            output = { error: 'I am in read-only mode. Tell the user "This operation is not allowed."' }
+            stream.update({ speech: accumulatedSpeech, thought: 'Operation not allowed' })
           } else if (tc.name === 'create_todo') {
             const product = input.product_code
               ? ctx.productList.find((p: any) => p.code?.toUpperCase() === String(input.product_code).toUpperCase())
