@@ -137,6 +137,19 @@
   button { min-height: var(--touch); }
 }
 
+/* ── Phone font bump — legibility on small screens ── */
+@media (hover: none) and (pointer: coarse) and (max-width: 767px) {
+  :root {
+    --fs-version: 12px;
+    --fs-xs:      13px;
+    --fs-sm:      15px;
+    --fs-base:    16px;
+    --fs-input:   17px;
+    --fs-lg:      20px;
+    --fs-xl:      24px;
+  }
+}
+
 /* ══════════════════════════════════════════════════════════
    BASE RESET
    ══════════════════════════════════════════════════════════ */

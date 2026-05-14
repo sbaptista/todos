@@ -346,6 +346,26 @@ curl -s "https://livwkbnkdlrbmzgythys.supabase.co/rest/v1/projects?select=id,nam
 
 ---
 
+# Direct SQL Access (psql)
+
+`psql` is installed via `libpq` at `/opt/homebrew/opt/libpq/bin/psql`. Use it for DDL migrations (CREATE TABLE, ALTER TABLE, etc.) that the Supabase REST API cannot handle.
+
+**Connection string:** stored in `.env.local` as `DATABASE_URL` (transaction pooler, port 6543).
+
+## Run a migration
+
+```bash
+/opt/homebrew/opt/libpq/bin/psql "$(grep DATABASE_URL /Users/stanleybaptista/Projects/orb/.env.local | cut -d= -f2-)" -f scripts/migrations/whatever.sql
+```
+
+## Run ad-hoc SQL
+
+```bash
+/opt/homebrew/opt/libpq/bin/psql "$(grep DATABASE_URL /Users/stanleybaptista/Projects/orb/.env.local | cut -d= -f2-)" -c "SELECT ..."
+```
+
+---
+
 # Handoff File Conventions
 
 Handoff files live in `~/Downloads/` with naming pattern `orb-handoff-YYYYMMDD[N].md` where `[N]` is a letter suffix (a, b, c...). Find the latest:
