@@ -1650,6 +1650,27 @@ a, button, [role="button"], input, select, textarea {
   background: var(--pill-active-bg);
 }
 
+.oc-send-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: var(--pill-active-bg);
+  color: var(--pill-active-color);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.oc-send-btn:hover:not(:disabled) {
+  background: var(--pill-active-border);
+}
+.oc-send-btn:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
 /* ── Full-screen panel (help, todo detail, product config) ── */
 
 .panel-overlay {

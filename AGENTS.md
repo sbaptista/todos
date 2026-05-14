@@ -180,6 +180,20 @@ Version bumps happen on every local change — no exceptions. Git pushes only ha
 
 **Bump protocol:** AI only bumps the patch (third node, e.g. `0.3.2→0.3.3`). Stan explicitly indicates when to bump minor (middle) or major (top) nodes.
 
+## Worktree Patching (Claude Code Desktop)
+
+The Claude Code desktop app runs every session in an isolated git worktree (`.claude/worktrees/<name>`). Changes made here are invisible to the dev server on `localhost:3001`, which runs against the main working directory.
+
+**Before asking Stan to test**, patch main:
+
+```bash
+git diff > /tmp/orb-patch.patch && git -C /Users/stanleybaptista/Projects/orb apply /tmp/orb-patch.patch
+```
+
+**At commit time**, Stan commits from the main directory — not the worktree.
+
+Other AI tools (Gemini CLI, etc.) edit main directly and do not need this step.
+
 ---
 
 # Git Production Pushes
@@ -198,7 +212,7 @@ Orb's tool definitions and integrity rules live in `lib/orb-contract.ts`. This i
 
 The REST API contract for external agents (curl, developer AIs) is in `docs/api-spec.yaml`. The two interfaces share the same data model but differ in authentication, addressing, and deletion behavior. See the spec's `x-orb-agent-contract` note for details.
 
-Orb also has a `report_friction` tool that logs capability gaps and interaction friction to the `orb_friction` table. Review these observations when planning work.
+Orb also has a `create_ticket` tool that silently logs bugs, suggestions, capability gaps, and workflow friction to the `tickets` table. Review these in Settings → Tickets when planning work.
 
 ---
 

@@ -15,8 +15,12 @@ info:
       1. ONLY perform updates when explicitly asked. Never update just to sync data or 'help out' unless the user clearly says "change X to Y" or "update X".
       2. ONLY ask clarifying questions when you truly lack information required to proceed. If you can make a safe assumption, do so.
       3. Use `add_knowledge` aggressively. Do not ask for permission if the user states a decision or context that belongs in the repo. Just save it.
+      4. The BACKLOG is a snapshot for orientation only. For any factual claim about task count, status, priority, or existence, call query_todos first. Never cite the backlog as proof.
+      5. Never assert a task's status without verifying via query_todos. Tasks not in the backlog may be closed, filtered, or in another project — not absent.
+      6. When presenting a subset ("top 5", "highest priority"), set max_results on query_todos to match. The results you return are what the UI displays.
+      7. When uncertain, say "I'm not sure" rather than guessing. Confidence without verification is the worst failure mode.
       - Known limitations are documented in each tool's description. Respect them.
-      - When you notice a recurring gap between what users expect and what you can do, use report_friction to log the observation. Use sparingly — one report per novel pattern, not every interaction.
+      - When you notice a capability gap, bug, or workflow friction, use create_ticket to log it silently. One ticket per novel observation. Do not tell the user you filed a ticket.
     
     scope:
       default_project: ORB
@@ -79,19 +83,31 @@ info:
             description: 'Optional tags to categorize the knowledge.'
         required: ['title', 'content']
 
-    report_friction:
-      confidence: well-tested
-      description: 'Log an observation about a capability gap, user confusion, or workflow friction you have noticed. Use when you see something the system should handle better — a missing feature users keep asking for, a confusing interaction pattern, or a limitation that deserves a workaround. Use sparingly: one report per novel observation, not for routine interactions.'
+    query_audit_trail:
+      confidence: new
+      description: 'Query the audit trail to answer questions like "who closed this?", "what changed last week?", or "show me recent activity". Returns timestamped events with before/after snapshots.'
       input_schema:
         type: object
         properties:
-          category:
+          code: { type: string, description: 'Task code (e.g. ORB-73) to see history for a specific task.' }
+          table_name: { type: string, description: 'Filter by table (e.g. todos, knowledge_repo).' }
+          action: { type: string, description: 'Filter by action type (e.g. todo_create, todo_update, todo_close, todo_delete).' }
+          since: { type: string, description: 'ISO date string. Only return events after this timestamp.' }
+          max_results: { type: integer, description: 'Max events to return (default 10, max 50).' }
+
+    create_ticket:
+      confidence: well-tested
+      description: 'Silently log a ticket for bugs, suggestions, capability gaps, or workflow friction. Filed proactively when you observe an issue — do NOT tell the user. Also used when a user explicitly says something like "I see a problem" or "I have a suggestion" — in that case, acknowledge that you have noted it. One ticket per novel observation.'
+      input_schema:
+        type: object
+        properties:
+          type:
             type: string
-            enum: ['capability_gap', 'user_confusion', 'data_quality', 'workflow_friction', 'suggestion']
-            description: 'Type of friction observed.'
-          summary: { type: string, description: 'One-sentence summary of the friction observed.' }
-          detail: { type: string, description: 'What the user asked for, what you tried, what went wrong or was missing, and any suggested improvement.' }
-        required: ['category', 'summary']
+            enum: ['bug', 'suggestion', 'capability_gap', 'workflow_friction']
+            description: 'Type of ticket.'
+          summary: { type: string, description: 'One-sentence summary of the issue or suggestion.' }
+          detail: { type: string, description: 'What happened, what was expected, and any suggested improvement.' }
+        required: ['type', 'summary']
 
 servers:
   - url: https://orb-eight-lake.vercel.app

@@ -131,6 +131,8 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
     const inactivityRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
     const prevSelectedId     = useRef<string | null>(null)
     const projectScrollRef   = useRef<HTMLDivElement>(null)
+    const orbLongPressRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const orbPressedRef      = useRef(false)
 
     function resetInactivity() {
         if (inactivityRef.current) clearTimeout(inactivityRef.current)
@@ -551,13 +553,30 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
             <div className="dash-orb-wrap" data-mode={conversationActive ? 'dialogue' : 'ambient'}>
                 <div
                     onClick={() => {
+                        if (orbPressedRef.current) return
                         if (noProject) {
                             toast.neutral('Add a project to get started.')
                         } else {
                             router.push(`/dashboard/${selectedId}`)
                         }
                     }}
-                    title={noProject ? 'Add a project to get started' : 'View todo list'}
+                    onPointerDown={() => {
+                        orbPressedRef.current = false
+                        orbLongPressRef.current = setTimeout(() => {
+                            orbPressedRef.current = true
+                            if (conversationActive) {
+                                setConversationActive(false)
+                                if (inactivityRef.current) { clearTimeout(inactivityRef.current); inactivityRef.current = null }
+                            }
+                        }, 500)
+                    }}
+                    onPointerUp={() => {
+                        if (orbLongPressRef.current) { clearTimeout(orbLongPressRef.current); orbLongPressRef.current = null }
+                    }}
+                    onPointerCancel={() => {
+                        if (orbLongPressRef.current) { clearTimeout(orbLongPressRef.current); orbLongPressRef.current = null }
+                    }}
+                    title={noProject ? 'Add a project to get started' : 'Tap to view list · hold to return to ambient'}
                     style={{
                         position: 'relative',
                         width: 'clamp(140px, 25vh, 200px)',
@@ -569,8 +588,10 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                         pointerEvents: 'auto',
                         transform: `scale(${orbScale})`,
                         transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        WebkitTouchCallout: 'none',
+                        userSelect: 'none',
                     }}
-                    aria-label={noProject ? 'No project selected — add a project to get started' : `${openTodos.length} open todos — tap to view list`}
+                    aria-label={noProject ? 'No project selected — add a project to get started' : `${openTodos.length} open todos — tap to view list, long press to return to ambient`}
                     role="button"
                     tabIndex={0}
                     onKeyDown={e => {

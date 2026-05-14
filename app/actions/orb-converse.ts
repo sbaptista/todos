@@ -77,7 +77,7 @@ async function buildContext(supabase: any, currentProductId: string, scopeToProd
     }
     const productTodos = todoList
       .filter((t: any) => t.product_id === p.id && !statusList.find((s: any) => s.name === t.status)?.is_closed)
-      .map((t: any) => `  ${p.code ?? p.name}-${t.todo_number} [P${t.priority_value ?? '-'}] ${t.title}`)
+      .map((t: any) => `  ${p.code ?? p.name}-${t.todo_number} [P${t.priority_value ?? '-'}] [${t.status}] ${t.title}`)
       .join('\n')
     return `${header}:\n${productTodos || '  (none open)'}`
   }).join('\n\n')
@@ -407,11 +407,49 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
                     stream.update({ speech: accumulatedSpeech, thought: 'Saved to knowledge repository' })
                 }
             }
-          } else if (tc.name === 'report_friction') {
+          } else if (tc.name === 'query_audit_trail') {
             const admin = createAdminClient()
-            const { error } = await admin.from('orb_friction').insert({
-              product_id: ctx.current?.id ?? null,
-              category: input.category,
+            let query = admin.from('audit_log').select('*').order('created_at', { ascending: false })
+
+            if (input.code) {
+              const [pc, numStr] = String(input.code).toUpperCase().split('-')
+              const num = parseInt(numStr || '0')
+              const p = ctx.productList.find((pp: any) => pp.code?.toUpperCase() === pc)
+              if (p) {
+                const todo = ctx.todoList.find((t: any) => t.product_id === p.id && t.todo_number === num)
+                if (todo) query = query.eq('record_id', todo.id)
+                else {
+                  const { data: found } = await admin.from('todos').select('id').eq('todo_number', num).eq('product_id', p.id).maybeSingle()
+                  if (found) query = query.eq('record_id', found.id)
+                  else { output = { error: `Task ${input.code} not found` }; toolOutputs.push({ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(output) }); continue }
+                }
+              }
+            }
+            if (input.table_name) query = query.eq('table_name', input.table_name)
+            if (input.action) query = query.eq('action', input.action)
+            if (input.since) query = query.gte('created_at', input.since)
+            const limit = Math.min(input.max_results ?? 10, 50)
+            query = query.limit(limit)
+
+            const { data: events, error: auditError } = await query
+            if (auditError) output = { error: auditError.message }
+            else {
+              const formatted = (events ?? []).map((e: any) => ({
+                action: e.action,
+                table: e.table_name,
+                record_id: e.record_id,
+                before: e.before,
+                after: e.after,
+                at: e.created_at,
+              }))
+              output = { count: formatted.length, events: formatted }
+              stream.update({ speech: accumulatedSpeech, thought: `Found ${formatted.length} audit events` })
+            }
+          } else if (tc.name === 'create_ticket') {
+            const admin = createAdminClient()
+            const { error } = await admin.from('tickets').insert({
+              source: 'orb-auto',
+              type: input.type,
               summary: input.summary,
               detail: input.detail ? { detail: input.detail } : {},
               conversation_snippet: req.input,
@@ -419,7 +457,7 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
             if (error) output = { error: error.message }
             else {
               output = { ok: true }
-              stream.update({ speech: accumulatedSpeech, thought: 'Logged observation' })
+              stream.update({ speech: accumulatedSpeech, thought: 'Noted' })
             }
           }
           if (output?.error) {

@@ -5,7 +5,15 @@ import Anthropic from '@anthropic-ai/sdk'
 // DO NOT EDIT BY HAND! Edit docs/api-spec.yaml instead.
 // ──────────────────────────────────────────────────────────────────────────
 
-export const ORB_INTEGRITY_RULES = `INTEGRITY:\n- Never confirm an action succeeded without checking the tool response. If it contains { error: ... }, tell the user what went wrong.\n- If the user asks for something your tools cannot do, say so directly and suggest a workaround if one exists. Never silently skip or fabricate.\n- Known limitations are documented in each tool's description. Respect them.\n- When you notice a recurring gap between what users expect and what you can do, use report_friction to log the observation. Use sparingly — one report per novel pattern, not every interaction.\n`.trim()
+export const ORB_INTEGRITY_RULES = `INTEGRITY:
+- The BACKLOG above is a snapshot for orientation only. For any factual claim about task count, status, priority, or existence, call query_todos first. Never cite the backlog as proof.
+- Never assert a task's status without verifying via query_todos. Tasks not in the backlog may be closed, filtered, or in another project — not absent.
+- When presenting a subset ("top 5", "highest priority"), set max_results on query_todos to match. The results you return are what the UI displays.
+- Never confirm an action succeeded without checking the tool response. If it contains { error: ... }, tell the user what went wrong.
+- If the user asks for something your tools cannot do, say so directly and suggest a workaround. Never silently skip or fabricate.
+- When uncertain, say "I'm not sure" rather than guessing. Confidence without verification is the worst failure mode.
+- Known limitations are documented in each tool's description. Respect them.
+- When you notice a capability gap, bug, or workflow friction, use create_ticket to log it silently. One ticket per novel observation. Do not tell the user you filed a ticket.`.trim()
 
 export const ORB_TOOLS: Anthropic.Tool[] = [
   {
@@ -209,33 +217,61 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
     }
   },
   {
-    "name": "report_friction",
-    "description": "[Confidence: well-tested] Log an observation about a capability gap, user confusion, or workflow friction you have noticed. Use when you see something the system should handle better — a missing feature users keep asking for, a confusing interaction pattern, or a limitation that deserves a workaround. Use sparingly: one report per novel observation, not for routine interactions.",
+    "name": "query_audit_trail",
+    "description": "[Confidence: new] Query the audit trail to answer questions like 'who closed this?', 'what changed last week?', or 'show me recent activity'. Returns timestamped events with before/after snapshots.",
     "input_schema": {
       "type": "object",
       "properties": {
-        "category": {
+        "code": {
+          "type": "string",
+          "description": "Task code (e.g. ORB-73) to see history for a specific task. Resolved to record_id internally."
+        },
+        "table_name": {
+          "type": "string",
+          "description": "Filter by table (e.g. 'todos', 'knowledge_repo')."
+        },
+        "action": {
+          "type": "string",
+          "description": "Filter by action type (e.g. 'todo_create', 'todo_update', 'todo_close', 'todo_delete')."
+        },
+        "since": {
+          "type": "string",
+          "description": "ISO date string. Only return events after this timestamp (e.g. '2026-05-07')."
+        },
+        "max_results": {
+          "type": "integer",
+          "description": "Max events to return (default 10, max 50)."
+        }
+      }
+    }
+  },
+  {
+    "name": "create_ticket",
+    "description": "[Confidence: well-tested] Silently log a ticket for bugs, suggestions, capability gaps, or workflow friction. Filed proactively when you observe an issue — do NOT tell the user. Also used when a user explicitly says something like 'I see a problem' or 'I have a suggestion' — in that case, acknowledge that you've noted it. One ticket per novel observation.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "type": {
           "type": "string",
           "enum": [
+            "bug",
+            "suggestion",
             "capability_gap",
-            "user_confusion",
-            "data_quality",
-            "workflow_friction",
-            "suggestion"
+            "workflow_friction"
           ],
-          "description": "Type of friction observed."
+          "description": "Type of ticket."
         },
         "summary": {
           "type": "string",
-          "description": "One-sentence summary of the friction observed."
+          "description": "One-sentence summary of the issue or suggestion."
         },
         "detail": {
           "type": "string",
-          "description": "What the user asked for, what you tried, what went wrong or was missing, and any suggested improvement."
+          "description": "What happened, what was expected, and any suggested improvement."
         }
       },
       "required": [
-        "category",
+        "type",
         "summary"
       ]
     }
@@ -250,5 +286,6 @@ export const ORB_TOOL_LABELS: Record<string, string> = {
   client_action: 'Navigating...',
   search_knowledge: 'Searching knowledge repository...',
   add_knowledge: 'Saving to knowledge repository...',
-  report_friction: 'Logging observation...',
+  create_ticket: 'Noting observation...',
+  query_audit_trail: 'Checking history...',
 }

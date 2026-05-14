@@ -74,7 +74,8 @@
       "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\({k:d[k] for k in ['name','description','version'] if k in d}, indent=2\\)\\)\")",
       "Bash(git -C /Users/stanleybaptista/Projects/todos remote -v)",
       "Bash(python3 -c \"import json; d=json.load\\(open\\('/Users/stanleybaptista/Projects/todos/package.json'\\)\\); [print\\(k,':',v\\) for k,v in d.items\\(\\) if k in ['name','description','scripts']]\")",
-      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'{len\\(d\\)} todos found with product=TODOS'\\)\")"
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(f'{len\\(d\\)} todos found with product=TODOS'\\)\")",
+      "Bash(git -C /Users/stanleybaptista/Projects/orb log --oneline -10)"
     ]
   }
 }
