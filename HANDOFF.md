@@ -16,61 +16,68 @@
 
 ## Last Session Completed
 
-**Mobile layout, reusable components — v0.4.56 → v0.4.59**
+**Priority hardcoding elimination — v0.4.64**
 
-### Mobile Layout Fixes (v0.4.56–57)
-- Added a dedicated `viewport` export to `app/layout.tsx` to force `device-width` on mobile devices. Removed deprecated `themeColor` from `metadata`.
-- Moved `@media (max-width: 767px)` block in `app/globals.css` to the absolute bottom of the file to ensure source-order overrides work correctly.
-- Removed the absolute-positioned "Settings" title from `SettingsTopbar.tsx` (eliminated breadcrumb overlap on all platforms). Breadcrumb strip is now `position: sticky; top: 0`.
-- Moved sidebar width management from React inline styles into CSS (`.cs-sidebar { width: 220px }`, `.cs-sidebar[data-collapsed] { width: 48px }`) to remove specificity conflicts with mobile overrides.
-- Settings sidebar on iPhone now correctly switches to a full-width horizontal scroll strip (v0.4.57).
+### ORB-100 — Remove hardcoded priority colors and urgency thresholds
+- **Migration** (`20260515_priority_columns.sql`): Added `color` and `is_urgent` columns to priorities table. Set priority 1 as urgent with color `#a05010`.
+- **Code changes** (7 files):
+  - **AmbientDashboard.tsx** — Fetches priorities on mount. `computeUrgency()` now accepts `urgentValues` set and checks `is_urgent` flag instead of `priority_value === 1`. Passes `priorityColorMap` to OrbConversation.
+  - **OrbConversation.tsx** — New `priorityColors: Map<number, string>` prop. OrbCard uses it for priority dot colors.
+  - **TodoView.tsx** — `priorityMap` now maps to full Priority objects. Priority dot uses `priorityMap.get(value)?.color`.
+  - **TodoPanel.tsx** — Updated to use `statuses` prop and dynamic priority fetching (completed in prior session).
+  - **QueryResultsModal.tsx** — Eager priority fetch in useEffect, `priorityColorMap` for priority dots (completed in prior session).
+  - **SettingsFriction.tsx** — Looks up urgent priority via `is_urgent = true` query instead of hardcoded `1`. Uses `.maybeSingle()` to safely get the value.
+  - **seed-can26.ts** — Queries urgent priority value from DB instead of hardcoded `1`.
+- **Debugging**: Added console.log to SettingsFriction for priority lookup. When testing Settings > Tickets, check browser console to confirm urgent priority is found.
 
-### Horizontal Scroll Arrows (v0.4.58)
-- Added scroll-indicator arrows + gradient edge fades to `CollapsibleSidebar`. Arrows appear/disappear based on actual scroll position via `ResizeObserver`.
+---
 
-### Reusable UI Components (v0.4.59)
-Extracted two shared components into `components/ui/`:
+**Status hardcoding elimination — v0.4.63**
 
-- **`Breadcrumbs.tsx`** — Auto-derives breadcrumbs from `usePathname()`. Supports root override and `BreadcrumbOverridesProvider`. Breadcrumb links now correctly display with underlines (fixed `.sl-back { text-decoration: underline }` in CSS).
-- **`HScrollNav.tsx`** — Horizontal scroll container with left/right arrow buttons and gradient fade edges. Uses `cs-scroll-arrow` CSS by default; accepts `className` for per-callsite overrides. Accepts optional `scrollRef` for parent-managed scroll containers.
+### ORB-91 — False positive ticket
+- Investigated auto-generated ticket (PGRST116 on SettingsUserDetail load). Confirmed the page uses `createAdminClient()` which bypasses RLS — error was fabricated by the conversational Orb AI via `create_ticket`.
+- Closed ORB-91 with resolution notes. Created knowledge repo entry documenting that `orb-auto` tickets can contain AI-fabricated error details.
 
-Consumers migrated:
-- `CollapsibleSidebar.tsx` — all scroll logic removed, delegates to `<HScrollNav>`
-- `SettingsTopbar.tsx` — reduced to 8 lines, wraps `<Breadcrumbs />`
-- `AmbientDashboard.tsx` — project strip uses `<HScrollNav scrollRef={projectScrollRef}>`. Removed `canScrollLeft`, `canScrollRight`, `updateProjectScrollState`, `scrollProjects`.
+### Database migration (`20260515_status_fk.sql`)
+- Dropped brittle `todos_status_check` CHECK constraint (hardcoded `open`, `in_progress`, `on_hold`, `done`).
+- Migrated existing todo rows: 111 `done` → `closed`, 14 `on_hold` → `on hold`.
+- Added `UNIQUE` constraint on `statuses.name`.
+- Added FK `todos.status → statuses.name` with `ON UPDATE CASCADE ON DELETE RESTRICT`. Renaming a status in the `statuses` table now cascades automatically to all todos.
 
-### Security — RLS owner-only policies
-- Stripped all admin bypass from RLS policies (`scripts/migrations/20260513_rls_owner_only_select.sql` — already executed). Dashboard now only shows own data for all roles.
-- Admin cross-user access is exclusively via server actions using `createAdminClient()`.
-- Role visibility: superadmin sees all, admins see everyone except superadmin, owners see only themselves.
+### Code changes (12 files)
+- **TodoView.tsx** — Removed hardcoded `Status` type union and `STATUS_COLOR` map. Fetches statuses from DB. Uses `isClosed()` helper (checks `is_closed` flag) and `statusColor()` (generates CSS var from status name). Filter dropdown populated dynamically.
+- **TodoPanel.tsx** — Accepts `statuses` prop. Uses `is_closed` flag instead of `=== 'done'`. Dynamic status dropdown.
+- **QueryResultsModal.tsx** — Accepts `statuses` prop. Replaced `STATUS_COLOR` map with `statusColor()` function. Dynamic dropdown in inline editor.
+- **OrbConversation.tsx** — Updated `'done'` → `'closed'` for result styling.
+- **AmbientDashboard.tsx** — Updated `'done'` → `'closed'` for open todo filtering and urgency computation.
+- **orb-converse.ts** — Removed `'done'` fallback in closing status detection; relies solely on `is_closed` flag from statuses table.
+- **orb-contract.ts** — Removed hardcoded `enum: ["open", "done"]` from `update_todo` tool schema; AI now uses status names from system prompt context.
+- **app/api/tasks/[id]/route.ts** — Looks up `is_closed` from statuses table instead of `=== 'done'` to set `closed_at`.
+- **globals.css** — Renamed `--status-done` → `--status-closed`.
+- **archive-data.ts**, **archive-todos.ts** — Updated fallback status names.
+- **seed-can26.ts** — Updated status mapping (`done` → `closed`, `on-hold` → `on hold`).
 
-### Server actions created
-- `app/actions/get-user-detail.ts` — `getUserDetail`, `getUserProjects`, `getProjectTodos` with role-based visibility checks.
-- `app/actions/manage-todo.ts` — CRUD for todos via admin client. Default status fixed from `'pending'` to `'open'`.
-- `app/actions/manage-project.ts` — CRUD for projects. Code is now required, validated (uppercase alphanumeric, max 6 chars), uniqueness-checked.
-- `app/actions/list-users.ts` — Filters superadmin from admin view.
+### Uncommitted changes
 
-### Settings UI
-- **SettingsUserDetail** — Fully migrated from client-side Supabase to server actions. Column headings added to project list.
-- **SettingsProjectTodos** — Made read-only (view-only table). Todo CRUD belongs on the Todos page, not Settings.
-- **SettingsTopbar** — Dynamic breadcrumbs, all segments clickable. Breadcrumb override context for correct back-links from project detail pages.
-- **NavLink** — Navigation guard wrapper using Next.js `onNavigate` API for unsaved changes protection.
-- **UnsavedChangesProvider** — Context provider with beforeunload handler and dismissable toast. Wired into sidebar and topbar.
-- **BreadcrumbOverridesProvider** — Context for child components to fix breadcrumb paths (e.g., `/settings/projects` → `/settings/users/{ownerId}`).
+All changes are in the main directory (`/Users/stanleybaptista/Projects/orb/`), uncommitted:
 
-### Account page separated
-- Moved Account from `/settings/account` to `/account` as a standalone page with its own topbar (`tv-topbar` + `sl-title`).
-- Removed Account from Settings sidebar. Settings index now redirects to `/settings/priorities`.
-- Dashboard user button links to `/account`.
-
-### Bug fixes
-- **useVisibilityRefetch** — Removed aggressive `focus` listener that caused constant page reloads. Added 5-second minimum gap between refetches. Background refetches no longer flash "Loading..." state.
-- **Priority dropdown** — Fixed column name (`label` not `name`) in priorities query.
-- **Product codes** — Made required with validation and uniqueness check.
-- **Statuses** — Fixed all hardcoded `pending`/`in_progress`/`done` to real DB values (`open`, `in progress`, `on hold`, `closed`).
-
-### Consistency
-- TodoView and Account page both use `sl-title` for page titles, `tv-version-footer` for version display.
+- `package.json` — version 0.4.64
+- `lib/version.ts` — version 0.4.64
+- `app/globals.css` — `--status-closed` CSS variable (from v0.4.63)
+- `app/actions/archive-data.ts` — fallback update (from v0.4.63)
+- `app/actions/orb-converse.ts` — removed `'done'` fallback (from v0.4.63)
+- `app/api/tasks/[id]/route.ts` — dynamic `is_closed` lookup (from v0.4.63)
+- `components/TodoView.tsx` — dynamic statuses + priorities (mixed)
+- `components/TodoPanel.tsx` — `statuses` prop, dynamic dropdown (from v0.4.63)
+- `components/QueryResultsModal.tsx` — `statuses` + `priorityColorMap` (mixed)
+- `components/OrbConversation.tsx` — `priorityColors` prop, dynamic priority dots (NEW)
+- `components/AmbientDashboard.tsx` — fetch priorities, dynamic urgency (NEW)
+- `components/settings/SettingsFriction.tsx` — dynamic urgent priority lookup (NEW)
+- `lib/orb-contract.ts` — removed hardcoded status enum (from v0.4.63)
+- `scripts/migrations/20260515_status_fk.sql` — status migration (executed in v0.4.63)
+- `scripts/migrations/20260515_priority_columns.sql` — priority migration (executed in v0.4.64)
+- `scripts/archive-todos.ts` — fallback update (from v0.4.63)
+- `scripts/seed-can26.ts` — dynamic urgent priority lookup (NEW)
 
 ---
 
@@ -80,20 +87,21 @@ Consumers migrated:
 - **Settings is for administration, not task management.** Todo CRUD removed from Settings; project todos are view-only. Use the Todos page for mutations.
 - **Account is not a Settings page.** It's a standalone page accessible from the dashboard user button.
 - **Product codes are required.** The conversational AI resolves todos by splitting task codes (e.g., `ORB-73`). Null codes break this.
+- **Status names are DB-driven.** The `statuses` table is the single source of truth. Code uses `is_closed` flag, never hardcoded status strings. FK with `ON UPDATE CASCADE` ensures renames propagate automatically.
 
 ---
 
 ## Next Priorities
 
-1. Create reusable page/component templates (topbar+back, CRUD list, detail view) so new pages are assembled from existing parts.
-2. Fetch live backlog at session start.
+1. Debug Settings > Tickets "Generate Ticket" priority lookup (check browser console logs when testing).
+2. Create reusable page/component templates (topbar+back, CRUD list, detail view) so new pages are assembled from existing parts.
 3. Review open Orb tickets from the Friction Queue.
 
 ---
 
 ## AI Tool Used Last Session
 
-`2026-05-13 — Claude Code (Anthropic Claude Sonnet 4.6)`
+`2026-05-14 — Claude Code (Anthropic Claude Opus 4.6 / Haiku 4.5)`
 
 ---
 

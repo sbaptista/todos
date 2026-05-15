@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { OrbResponse } from '@/app/actions/orb-converse'
-import type { Todo, Product, Priority } from './TodoView'
+import type { Todo, Product, Priority, StatusDef } from './TodoView'
 
 type ResultItem = NonNullable<OrbResponse['results']>[number]
 
@@ -14,18 +14,16 @@ const PRIORITY_DOT: Record<number, string> = {
   4: 'var(--muted)',
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  open:        'var(--status-open)',
-  in_progress: 'var(--status-in-progress)',
-  on_hold:     'var(--status-on-hold)',
-  done:        'var(--status-done)',
+function statusColor(status: string) {
+  return `var(--status-${status.replace(/\s+/g, '-')})`
 }
 
 function InlineTodoEditor({
-  todo, priorities, onSave, onDelete, onCancel
+  todo, priorities, statuses, onSave, onDelete, onCancel
 }: {
   todo: Todo
   priorities: Priority[]
+  statuses: StatusDef[]
   onSave: (updated: Todo) => void
   onDelete: (id: string) => void
   onCancel: () => void
@@ -37,7 +35,7 @@ function InlineTodoEditor({
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const isDone = form.status === 'done'
+  const isDone = statuses.find(s => s.name === form.status)?.is_closed ?? false
 
   async function handleSave() {
     setSaving(true)
@@ -51,7 +49,7 @@ function InlineTodoEditor({
         description: form.description || null,
         resolution_notes: form.resolution_notes || null,
         urls,
-        closed_at: form.status === 'done' ? (todo.closed_at ?? new Date().toISOString()) : null,
+        closed_at: isDone ? (todo.closed_at ?? new Date().toISOString()) : null,
       })
       .eq('id', todo.id)
       .select('*, groups(name), categories(name)')
@@ -77,11 +75,10 @@ function InlineTodoEditor({
       <div className="grid-2col">
         <div className="pf-field">
           <label className="pf-label">Status</label>
-          <select className="pf-select" value={form.status} onChange={e => setForm(f => ({...f, status: e.target.value as Todo['status']}))}>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="on_hold">On Hold</option>
-            <option value="done">Done</option>
+          <select className="pf-select" value={form.status} onChange={e => setForm(f => ({...f, status: e.target.value}))}>
+            {statuses.map(s => (
+              <option key={s.id} value={s.name}>{s.name.charAt(0).toUpperCase() + s.name.slice(1)}</option>
+            ))}
           </select>
         </div>
         <div className="pf-field">
@@ -146,6 +143,7 @@ export default function QueryResultsModal({
   const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [priorities, setPriorities] = useState<Priority[]>([])
+  const [statusDefs, setStatusDefs] = useState<StatusDef[]>([])
   const [items, setItems] = useState<ResultItem[]>(results)
 
   const handleCopy = useCallback(() => {
@@ -157,14 +155,16 @@ export default function QueryResultsModal({
   }, [items])
 
   async function openTodo(item: ResultItem) {
-    const [todoRes, prodRes, priRes] = await Promise.all([
+    const [todoRes, prodRes, priRes, statRes] = await Promise.all([
       supabase.from('todos').select('*').eq('id', item.id).single(),
       supabase.from('projects').select('id, name, color, code').order('sort_order'),
       supabase.from('priorities').select('value, label').order('value'),
+      supabase.from('statuses').select('id, name, sort_order, is_closed').order('sort_order'),
     ])
     if (todoRes.data) {
       setProducts((prodRes.data ?? []).map((p: { id: string; name: string; color: string | null; code: string | null }) => ({ ...p, icon: null })))
       setPriorities(priRes.data ?? [])
+      setStatusDefs(statRes.data ?? [])
       setSelectedTodo(todoRes.data as Todo)
     }
   }
@@ -219,7 +219,7 @@ export default function QueryResultsModal({
                   <span className="tv-priority-dot" style={{ background: item.priority_value ? PRIORITY_DOT[item.priority_value] ?? 'var(--muted)' : 'var(--border)' }} />
                   <span className="qr-code">{item.code}</span>
                   <span className="qr-title">{item.title}</span>
-                  <span className="qr-status" style={{ color: STATUS_COLOR[item.status] ?? 'var(--muted)' }}>
+                  <span className="qr-status" style={{ color: statusColor(item.status) }}>
                     {item.status.replace('_', ' ')}
                   </span>
                 </button>
@@ -227,6 +227,7 @@ export default function QueryResultsModal({
                   <InlineTodoEditor
                     todo={selectedTodo}
                     priorities={priorities}
+                    statuses={statusDefs}
                     onSave={updated => {
                       setSelectedTodo(null)
                       setItems(prev => prev.map(it => it.id === updated.id ? { ...it, title: updated.title, status: updated.status, priority_value: updated.priority_value } : it))

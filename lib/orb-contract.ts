@@ -69,11 +69,7 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
         },
         "new_status": {
           "type": "string",
-          "enum": [
-            "open",
-            "done"
-          ],
-          "description": "New status value."
+          "description": "New status value. Use the exact status names from the VALID VALUES list in the system prompt."
         },
         "new_priority": {
           "type": "integer",

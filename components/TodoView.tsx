@@ -11,8 +11,6 @@ import ProductConfigPanel from './ProductConfigPanel'
 import DistillModal from './DistillModal'
 import { logAudit } from '@/app/actions/log-audit'
 
-export type Status = 'open' | 'in_progress' | 'on_hold' | 'done'
-
 export type Todo = {
   id: string
   product_id: string
@@ -23,7 +21,7 @@ export type Todo = {
   title: string
   description: string | null
   resolution_notes: string | null
-  status: Status
+  status: string
   urls: string[]
   sort_order: number
   created_at: string
@@ -34,13 +32,7 @@ export type Todo = {
 
 export type Product  = { id: string; name: string; color: string | null; icon: string | null; code: string | null }
 export type Priority = { value: number; label: string }
-
-const STATUS_COLOR: Record<Status, string> = {
-  open:        'var(--status-open)',
-  in_progress: 'var(--status-in-progress)',
-  on_hold:     'var(--status-on-hold)',
-  done:        'var(--status-done)',
-}
+export type StatusDef = { id: string; name: string; sort_order: number; is_closed: boolean }
 
 const PRIORITY_DOT: Record<number, string> = {
   1: '#a05010',  // high — amber
@@ -55,6 +47,7 @@ export default function TodoView({ productId }: { productId: string }) {
   const [todos, setTodos]       = useState<Todo[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [priorities, setPriorities] = useState<Priority[]>([])
+  const [statuses, setStatuses] = useState<StatusDef[]>([])
   const [loading, setLoading]   = useState(true)
 
   const [filterStatus,   setFilterStatus]   = useState('active') // 'active' hides done by default
@@ -89,14 +82,16 @@ export default function TodoView({ productId }: { productId: string }) {
     async function fetchData() {
       setLoading(true)
 
-      const [, productsRes, prioritiesRes] = await Promise.all([
+      const [, productsRes, prioritiesRes, statusesRes] = await Promise.all([
         fetchTodos(),
         supabase.from('projects').select('id, name, color, icon, code').order('sort_order'),
         supabase.from('priorities').select('value, label').order('value'),
+        supabase.from('statuses').select('id, name, sort_order, is_closed').order('sort_order'),
       ])
 
       setProducts(productsRes.data ?? [])
       setPriorities(prioritiesRes.data ?? [])
+      setStatuses(statusesRes.data ?? [])
       setLoading(false)
     }
 
@@ -117,12 +112,13 @@ export default function TodoView({ productId }: { productId: string }) {
 
   async function handleToggleDone(e: React.MouseEvent, todo: Todo) {
     e.stopPropagation()
-    const newStatus: Status = todo.status === 'done' ? 'open' : 'done'
+    const closedStatus = statuses.find(s => s.is_closed)?.name ?? 'closed'
+    const newStatus = isClosed(todo.status) ? 'open' : closedStatus
     const { data } = await supabase
       .from('todos')
       .update({
         status: newStatus,
-        closed_at: newStatus === 'done' ? new Date().toISOString() : null,
+        closed_at: isClosed(newStatus) ? new Date().toISOString() : null,
       })
       .eq('id', todo.id)
       .select('*, groups(name), categories(name)')
@@ -133,14 +129,14 @@ export default function TodoView({ productId }: { productId: string }) {
       setTodos(prev => prev.map(t => t.id === todo.id ? updated : t))
       if (selectedTodo?.id === todo.id) setSelectedTodo(updated)
       logAudit({
-        action: newStatus === 'done' ? 'todo_close' : 'todo_reopen',
+        action: isClosed(newStatus) ? 'todo_close' : 'todo_reopen',
         table_name: 'todos',
         record_id: todo.id,
         before: { status: todo.status },
         after: { status: newStatus, title: todo.title }
       })
 
-      if (newStatus === 'done') {
+      if (isClosed(newStatus)) {
         setDistillTodo(updated)
       }
     }
@@ -166,8 +162,9 @@ export default function TodoView({ productId }: { productId: string }) {
   async function handleBulkMarkDone() {
     if (selectedIds.length === 0) return
     const ids = [...selectedIds]
+    const closedStatus = statuses.find(s => s.is_closed)?.name ?? 'closed'
     await supabase.from('todos').update({
-      status: 'done',
+      status: closedStatus,
       closed_at: new Date().toISOString(),
     }).in('id', ids)
     logAudit({
@@ -198,10 +195,13 @@ export default function TodoView({ productId }: { productId: string }) {
 
   const priorityMap    = useMemo(() => new Map(priorities.map(p => [p.value, p.label])), [priorities])
   const productCodeMap = useMemo(() => new Map(products.map(p => [p.id, p.code])), [products])
+  const closedNames    = useMemo(() => new Set(statuses.filter(s => s.is_closed).map(s => s.name)), [statuses])
+  const isClosed       = useCallback((status: string) => closedNames.has(status), [closedNames])
+  const statusColor    = useCallback((status: string) => `var(--status-${status.replace(/\s+/g, '-')})`, [])
 
 
   const filtered = todos.filter(t => {
-    if (filterStatus === 'active' && t.status === 'done') return false
+    if (filterStatus === 'active' && isClosed(t.status)) return false
     if (filterStatus !== 'active' && filterStatus !== 'all' && t.status !== filterStatus) return false
     if (filterPriority !== 'all' && String(t.priority_value) !== filterPriority) return false
     return true
@@ -209,7 +209,7 @@ export default function TodoView({ productId }: { productId: string }) {
 
   const doneTodos = filterStatus === 'active'
     ? todos.filter(t => {
-        if (t.status !== 'done') return false
+        if (!isClosed(t.status)) return false
         if (filterPriority !== 'all' && String(t.priority_value) !== filterPriority) return false
         return true
       })
@@ -309,10 +309,9 @@ export default function TodoView({ productId }: { productId: string }) {
           >
             <option value="active">Active only</option>
             <option value="all">All statuses</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="on_hold">On Hold</option>
-            <option value="done">Done</option>
+            {statuses.map(s => (
+              <option key={s.id} value={s.name}>{s.name.charAt(0).toUpperCase() + s.name.slice(1)}</option>
+            ))}
           </select>
 
           <select
@@ -347,7 +346,7 @@ export default function TodoView({ productId }: { productId: string }) {
               const isHovered   = hoveredId === todo.id
               const isSelected  = selectedTodo?.id === todo.id
               const isChecked   = selectedIds.includes(todo.id)
-              const isDone      = todo.status === 'done'
+              const isDone      = isClosed(todo.status)
               const todoRef     = productCodeMap.get(todo.product_id) && todo.todo_number != null
                 ? `${productCodeMap.get(todo.product_id)}-${todo.todo_number}`
                 : null
@@ -387,7 +386,7 @@ export default function TodoView({ productId }: { productId: string }) {
                     </div>
                   ) : (
                     <div className="tv-status-bar" style={{
-                      background: STATUS_COLOR[todo.status],
+                      background: statusColor(todo.status),
                       opacity: isDone ? 0.4 : 1,
                     }} />
                   )}
@@ -423,11 +422,11 @@ export default function TodoView({ productId }: { productId: string }) {
                       className="tv-done-toggle"
                       onClick={e => handleToggleDone(e, todo)}
                       style={{
-                        border: `1.5px solid ${isDone ? 'var(--status-done)' : 'var(--border)'}`,
-                        background: isDone ? 'var(--status-done)' : 'transparent',
+                        border: `1.5px solid ${isDone ? statusColor(todo.status) : 'var(--border)'}`,
+                        background: isDone ? statusColor(todo.status) : 'transparent',
                         opacity: isHovered || isSelected || isDone ? 1 : 0,
                       }}
-                      aria-label={isDone ? 'Mark open' : 'Mark done'}
+                      aria-label={isDone ? 'Reopen' : 'Close'}
                     >
                       {isDone && (
                         <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -503,7 +502,7 @@ export default function TodoView({ productId }: { productId: string }) {
                         </div>
                       ) : (
                         <div className="tv-status-bar" style={{
-                          background: STATUS_COLOR['done'],
+                          background: statusColor(todo.status),
                           opacity: 0.3,
                         }} />
                       )}
@@ -523,11 +522,11 @@ export default function TodoView({ productId }: { productId: string }) {
                           className="tv-done-toggle"
                           onClick={e => handleToggleDone(e, todo)}
                           style={{
-                            border: '1.5px solid var(--status-done)',
-                            background: 'var(--status-done)',
+                            border: `1.5px solid ${statusColor(todo.status)}`,
+                            background: statusColor(todo.status),
                             opacity: isHovered || isSelected ? 1 : 0.5,
                           }}
-                          aria-label="Mark open"
+                          aria-label="Reopen"
                         >
                           <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
                             <path d="M2 5l2.5 2.5L8 3" stroke="var(--bg2)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -548,6 +547,7 @@ export default function TodoView({ productId }: { productId: string }) {
           todo={selectedTodo}
           products={products}
           priorities={priorities}
+          statuses={statuses}
           isAll={isAll}
           onClose={() => setSelectedTodo(null)}
           onSave={updated => {

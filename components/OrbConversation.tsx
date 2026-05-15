@@ -29,13 +29,14 @@ type Props = {
     selectedProjectId?: string | null
     onShowEditProject: () => void
     onShowAddProject: () => void
+    priorityColors?: Map<number, string>
     conversationActive?: boolean
     onRestoreConversation?: () => void
     projectStrip?: React.ReactNode
     orbElement?: React.ReactNode
 }
 
-function OrbCard({ msg, onShowResults }: { msg: ConversationMessage; onShowResults: Props['onShowResults'] }) {
+function OrbCard({ msg, onShowResults, priorityColors }: { msg: ConversationMessage; onShowResults: Props['onShowResults']; priorityColors?: Map<number, string> }) {
     const [copied, setCopied] = useState(false)
 
     function copy() {
@@ -106,7 +107,7 @@ function OrbCard({ msg, onShowResults }: { msg: ConversationMessage; onShowResul
                                 onClick={() => onShowResults(msg.results!, msg.queryLabel ?? '')}
                             >
                                 <span className="tv-priority-dot" style={{
-                                    background: r.status === 'done' ? 'var(--muted)' : r.priority_value === 1 ? '#a05010' : '#5a3090',
+                                    background: r.status === 'closed' ? 'var(--muted)' : (r.priority_value ? priorityColors?.get(r.priority_value) ?? 'var(--muted)' : 'var(--border)'),
                                 }} />
                                 <span style={{
                                     fontFamily: 'monospace',
@@ -123,7 +124,7 @@ function OrbCard({ msg, onShowResults }: { msg: ConversationMessage; onShowResul
                                 <span className="shrink-0" style={{
                                     fontSize: '11px',
                                     textTransform: 'capitalize',
-                                    color: r.status === 'done' ? '#6a8a6a' : '#4a7a4a',
+                                    color: r.status === 'closed' ? '#6a8a6a' : '#4a7a4a',
                                 }}>
                                     {r.status}
                                 </span>
@@ -168,6 +169,7 @@ export default function OrbConversation({
     selectedProjectId,
     onShowEditProject,
     onShowAddProject,
+    priorityColors,
     conversationActive = true,
     onRestoreConversation,
     projectStrip,
@@ -364,7 +366,7 @@ export default function OrbConversation({
                                     </div>
                                 </div>
                             ) : (
-                                <OrbCard key={msg.id} msg={msg} onShowResults={onShowResults} />
+                                <OrbCard key={msg.id} msg={msg} onShowResults={onShowResults} priorityColors={priorityColors} />
                             )
                     ))}
                 </div>

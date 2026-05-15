@@ -18,9 +18,10 @@ import { useToast } from '@/components/ui/Toast'
 import MuralCanvas from './MuralCanvas'
 import HScrollNav from '@/components/ui/HScrollNav'
 
-type Product = { id: string; name: string; code: string | null; description: string | null; created_by: string }
-type Todo    = { id: string; title: string; status: string; priority_value: number | null }
-type Urgency = 'calm' | 'active' | 'urgent'
+type Product  = { id: string; name: string; code: string | null; description: string | null; created_by: string }
+type Todo     = { id: string; title: string; status: string; priority_value: number | null }
+type Priority = { value: number; label: string; color: string; is_urgent: boolean }
+type Urgency  = 'calm' | 'active' | 'urgent'
 
 type Props = { initialProducts?: Product[]; isAdmin?: boolean }
 
@@ -33,9 +34,9 @@ function genId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
 
-function computeUrgency(todos: Todo[]): Urgency {
-    const open = todos.filter(t => t.status !== 'done')
-    if (open.some(t => t.priority_value === 1)) return 'urgent'
+function computeUrgency(todos: Todo[], urgentValues: Set<number>): Urgency {
+    const open = todos.filter(t => t.status !== 'closed')
+    if (open.some(t => t.priority_value !== null && urgentValues.has(t.priority_value))) return 'urgent'
     if (open.length > 5) return 'active'
     return 'calm'
 }
@@ -99,6 +100,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
     const supabase = useMemo(() => createClient(), [])
     const toast    = useToast()
 
+    const [priorities, setPriorities]             = useState<Priority[]>([])
     const [products, setProducts]               = useState<Product[]>(initialProducts ?? [])
     const [selectedId, setSelectedId]           = useState<string | null>(null)
     const [todos, setTodos]                     = useState<Todo[]>([])
@@ -254,6 +256,15 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
         load()
     }, [supabase])
 
+    useEffect(() => {
+        supabase.from('priorities').select('value, label, color, is_urgent').order('value').then(({ data }) => {
+            if (data) setPriorities(data)
+        })
+    }, [supabase])
+
+    const urgentValues = useMemo(() => new Set(priorities.filter(p => p.is_urgent).map(p => p.value)), [priorities])
+    const priorityColorMap = useMemo(() => new Map(priorities.map(p => [p.value, p.color])), [priorities])
+
     // Derive display products based on owner filter
     const displayProducts = products
 
@@ -307,8 +318,8 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
         return () => { supabase.removeChannel(channel) }
     }, [selectedId, supabase, fetchTodos])
 
-    const openTodos = todos.filter(t => t.status !== 'done')
-    const urgency   = moodOverride ?? computeUrgency(todos)
+    const openTodos = todos.filter(t => t.status !== 'closed')
+    const urgency   = moodOverride ?? computeUrgency(todos, urgentValues)
     const style     = ORB_STYLE[urgency]
     const speed     = ORB_SPEED[urgency]
     const selected  = products.find(p => p.id === selectedId)
@@ -738,6 +749,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                     messages={messages}
                     input={input}
                     submitting={submitting}
+                    priorityColors={priorityColorMap}
                     productCode={selected?.code ?? selected?.name ?? ''}
                     products={products}
                     scopeToProduct={scopeToProduct}

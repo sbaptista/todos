@@ -5,11 +5,14 @@ import { useState } from 'react'
 import type { ConversationMessage } from './OrbConversation'
 
 export type MoodOverride = 'calm' | 'active' | 'urgent' | null
+export type RoleOverride = 'Super Admin' | 'Admin' | 'Owner' | null
 export type Speech = { text: string; autoFade?: number } | null
 
 type Props = {
   override: MoodOverride
   onChange: (m: MoodOverride) => void
+  roleOverride: RoleOverride
+  onRoleOverrideChange: (r: RoleOverride) => void
   onSpeak: (s: Speech) => void
   onSubmit: (text: string) => void
   dryRun: boolean
@@ -27,7 +30,7 @@ const SPEECH_PRESETS: Record<string, Speech> = {
   },
 }
 
-function OrbDevPanelInner({ override, onChange, onSpeak, onSubmit, dryRun, onDryRunChange, messages, onForceQuiet }: Props) {
+function OrbDevPanelInner({ override, onChange, roleOverride, onRoleOverrideChange, onSpeak, onSubmit, dryRun, onDryRunChange, messages, onForceQuiet }: Props) {
   const [open, setOpen] = useState(false)
 
   const copyTranscript = () => {
@@ -90,6 +93,20 @@ function OrbDevPanelInner({ override, onChange, onSpeak, onSubmit, dryRun, onDry
           </button>
           <button type="button" className="dev-btn" onClick={() => onSubmit('Mark TODOS-99999 as done')}>
             update → bad task code
+          </button>
+
+          <div className="dev-section">Role simulation</div>
+          <button type="button" className="dev-btn" aria-pressed={roleOverride === null} onClick={() => onRoleOverrideChange(null)}>
+            Auto (real role)
+          </button>
+          <button type="button" className="dev-btn" aria-pressed={roleOverride === 'Super Admin'} onClick={() => onRoleOverrideChange('Super Admin')}>
+            Super Admin
+          </button>
+          <button type="button" className="dev-btn" aria-pressed={roleOverride === 'Admin'} onClick={() => onRoleOverrideChange('Admin')}>
+            Admin
+          </button>
+          <button type="button" className="dev-btn" aria-pressed={roleOverride === 'Owner'} onClick={() => onRoleOverrideChange('Owner')}>
+            Owner (read-only)
           </button>
 
           <div className="dev-section">Claude API</div>

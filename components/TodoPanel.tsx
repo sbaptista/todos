@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Todo, Product, Priority } from './TodoView'
+import type { Todo, Product, Priority, StatusDef } from './TodoView'
 import DistillModal from './DistillModal'
 import { logAudit } from '@/app/actions/log-audit'
 import { useToast } from '@/components/ui/Toast'
@@ -11,6 +11,7 @@ type Props = {
   todo: Todo
   products: Product[]
   priorities: Priority[]
+  statuses: StatusDef[]
   isAll: boolean
   onClose: () => void
   onSave: (updated: Todo) => void
@@ -21,6 +22,7 @@ export default function TodoPanel({
   todo,
   products,
   priorities,
+  statuses,
   isAll,
   onClose,
   onSave,
@@ -44,7 +46,7 @@ export default function TodoPanel({
     setShowDetails(false)
   }, [todo.id])
 
-  const isDone             = form.status === 'done'
+  const isDone             = statuses.find(s => s.name === form.status)?.is_closed ?? false
 
   const todoRef = (() => {
     const code = products.find(p => p.id === todo.product_id)?.code
@@ -66,7 +68,7 @@ export default function TodoPanel({
         group_id:         form.group_id,
         category_id:      form.category_id,
         urls,
-        closed_at: form.status === 'done'
+        closed_at: isDone
           ? (todo.closed_at ?? new Date().toISOString())
           : null,
       })
@@ -76,7 +78,7 @@ export default function TodoPanel({
     setSaving(false)
     if (err) { toast.error('Failed to save. Try again.'); return }
     if (data) {
-      const justClosed = form.status === 'done' && todo.status !== 'done'
+      const justClosed = isDone && !(statuses.find(s => s.name === todo.status)?.is_closed ?? false)
       toast.success(justClosed ? 'Todo closed.' : 'Todo saved.')
       onSave(data as Todo)
       logAudit({
@@ -183,12 +185,11 @@ export default function TodoPanel({
                 id="tp-status"
                 className="pf-select"
                 value={form.status}
-                onChange={e => setForm(f => ({ ...f, status: e.target.value as Todo['status'] }))}
+                onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
               >
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="on_hold">On Hold</option>
-                <option value="done">Done</option>
+                {statuses.map(s => (
+                  <option key={s.id} value={s.name}>{s.name.charAt(0).toUpperCase() + s.name.slice(1)}</option>
+                ))}
               </select>
             </div>
             <div className="pf-field">

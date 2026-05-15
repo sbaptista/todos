@@ -21,8 +21,8 @@ const can26Todos = raw.todos as any[]
 
 // ── Status mapping ───────────────────────────────────────────
 function mapStatus(s: string): string {
-  if (s === 'done') return 'done'
-  if (s === 'on-hold') return 'on_hold'
+  if (s === 'done') return 'closed'
+  if (s === 'on-hold') return 'on hold'
   return 'open'
 }
 
@@ -94,12 +94,21 @@ async function main() {
   }
 
   // 5. Insert todos
+  // Look up urgent priority value from DB
+  const { data: urgentPri } = await supabase
+    .from('priorities')
+    .select('value')
+    .eq('is_urgent', true)
+    .limit(1)
+    .single()
+  const urgentPriorityValue = urgentPri?.value ?? null
+
   console.log(`\n4. Inserting ${can26Todos.length} todos...`)
   let inserted = 0
   let failed = 0
 
   for (const t of can26Todos) {
-    const priorityValue = t.urgent === true ? 1 : null
+    const priorityValue = t.urgent === true ? urgentPriorityValue : null
 
     const todo = {
       product_id: product.id,

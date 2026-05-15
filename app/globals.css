@@ -60,7 +60,7 @@
   --status-open:        #b87010;
   --status-in-progress: #2060a0;
   --status-on-hold:     #5a6a7a;
-  --status-done:        #2d5a2d;
+  --status-closed:      #2d5a2d;
 
   /* ── Toast ── */
   --toast-success-bg:     var(--success);

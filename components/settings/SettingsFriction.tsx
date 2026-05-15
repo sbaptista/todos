@@ -57,6 +57,15 @@ export default function SettingsFriction() {
         
         if (!projId) throw new Error("No project available to attach the ticket to.")
 
+        const { data: urgentPri, error: priErr } = await supabase
+            .from('priorities')
+            .select('value')
+            .eq('is_urgent', true)
+            .maybeSingle()
+
+        console.log('[SettingsFriction] Urgent priority lookup:', { urgentPri, priErr, priorityValue: urgentPri?.value })
+        if (priErr) console.warn('[SettingsFriction] Priority lookup error:', priErr)
+
         const detailsStr = log.detail ? `\n\nDetails:\n${JSON.stringify(log.detail, null, 2)}` : ''
         const snippetStr = log.conversation_snippet ? `\n\nContext:\n${log.conversation_snippet}` : ''
 
@@ -64,7 +73,7 @@ export default function SettingsFriction() {
             title: `Trouble Ticket: ${log.summary}`,
             description: `Auto-generated from Orb Issue log (${log.category}).${snippetStr}${detailsStr}`,
             status: 'open',
-            priority_value: 1,
+            priority_value: urgentPri?.value ?? null,
             product_id: projId
         })
         

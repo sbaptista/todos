@@ -36,14 +36,18 @@ export async function PATCH(
 
   if (status !== undefined) {
     updates.status = status
-    if (status === 'done') {
-      updates.closed_at = new Date().toISOString()
-    } else {
-      updates.closed_at = null
-    }
   }
 
   const supabase = createServiceClient()
+
+  if (status !== undefined) {
+    const { data: statusDef } = await supabase
+      .from('statuses')
+      .select('is_closed')
+      .eq('name', status)
+      .single()
+    updates.closed_at = statusDef?.is_closed ? new Date().toISOString() : null
+  }
 
   const { data: todo, error } = await supabase
     .from('todos')

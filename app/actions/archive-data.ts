@@ -33,7 +33,7 @@ export async function prepareArchive() {
     .select('name')
     .eq('is_closed', true)
 
-  const closedStatusNames = closedStatuses?.map(s => s.name) || ['done', 'closed']
+  const closedStatusNames = closedStatuses?.map(s => s.name) || ['closed']
 
   const { data: toArchive, error: fetchError } = await supabase
     .from('todos')

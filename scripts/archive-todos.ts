@@ -20,8 +20,7 @@ async function archiveTodos() {
   console.log('--- TODOS Archival Process (TODOS-9) ---')
   
   // 1. Fetch aged closed todos
-  // We look for tasks that are closed (status check depends on your specific status names, 
-  // but typically 'done' or 'closed'). We'll use the is_closed flag if available.
+  // We look for tasks with a closed status (using the is_closed flag from the statuses table).
   const THRESHOLD_DAYS = 30
   const thresholdDate = new Date()
   thresholdDate.setDate(thresholdDate.getDate() - THRESHOLD_DAYS)
@@ -34,7 +33,7 @@ async function archiveTodos() {
     .select('name')
     .eq('is_closed', true)
 
-  const closedStatusNames = closedStatuses?.map(s => s.name) || ['done', 'closed']
+  const closedStatusNames = closedStatuses?.map(s => s.name) || ['closed']
 
   const { data: toArchive, error: fetchError } = await supabase
     .from('todos')

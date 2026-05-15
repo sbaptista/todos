@@ -32,6 +32,7 @@ export type OrbRequest = {
   scopeToProduct?: boolean
   history?: Array<{ role: 'user' | 'assistant'; text: string }>
   dryRun?: boolean
+  roleOverride?: string | null
 }
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
@@ -96,8 +97,11 @@ export async function orbConverse(req: OrbRequest) {
       const priorityInfo = ctx.priorityList.map((p: any) => `${p.value}:${p.label}`).join(', ')
 
       const isProd = process.env.NODE_ENV === 'production'
-      const userRole = ctx.currentUser?.roles?.name || ''
+      const realRole = ctx.currentUser?.roles?.name || ''
+      const simulatingRole = !isProd && req.roleOverride
+      const userRole = simulatingRole ? req.roleOverride! : realRole
       const canWrite = ['super admin', 'admin'].includes(userRole.toLowerCase())
+      const enforceGate = isProd || simulatingRole
 
       let messages: any[] = [
         ...(req.history?.map(h => ({ role: h.role, content: h.text })) ?? []),
@@ -118,8 +122,8 @@ export async function orbConverse(req: OrbRequest) {
           max_tokens: 1024,
           system: `You are the voice of the orb — the conversational layer of Orb.
 VOICE: Brief, direct. Plain text only. NO markdown.
-${isProd && !canWrite ? '\nENVIRONMENT: You are in the PRODUCTION environment. Task modifications (create, update, delete) are available to admins only. If the user asks you to modify a task, tell them: "Task management is available to admins. You can view and query your backlog."' : ''}
-${ctx.currentUser ? `\nUSER CONTEXT: You are talking to ${ctx.currentUser.email} (Role: ${ctx.currentUser.roles?.name || 'Unknown'}).` : ''}
+${enforceGate && !canWrite ? '\nENVIRONMENT: You are in the PRODUCTION environment. Task modifications (create, update, delete) are available to admins only. If the user asks you to modify a task, tell them: "Task management is only available to admins. You can view and query your backlog."' : ''}
+${ctx.currentUser ? `\nUSER CONTEXT: You are talking to ${ctx.currentUser.email} (Role: ${userRole || 'Unknown'}).` : ''}
 
 ${ORB_INTEGRITY_RULES}
 
@@ -147,7 +151,7 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
             stream.update({ speech: accumulatedSpeech, isStreaming: true })
           } else if (chunk.type === 'content_block_start' && chunk.content_block.type === 'tool_use') {
              let label = ORB_TOOL_LABELS[chunk.content_block.name] || 'Thinking...'
-             if (isProd && !canWrite && ['create_todo', 'update_todo', 'delete_todo'].includes(chunk.content_block.name)) {
+             if (enforceGate && !canWrite && ['create_todo', 'update_todo', 'delete_todo'].includes(chunk.content_block.name)) {
                  label = 'Operation not allowed'
              }
              stream.update({ speech: accumulatedSpeech, thought: label, isStreaming: true })
@@ -174,7 +178,7 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
           const input = JSON.parse(tc.input)
           let output: any
 
-          if (isProd && !canWrite && ['create_todo', 'update_todo', 'delete_todo'].includes(tc.name)) {
+          if (enforceGate && !canWrite && ['create_todo', 'update_todo', 'delete_todo'].includes(tc.name)) {
             output = { error: 'Task management is available to admins only. Tell the user they can view and query their backlog.' }
             stream.update({ speech: accumulatedSpeech, thought: 'Operation not allowed' })
           } else if (tc.name === 'create_todo') {
@@ -266,11 +270,9 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
 
             if (!todo) output = { error: 'todo not found' }
             else {
-              // True when the new status should close the task: use is_closed flag with 'done' as fallback
-              const closingStatus = !!(input.new_status && (
-                ctx.statusList.find((s: any) => s.name === input.new_status)?.is_closed ||
-                input.new_status === 'done'
-              ))
+              const closingStatus = !!(input.new_status &&
+                ctx.statusList.find((s: any) => s.name === input.new_status)?.is_closed
+              )
 
               const { data, error } = await supabase.from('todos').update({
                 title: input.new_title ?? todo.title,
