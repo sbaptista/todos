@@ -111,6 +111,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
     const [showEditProduct, setShowEditProduct] = useState(false)
     const [pulse, setPulse]                     = useState(false)
     const [moodOverride, setMoodOverride]       = useState<MoodOverride>(null)
+    const [roleOverride, setRoleOverride]       = useState<'Super Admin' | 'Admin' | 'Owner' | null>(null)
     const [dryRun, setDryRun]                   = useState(false)
     const [showHelp, setShowHelp]               = useState(false)
     const [messages, setMessages]               = useState<ConversationMessage[]>([])
@@ -879,6 +880,8 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
             <OrbDevPanel
                 override={moodOverride}
                 onChange={setMoodOverride}
+                roleOverride={roleOverride}
+                onRoleOverrideChange={setRoleOverride}
                 onSpeak={speech => { if (speech) addOrbMessage(speech.text) }}
                 onSubmit={handleSubmit}
                 dryRun={dryRun}
