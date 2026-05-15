@@ -16,7 +16,7 @@
 
 ## Last Session Completed
 
-**Priority hardcoding elimination — v0.4.64**
+**Priority hardcoding elimination — v0.4.64 (committed)**
 
 ### ORB-100 — Remove hardcoded priority colors and urgency thresholds
 - **Migration** (`20260515_priority_columns.sql`): Added `color` and `is_urgent` columns to priorities table. Set priority 1 as urgent with color `#a05010`.
@@ -57,9 +57,9 @@
 - **archive-data.ts**, **archive-todos.ts** — Updated fallback status names.
 - **seed-can26.ts** — Updated status mapping (`done` → `closed`, `on-hold` → `on hold`).
 
-### Uncommitted changes
+### Committed in v0.4.64
 
-All changes are in the main directory (`/Users/stanleybaptista/Projects/orb/`), uncommitted:
+All changes committed:
 
 - `package.json` — version 0.4.64
 - `lib/version.ts` — version 0.4.64
@@ -93,9 +93,10 @@ All changes are in the main directory (`/Users/stanleybaptista/Projects/orb/`), 
 
 ## Next Priorities
 
-1. Debug Settings > Tickets "Generate Ticket" priority lookup (check browser console logs when testing).
-2. Create reusable page/component templates (topbar+back, CRUD list, detail view) so new pages are assembled from existing parts.
-3. Review open Orb tickets from the Friction Queue.
+1. **Settings > Tickets issue**: Priority lookup returns null when generating tickets. Debug logs added to SettingsFriction.tsx — check browser console when testing to see what the urgent priority query returns.
+2. **Orb query filtering issue**: When querying for multiple todos (e.g., "show ORB-102, ORB-103, ORB-104"), only the last one is returned. Likely in `app/actions/orb-converse.ts` query logic.
+3. Create reusable page/component templates (topbar+back, CRUD list, detail view) so new pages are assembled from existing parts.
+4. Review open Orb tickets from the Friction Queue.
 
 ---
 
