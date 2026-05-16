@@ -120,7 +120,7 @@ export async function getProjectTodos(projectId: string) {
 
   const [{ data: todos }, { data: statuses }, { data: priorities }] = await Promise.all([
     admin.from('todos').select('id, title, status, priority_value, created_at').eq('product_id', projectId).order('created_at', { ascending: false }),
-    admin.from('statuses').select('id, name, sort_order, is_closed').order('sort_order'),
+    admin.from('statuses').select('id, name, sort_order, is_closed, is_open').order('sort_order'),
     admin.from('priorities').select('value, label').order('value'),
   ])
 

@@ -13,7 +13,9 @@ export const ORB_INTEGRITY_RULES = `INTEGRITY:
 - If the user asks for something your tools cannot do, say so directly and suggest a workaround. Never silently skip or fabricate.
 - When uncertain, say "I'm not sure" rather than guessing. Confidence without verification is the worst failure mode.
 - Known limitations are documented in each tool's description. Respect them.
-- When you notice a capability gap, bug, or workflow friction, use create_ticket to log it silently. One ticket per novel observation. Do not tell the user you filed a ticket.`.trim()
+- When you notice a capability gap, bug, or workflow friction, use create_ticket to log it silently. One ticket per novel observation. Do not tell the user you filed a ticket.
+- STATUSES: Never guess or invent status names. The VALID VALUES list in the system prompt is authoritative. If the user uses an unknown term (e.g. "pending", "blocked", "wip"), do NOT map it to a status. Instead list the valid statuses and ask which one they mean.
+- PRIORITIES: Never guess or invent priority values. The VALID VALUES list is authoritative. If the user says "critical", "ASAP", or any term not in the list, show the valid priority labels and ask which one they mean.`.trim()
 
 export const ORB_TOOLS: Anthropic.Tool[] = [
   {
@@ -110,13 +112,18 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
   },
   {
     "name": "query_todos",
-    "description": "[Confidence: well-tested] Find todos matching criteria. Use code for single-todo lookup (e.g. \"ORB-73\"). Otherwise filters by status, product, priority, or text. Returns open tasks by default — pass status to include closed.",
+    "description": "[Confidence: well-tested] Find todos matching criteria. Use code for single-todo lookup (e.g. \"ORB-73\"), or codes for multi-todo lookup (e.g. [\"ORB-102\", \"ORB-103\"]). Otherwise filters by status, product, priority, or text. Returns open tasks by default — pass status to include closed.",
     "input_schema": {
       "type": "object",
       "properties": {
         "code": {
           "type": "string",
           "description": "Exact task code for single-todo lookup, e.g. \"ORB-62\". Overrides all other filters."
+        },
+        "codes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Multiple task codes for batch lookup, e.g. [\"ORB-102\", \"ORB-103\", \"ORB-104\"]. Overrides all other filters. Use instead of code when the user asks for multiple specific tasks."
         },
         "product_code": {
           "type": "string"

@@ -36,13 +36,16 @@ export default function TodoForm({
     setSaving(true)
     setError('')
 
+    const { data: openStatus } = await supabase
+      .from('statuses').select('name').eq('is_open', true).limit(1).single()
+
     const { data, error: err } = await supabase
       .from('todos')
       .insert({
         title:            title.trim(),
         description:      null,
         resolution_notes: null,
-        status:           'open',
+        status:           openStatus?.name ?? 'open',
         priority_value:   priorityValue === '' ? null : priorityValue,
         product_id:       selectedProduct,
         group_id:         null,

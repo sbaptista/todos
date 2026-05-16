@@ -16,82 +16,36 @@
 
 ## Last Session Completed
 
-**Priority hardcoding elimination + build fixes — v0.4.64 (committed)**
+**Bug fixes + audit — v0.4.65–v0.4.66**
 
-### ORB-100 — Remove hardcoded priority colors and urgency thresholds (closed)
-- **Testing verified**: Priority 1 displays orange `#a05010`, no priority displays light gray `var(--border)`. System fully data-driven from DB.
-- **Resolution notes recorded** on ORB-100 in Orb app.
-- **Migration** (`20260515_priority_columns.sql`): Added `color` and `is_urgent` columns to priorities table. Set priority 1 as urgent with color `#a05010`.
-- **Code changes** (7 files):
-  - **AmbientDashboard.tsx** — Fetches priorities on mount. `computeUrgency()` now accepts `urgentValues` set and checks `is_urgent` flag instead of `priority_value === 1`. Passes `priorityColorMap` to OrbConversation.
-  - **OrbConversation.tsx** — New `priorityColors: Map<number, string>` prop. OrbCard uses it for priority dot colors.
-  - **TodoView.tsx** — `priorityMap` now maps to full Priority objects. Priority dot uses `priorityMap.get(value)?.color`.
-  - **TodoPanel.tsx** — Updated to use `statuses` prop and dynamic priority fetching (completed in prior session).
-  - **QueryResultsModal.tsx** — Eager priority fetch in useEffect, `priorityColorMap` for priority dots (completed in prior session).
-  - **SettingsFriction.tsx** — Looks up urgent priority via `is_urgent = true` query instead of hardcoded `1`. Uses `.maybeSingle()` to safely get the value.
-  - **seed-can26.ts** — Queries urgent priority value from DB instead of hardcoded `1`.
-- **Debugging**: Added console.log to SettingsFriction for priority lookup. When testing Settings > Tickets, check browser console to confirm urgent priority is found.
+### ORB-103 — Settings > Tickets priority lookup returns null (closed, v0.4.65)
+- **Root cause:** RLS enabled on `priorities` table with no explicit SELECT policy. The ALL policy (`auth.uid() IS NOT NULL`) was not reliably granting read access to the browser client.
+- **First attempt:** Added auth-gated SELECT policy — still returned null.
+- **Final fix:** Replaced with public SELECT policy (`USING (true)`). Priorities is a reference table — public read is appropriate.
+- **Migration:** `scripts/migrations/20260515_priorities_select_policy.sql` (executed)
+- **Also:** Removed debug console.log from SettingsFriction.tsx
+- **Knowledge repo entry:** "Supabase ALL RLS policy does not reliably grant SELECT to browser clients"
 
-### Build fix — v0.4.64 (committed)
-- **Type error**: OrbDevPanel was missing `roleOverride` and `onRoleOverrideChange` props in AmbientDashboard.
-- **Fix**: Added `roleOverride` state to AmbientDashboard and passed props to OrbDevPanel.
-- **Build**: Should now pass TypeScript check and deploy successfully.
+### Multi-todo query filtering (fixed, v0.4.66)
+- **Root cause:** `query_todos` tool only accepted a single `code` string. When user asked for multiple todos (e.g. "show ORB-102, ORB-103, ORB-104"), only one was returned.
+- **Fix:** Added `codes` array parameter to `query_todos` tool schema (orb-contract.ts) and batch lookup handler (orb-converse.ts). Single `code` path unchanged.
 
----
+### ORB-101 — Orb listed closed tasks as open (closed, no code change)
+- Already resolved by prior session's integrity rules rewrite + backlog format fix (v0.4.63).
+- Closed with resolution notes and knowledge repo entry.
 
-**Status hardcoding elimination — v0.4.63**
+### ORB-104 — Reusable page/component templates (opened, audit complete)
+- Audited all 14 settings components and identified four shared patterns.
+- **Highest-value extraction:** CRUD List Page template — 5 pages (Categories, Groups, Platforms, Priorities, Statuses) share ~80% structure. A generic component could eliminate ~800 lines.
+- See "Next Priorities" for phased plan.
 
-### ORB-91 — False positive ticket
-- Investigated auto-generated ticket (PGRST116 on SettingsUserDetail load). Confirmed the page uses `createAdminClient()` which bypasses RLS — error was fabricated by the conversational Orb AI via `create_ticket`.
-- Closed ORB-91 with resolution notes. Created knowledge repo entry documenting that `orb-auto` tickets can contain AI-fabricated error details.
-
-### Database migration (`20260515_status_fk.sql`)
-- Dropped brittle `todos_status_check` CHECK constraint (hardcoded `open`, `in_progress`, `on_hold`, `done`).
-- Migrated existing todo rows: 111 `done` → `closed`, 14 `on_hold` → `on hold`.
-- Added `UNIQUE` constraint on `statuses.name`.
-- Added FK `todos.status → statuses.name` with `ON UPDATE CASCADE ON DELETE RESTRICT`. Renaming a status in the `statuses` table now cascades automatically to all todos.
-
-### Code changes (12 files)
-- **TodoView.tsx** — Removed hardcoded `Status` type union and `STATUS_COLOR` map. Fetches statuses from DB. Uses `isClosed()` helper (checks `is_closed` flag) and `statusColor()` (generates CSS var from status name). Filter dropdown populated dynamically.
-- **TodoPanel.tsx** — Accepts `statuses` prop. Uses `is_closed` flag instead of `=== 'done'`. Dynamic status dropdown.
-- **QueryResultsModal.tsx** — Accepts `statuses` prop. Replaced `STATUS_COLOR` map with `statusColor()` function. Dynamic dropdown in inline editor.
-- **OrbConversation.tsx** — Updated `'done'` → `'closed'` for result styling.
-- **AmbientDashboard.tsx** — Updated `'done'` → `'closed'` for open todo filtering and urgency computation.
-- **orb-converse.ts** — Removed `'done'` fallback in closing status detection; relies solely on `is_closed` flag from statuses table.
-- **orb-contract.ts** — Removed hardcoded `enum: ["open", "done"]` from `update_todo` tool schema; AI now uses status names from system prompt context.
-- **app/api/tasks/[id]/route.ts** — Looks up `is_closed` from statuses table instead of `=== 'done'` to set `closed_at`.
-- **globals.css** — Renamed `--status-done` → `--status-closed`.
-- **archive-data.ts**, **archive-todos.ts** — Updated fallback status names.
-- **seed-can26.ts** — Updated status mapping (`done` → `closed`, `on-hold` → `on hold`).
-
-### Commits in this session
-
-**v0.4.64** (priority hardcoding elimination):
-- f46a004: docs: Update HANDOFF — ORB-100 complete, mark remaining issues
-- Earlier: Priority refactor changes (7 files)
-
-**v0.4.64** (build fixes):
-- c91eaba: fix: Add missing roleOverride props to OrbDevPanel
-
-All changes committed to main:
-
-- `package.json` — version 0.4.64
-- `lib/version.ts` — version 0.4.64
-- `app/globals.css` — `--status-closed` CSS variable (from v0.4.63)
-- `app/actions/archive-data.ts` — fallback update (from v0.4.63)
-- `app/actions/orb-converse.ts` — removed `'done'` fallback (from v0.4.63)
-- `app/api/tasks/[id]/route.ts` — dynamic `is_closed` lookup (from v0.4.63)
-- `components/TodoView.tsx` — dynamic statuses + priorities (mixed)
-- `components/TodoPanel.tsx` — `statuses` prop, dynamic dropdown (from v0.4.63)
-- `components/QueryResultsModal.tsx` — `statuses` + `priorityColorMap` (mixed)
-- `components/OrbConversation.tsx` — `priorityColors` prop, dynamic priority dots (NEW)
-- `components/AmbientDashboard.tsx` — fetch priorities, dynamic urgency (NEW)
-- `components/settings/SettingsFriction.tsx` — dynamic urgent priority lookup (NEW)
-- `lib/orb-contract.ts` — removed hardcoded status enum (from v0.4.63)
-- `scripts/migrations/20260515_status_fk.sql` — status migration (executed in v0.4.63)
-- `scripts/migrations/20260515_priority_columns.sql` — priority migration (executed in v0.4.64)
-- `scripts/archive-todos.ts` — fallback update (from v0.4.63)
-- `scripts/seed-can26.ts` — dynamic urgent priority lookup (NEW)
+### Files changed (worktree: upbeat-shockley-f93f13)
+- `package.json` — version 0.4.66
+- `lib/version.ts` — version 0.4.66
+- `components/settings/SettingsFriction.tsx` — removed debug console.log
+- `lib/orb-contract.ts` — added `codes` array param to query_todos tool
+- `app/actions/orb-converse.ts` — added batch code lookup handler for query_todos
+- `scripts/migrations/20260515_priorities_select_policy.sql` — new migration (executed)
 
 ---
 
@@ -102,22 +56,28 @@ All changes committed to main:
 - **Account is not a Settings page.** It's a standalone page accessible from the dashboard user button.
 - **Product codes are required.** The conversational AI resolves todos by splitting task codes (e.g., `ORB-73`). Null codes break this.
 - **Status names are DB-driven.** The `statuses` table is the single source of truth. Code uses `is_closed` flag, never hardcoded status strings. FK with `ON UPDATE CASCADE` ensures renames propagate automatically.
+- **Reference tables need public SELECT policies.** Supabase ALL policies don't reliably grant SELECT to browser clients. Always add explicit SELECT policies.
 
 ---
 
 ## Next Priorities
 
-1. **Vercel deployment**: Latest commit (c91eaba) should now build successfully. Monitor the deployment.
-2. **Settings > Tickets priority lookup**: Returns null when generating tickets. Debug logs in SettingsFriction.tsx — check browser console to see what the urgent priority query returns. May be RLS or timing issue.
-3. **Orb multi-todo query filtering**: When asking for "show ORB-102, ORB-103, ORB-104", only ORB-104 is returned. Root cause in `app/actions/orb-converse.ts` query logic — likely not passing all matched todos to results.
-4. Create reusable page/component templates (topbar+back, CRUD list, detail view) so new pages are assembled from existing parts.
-5. Review open Orb tickets from the Friction Queue.
+1. **ORB-104: Reusable templates — Phase 1: CRUD List Page**
+   - Extract `SettingsCrudList` generic component from Categories/Groups/Platforms/Priorities/Statuses
+   - Config-driven: table name, form fields, validation, display renderer, optional scope filter, optional sort controls
+   - Start with one page (Platforms is simplest at 219 lines), prove the pattern, then migrate others
+
+2. **ORB-102: [Ticket] Permission Denied — Cannot access user** — investigate and triage
+
+3. **ORB-94: Multi-todo query result set mismatch** — when asking for filtered subset, UI "Show list" displays all. May be partially addressed by the codes fix.
+
+4. Review remaining open Orb tickets from the Friction Queue.
 
 ---
 
 ## AI Tool Used Last Session
 
-`2026-05-14 — Claude Code (Anthropic Claude Opus 4.6 / Haiku 4.5)`
+`2026-05-15 — Claude Code (Anthropic Claude Opus 4.6)`
 
 ---
 

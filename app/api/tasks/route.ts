@@ -69,6 +69,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Product not found' }, { status: 404 })
   }
 
+  const { data: openStatus } = await supabase
+    .from('statuses').select('name').eq('is_open', true).limit(1).single()
+
   const { data: todo, error } = await supabase
     .from('todos')
     .insert({
@@ -76,7 +79,7 @@ export async function POST(request: NextRequest) {
       title,
       description: description ?? null,
       priority_value: priority_value ?? null,
-      status: 'open',
+      status: openStatus?.name ?? 'open',
       sort_order: 0,
       group_id: null,
       category_id: null,

@@ -1,14 +1,11 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useVisibilityRefetch } from '@/lib/hooks/useVisibilityRefetch'
-import { useToast } from '@/components/ui/Toast'
+import SettingsCrudList from './SettingsCrudList'
 
-type Priority = { label: string; value: number }
-type PrioForm = { label: string; value: string }
+type Priority = { id: string; label: string; value: number }
+type PrioForm = { label: string }
 
-const EMPTY_FORM: PrioForm = { label: '', value: '' }
+const EMPTY_FORM: PrioForm = { label: '' }
 
 const ArrowUp = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -23,261 +20,135 @@ const ArrowDown = () => (
 )
 
 export default function SettingsPriorities() {
-  const supabase = useMemo(() => createClient(), [])
-  const toast = useToast()
-  const [priorities, setPriorities] = useState<Priority[]>([])
-  const [todoCounts, setTodoCounts] = useState<Record<number, number>>({})
-  const [loading, setLoading] = useState(true)
-  const [editingValue, setEditingValue] = useState<number | null>(null)
-  const [editForm, setEditForm] = useState<PrioForm>(EMPTY_FORM)
-  const [showAdd, setShowAdd] = useState(false)
-  const [addForm, setAddForm] = useState<PrioForm>(EMPTY_FORM)
-  const [confirmDeleteValue, setConfirmDeleteValue] = useState<number | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-
-  const load = useCallback(async () => {
-    const [prioRes, todoRes] = await Promise.all([
-      supabase.from('priorities').select('*').order('value'),
-      supabase.from('todos').select('priority_value'),
-    ])
-    setPriorities(prioRes.data ?? [])
-
-    const counts: Record<number, number> = {}
-    todoRes.data?.forEach(t => {
-      if (t.priority_value !== null) {
-        counts[t.priority_value] = (counts[t.priority_value] || 0) + 1
-      }
-    })
-    setTodoCounts(counts)
-    setLoading(false)
-  }, [supabase])
-
-  useVisibilityRefetch(load)
-  useEffect(() => { load() }, [load])
-
-  function startAdd() {
-    setShowAdd(true)
-    setEditingValue(null)
-    setConfirmDeleteValue(null)
-    setAddForm({ label: '', value: String(priorities.length + 1) })
-    setError('')
-  }
-
-  function startEdit(p: Priority) {
-    setEditingValue(p.value)
-    setEditForm({ label: p.label, value: String(p.value) })
-    setShowAdd(false)
-    setConfirmDeleteValue(null)
-    setError('')
-  }
-
-  async function handleAdd() {
-    const label = addForm.label.trim()
-    if (!label) { setError('Label is required'); return }
-    if (priorities.some(p => p.label.toLowerCase() === label.toLowerCase())) {
-      setError('A priority with this label already exists'); return
-    }
-
-    setSaving(true)
-    setError('')
-    const { data, error: err } = await supabase
-      .from('priorities')
-      .insert({
-        label,
-        value: priorities.length + 1,
-      })
-      .select()
-      .single()
-
-    setSaving(false)
-    if (err) { setError(err.message); return }
-    if (data) { toast.success('Priority added.'); setPriorities(prev => [...prev, data as Priority]) }
-    setShowAdd(false)
-    setAddForm(EMPTY_FORM)
-  }
-
-  async function handleSave(value: number) {
-    const label = editForm.label.trim()
-    if (!label) { setError('Label is required'); return }
-    if (priorities.some(p => p.value !== value && p.label.toLowerCase() === label.toLowerCase())) {
-      setError('A priority with this label already exists'); return
-    }
-
-    setSaving(true)
-    setError('')
-    const { data, error: err } = await supabase
-      .from('priorities')
-      .update({ label })
-      .eq('value', value)
-      .select()
-      .single()
-
-    setSaving(false)
-    if (err) { setError(err.message); return }
-    if (data) { toast.success('Priority saved.'); setPriorities(prev => prev.map(p => p.value === value ? data as Priority : p)) }
-    setEditingValue(null)
-  }
-
-  async function handleDelete(value: number) {
-    setSaving(true)
-    const { error: err } = await supabase.from('priorities').delete().eq('value', value)
-    if (err) { setError(err.message); setSaving(false); return }
-
-    const higher = priorities.filter(p => p.value > value)
-    if (higher.length > 0) {
-      await Promise.all(higher.map(p =>
-        supabase.from('priorities')
-          .update({ value: p.value - 1 })
-          .eq('value', p.value)
-      ))
-    }
-
-    setSaving(false)
-    toast.success('Priority deleted.')
-    setConfirmDeleteValue(null)
-    load()
-  }
-
-  async function handleMove(label: string, direction: 'up' | 'down') {
-    const idx = priorities.findIndex(p => p.label === label)
-    if (idx === -1) return
-    if (direction === 'up' && idx === 0) return
-    if (direction === 'down' && idx === priorities.length - 1) return
-
-    const newValue = direction === 'up' ? priorities[idx - 1].value : priorities[idx + 1].value
-
-    setSaving(true)
-    setError('')
-
-    const { error: rpcErr } = await supabase.rpc('smart_reorder_priorities', {
-      p_label: label,
-      p_new_value: newValue
-    })
-
-    if (rpcErr) {
-      setError(`Failed to move: ${rpcErr.message}`)
-    } else {
-      load()
-    }
-    setSaving(false)
-  }
-
-  if (loading) return <div className="s-loading">Loading…</div>
-
   return (
-    <div className="settings-page s-page">
-      <div className="s-header">
-        <h2 className="s-title">Priorities</h2>
-        {!showAdd && (
-          <button className="btn-outline" onClick={startAdd}>+ Add Priority</button>
-        )}
-      </div>
+    <SettingsCrudList<Priority, PrioForm>
+      config={{
+        title: 'Priorities',
+        table: 'priorities',
+        itemLabel: 'Priority',
+        emptyForm: EMPTY_FORM,
+        idColumn: 'value',
+        pageClass: 'settings-page s-page-wide',
+        layout: 'table',
+        subtitle: items => `${items.length} priorities`,
+        tableColumns: [
+          { label: '#', width: '8%', align: 'center' },
+          { label: 'Label', width: '35%' },
+          { label: 'Tasks', width: '15%' },
+          { label: 'Order', width: '15%', align: 'center' },
+          { label: 'Actions', width: '27%', align: 'right' },
+        ],
 
-      {error && <p className="s-error">{error}</p>}
+        load: async (supabase) => {
+          const [prioRes, todoRes] = await Promise.all([
+            supabase.from('priorities').select('*').order('value'),
+            supabase.from('todos').select('priority_value'),
+          ])
+          const counts: Record<number, number> = {}
+          todoRes.data?.forEach((t: any) => {
+            if (t.priority_value !== null) counts[t.priority_value] = (counts[t.priority_value] || 0) + 1
+          })
+          return { items: prioRes.data ?? [], extra: { todoCounts: counts } }
+        },
 
-      <div className="s-list">
-        {showAdd && (
-          <div className="s-form">
+        validate: (form, items, editingId) => {
+          const label = form.label.trim()
+          if (!label) return 'Label is required'
+          if (items.some(p => String(p.value) !== editingId && p.label.toLowerCase() === label.toLowerCase()))
+            return 'A priority with this label already exists'
+          return null
+        },
+        toRecord: (form, items) => ({ label: form.label.trim(), value: items.length + 1 }),
+        toForm: item => ({ label: item.label }),
+        getId: item => String(item.value),
+
+        onDelete: async (supabase, item, items) => {
+          await supabase.from('priorities').delete().eq('value', item.value)
+          const higher = items.filter(p => p.value > item.value)
+          if (higher.length > 0) {
+            await Promise.all(higher.map(p =>
+              supabase.from('priorities').update({ value: p.value - 1 }).eq('value', p.value)
+            ))
+          }
+        },
+        deleteWarning: (item, extra) => {
+          const count = extra.todoCounts?.[item.value] ?? 0
+          return (
+            <>
+              Delete <strong>{item.label}</strong>?
+              {count > 0 && (
+                <span className="text-muted" style={{ marginLeft: 'var(--sp-xs)' }}>
+                  Cannot delete — {count} todo{count !== 1 ? 's' : ''} use this priority.
+                </span>
+              )}
+            </>
+          )
+        },
+        canDelete: (item, extra) => (extra.todoCounts?.[item.value] ?? 0) === 0,
+
+        onMove: async (supabase, item, _items, direction) => {
+          const idx = _items.findIndex(p => p.value === item.value)
+          if (direction === 'up' && idx === 0) return
+          if (direction === 'down' && idx === _items.length - 1) return
+          const newValue = direction === 'up' ? _items[idx - 1].value : _items[idx + 1].value
+          const { error } = await supabase.rpc('smart_reorder_priorities', {
+            p_label: item.label,
+            p_new_value: newValue,
+          })
+          if (error) throw error
+        },
+
+        renderForm: ({ form, onChange, onSubmit, onCancel, submitLabel, saving }) => (
+          <div className="s-form" style={{ padding: '12px 16px' }}>
             <label className="label">Label *</label>
             <div className="flex-row gap-sm mb-md">
               <input
                 className="input"
-                value={addForm.label}
-                onChange={e => setAddForm({ ...addForm, label: e.target.value })}
+                value={form.label}
+                onChange={e => onChange({ ...form, label: e.target.value })}
                 autoFocus
                 placeholder="Priority label"
               />
             </div>
             <div className="flex-row gap-sm">
-              <button className="btn-primary" onClick={handleAdd} disabled={saving}>
-                {saving ? 'Adding…' : 'Add Priority'}
+              <button className="btn-primary" onClick={onSubmit} disabled={saving}>
+                {saving ? 'Saving…' : submitLabel}
               </button>
-              <button className="btn-cancel" onClick={() => setShowAdd(false)}>Cancel</button>
+              <button className="btn-cancel" onClick={onCancel}>Cancel</button>
             </div>
           </div>
-        )}
+        ),
 
-        {priorities.map((p, idx) => (
-          editingValue === p.value ? (
-            <div key={`prio-edit-${p.value}`} className="s-form">
-              <label className="label">Label *</label>
-              <input
-                className="input mb-md"
-                value={editForm.label}
-                onChange={e => setEditForm({ ...editForm, label: e.target.value })}
-                autoFocus
-              />
-              <div className="flex-row gap-sm">
-                <button className="btn-primary" onClick={() => handleSave(p.value)} disabled={saving}>
-                  {saving ? 'Saving…' : 'Save'}
-                </button>
-                <button className="btn-cancel" onClick={() => setEditingValue(null)}>Cancel</button>
-              </div>
-            </div>
-          ) : confirmDeleteValue === p.value ? (
-            <div key={`prio-del-${p.value}`} className="s-row-delete">
-              <span className="text-sm flex-1">
-                Delete <strong>{p.label}</strong>?
-                {(todoCounts[p.value] ?? 0) > 0 && (
-                  <span className="text-muted" style={{ marginLeft: 'var(--sp-xs)' }}>
-                    Cannot delete — {todoCounts[p.value]} todos use this priority.
-                  </span>
-                )}
-              </span>
-              {(todoCounts[p.value] ?? 0) === 0 ? (
-                <>
-                  <button className="btn-danger-confirm" onClick={() => handleDelete(p.value)} disabled={saving}>Confirm</button>
-                  <button className="btn-cancel" onClick={() => setConfirmDeleteValue(null)}>Cancel</button>
-                </>
-              ) : (
-                <button className="btn-cancel" onClick={() => setConfirmDeleteValue(null)}>OK</button>
-              )}
-            </div>
-          ) : (
-            <div
-              key={`prio-row-${p.value}`}
-              className="settings-list-row s-row"
-            >
-              <div className="text-xs text-muted" style={{ width: '24px', fontWeight: 600 }}>
-                {p.value}
-              </div>
-              <div className="s-row-info">
-                <p style={{ margin: 0 }} className="text-sm truncate">{p.label}</p>
-              </div>
-              <span className="s-row-meta" style={{ whiteSpace: 'nowrap' }}>
-                {todoCounts[p.value] ?? 0} tasks
-              </span>
-
-              <div className="settings-row-actions flex-center" style={{ gap: '2px' }}>
-                <button
-                  className="btn-move"
-                  onClick={() => handleMove(p.label, 'up')}
-                  disabled={idx === 0 || saving}
-                  title="Move Up"
-                >
+        renderRow: ({ item, index, items, onEdit, onDelete, onMove, saving, extra }) => (
+          <tr key={String(item.value)} style={{ borderBottom: '1px solid var(--border)' }}>
+            <td className="audit-td" style={{ textAlign: 'center', color: 'var(--muted)', fontWeight: 600 }}>
+              {item.value}
+            </td>
+            <td className="audit-td" style={{ fontWeight: 500 }}>
+              {item.label}
+            </td>
+            <td className="audit-td" style={{ color: 'var(--muted)', fontSize: '12px' }}>
+              {extra.todoCounts?.[item.value] ?? 0} tasks
+            </td>
+            <td className="audit-td" style={{ textAlign: 'center' }}>
+              <div className="flex-center" style={{ gap: '2px', justifyContent: 'center' }}>
+                <button className="btn-move" onClick={() => onMove?.('up')} disabled={index === 0 || saving} title="Move Up">
                   <ArrowUp />
                 </button>
-                <button
-                  className="btn-move"
-                  onClick={() => handleMove(p.label, 'down')}
-                  disabled={idx === priorities.length - 1 || saving}
-                  title="Move Down"
-                >
+                <button className="btn-move" onClick={() => onMove?.('down')} disabled={index === items.length - 1 || saving} title="Move Down">
                   <ArrowDown />
                 </button>
-                <button className="btn-row-action" onClick={() => startEdit(p)}>Edit</button>
-                <button
-                  className="btn-row-action btn-row-delete"
-                  onClick={() => { setConfirmDeleteValue(p.value); setEditingValue(null) }}
-                >
-                  Delete
-                </button>
               </div>
-            </div>
-          )
-        ))}
-      </div>
-    </div>
+            </td>
+            <td className="audit-td" style={{ textAlign: 'right' }}>
+              <div className="flex-row gap-xs" style={{ justifyContent: 'flex-end' }}>
+                <button className="text-btn" onClick={onEdit} style={{ fontSize: '12px', padding: '4px' }}>Edit</button>
+                <button className="text-btn" onClick={onDelete} style={{ fontSize: '12px', padding: '4px', color: 'var(--error)' }}>Delete</button>
+              </div>
+            </td>
+          </tr>
+        ),
+      }}
+    />
   )
 }

@@ -159,7 +159,7 @@ export default function QueryResultsModal({
       supabase.from('todos').select('*').eq('id', item.id).single(),
       supabase.from('projects').select('id, name, color, code').order('sort_order'),
       supabase.from('priorities').select('value, label').order('value'),
-      supabase.from('statuses').select('id, name, sort_order, is_closed').order('sort_order'),
+      supabase.from('statuses').select('id, name, sort_order, is_closed, is_open').order('sort_order'),
     ])
     if (todoRes.data) {
       setProducts((prodRes.data ?? []).map((p: { id: string; name: string; color: string | null; code: string | null }) => ({ ...p, icon: null })))

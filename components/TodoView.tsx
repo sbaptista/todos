@@ -32,7 +32,7 @@ export type Todo = {
 
 export type Product  = { id: string; name: string; color: string | null; icon: string | null; code: string | null }
 export type Priority = { value: number; label: string }
-export type StatusDef = { id: string; name: string; sort_order: number; is_closed: boolean }
+export type StatusDef = { id: string; name: string; sort_order: number; is_closed: boolean; is_open: boolean }
 
 const PRIORITY_DOT: Record<number, string> = {
   1: '#a05010',  // high — amber
@@ -86,7 +86,7 @@ export default function TodoView({ productId }: { productId: string }) {
         fetchTodos(),
         supabase.from('projects').select('id, name, color, icon, code').order('sort_order'),
         supabase.from('priorities').select('value, label').order('value'),
-        supabase.from('statuses').select('id, name, sort_order, is_closed').order('sort_order'),
+        supabase.from('statuses').select('id, name, sort_order, is_closed, is_open').order('sort_order'),
       ])
 
       setProducts(productsRes.data ?? [])
@@ -113,7 +113,8 @@ export default function TodoView({ productId }: { productId: string }) {
   async function handleToggleDone(e: React.MouseEvent, todo: Todo) {
     e.stopPropagation()
     const closedStatus = statuses.find(s => s.is_closed)?.name ?? 'closed'
-    const newStatus = isClosed(todo.status) ? 'open' : closedStatus
+    const openStatus = statuses.find(s => s.is_open)?.name ?? 'open'
+    const newStatus = isClosed(todo.status) ? openStatus : closedStatus
     const { data } = await supabase
       .from('todos')
       .update({

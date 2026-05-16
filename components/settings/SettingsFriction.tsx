@@ -63,16 +63,16 @@ export default function SettingsFriction() {
             .eq('is_urgent', true)
             .maybeSingle()
 
-        console.log('[SettingsFriction] Urgent priority lookup:', { urgentPri, priErr, priorityValue: urgentPri?.value })
-        if (priErr) console.warn('[SettingsFriction] Priority lookup error:', priErr)
-
         const detailsStr = log.detail ? `\n\nDetails:\n${JSON.stringify(log.detail, null, 2)}` : ''
         const snippetStr = log.conversation_snippet ? `\n\nContext:\n${log.conversation_snippet}` : ''
+
+        const { data: openStatus } = await supabase
+            .from('statuses').select('name').eq('is_open', true).limit(1).single()
 
         const { error: insertErr } = await supabase.from('todos').insert({
             title: `Trouble Ticket: ${log.summary}`,
             description: `Auto-generated from Orb Issue log (${log.category}).${snippetStr}${detailsStr}`,
-            status: 'open',
+            status: openStatus?.name ?? 'open',
             priority_value: urgentPri?.value ?? null,
             product_id: projId
         })

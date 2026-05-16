@@ -756,6 +756,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                     scopeToProduct={scopeToProduct}
                     conversationActive={conversationActive}
                     onRestoreConversation={() => setConversationActive(true)}
+                    onClearTranscript={() => { setMessages([]); setConversationActive(false); sessionStorage.removeItem(SS_CONVERSATION) }}
                     onInputChange={v => { setInput(v); sessionStorage.setItem(SS_INPUT, v) }}
                     onSubmit={handleSubmit}
                     onShowResults={handleShowResults}

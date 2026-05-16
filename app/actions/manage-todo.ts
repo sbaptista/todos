@@ -16,11 +16,17 @@ export async function createTodo(data: {
   }
 
   const admin = createAdminClient()
+  let defaultStatus = data.status
+  if (!defaultStatus) {
+    const { data: openStatus } = await admin
+      .from('statuses').select('name').eq('is_open', true).limit(1).single()
+    defaultStatus = openStatus?.name ?? 'open'
+  }
   const { data: todo, error } = await admin
     .from('todos')
     .insert({
       title: data.title,
-      status: data.status ?? 'open',
+      status: defaultStatus,
       priority_value: data.priority_value ?? null,
       product_id: data.product_id,
     })

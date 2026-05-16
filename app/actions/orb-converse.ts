@@ -164,7 +164,8 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
         const assistantContent: any[] = []
         if (currentTurnSpeech) assistantContent.push({ type: 'text', text: currentTurnSpeech })
         for (const tc of toolCalls) {
-          assistantContent.push({ type: 'tool_use', id: tc.id, name: tc.name, input: JSON.parse(tc.input) })
+          let parsed: any; try { parsed = JSON.parse(tc.input || '{}') } catch { parsed = {} }
+          assistantContent.push({ type: 'tool_use', id: tc.id, name: tc.name, input: parsed })
         }
         messages.push({ role: 'assistant', content: assistantContent })
 
@@ -175,7 +176,8 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
 
         const toolOutputs: any[] = []
         for (const tc of toolCalls) {
-          const input = JSON.parse(tc.input)
+          let input: any
+          try { input = JSON.parse(tc.input || '{}') } catch { input = {} }
           let output: any
 
           if (enforceGate && !canWrite && ['create_todo', 'update_todo', 'delete_todo'].includes(tc.name)) {
@@ -187,11 +189,13 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
               : ctx.productList.find((p: any) => p.id === req.productId)
             if (!product) output = { error: 'product not found' }
             else {
+              const { data: openStatus } = await supabase
+                .from('statuses').select('name').eq('is_open', true).limit(1).single()
               const { data, error } = await supabase.from('todos').insert({
                 product_id: product.id,
                 title: input.title,
                 description: input.description ?? null,
-                status: 'open',
+                status: openStatus?.name ?? 'open',
                 priority_value: input.priority_value ?? null,
               }).select('id, todo_number').single()
               if (error) output = { error: error.message }
@@ -209,8 +213,16 @@ ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.tit
           } else if (tc.name === 'query_todos') {
             let results = ctx.todoList.slice()
 
-            if (input.code) {
-              // Exact code match — short-circuit all other filters
+            if (input.codes && Array.isArray(input.codes) && input.codes.length > 0) {
+              const parsedCodes = input.codes.map((c: string) => {
+                const [pc, numStr] = String(c).toUpperCase().split('-')
+                return { productCode: pc, todoNum: parseInt(numStr || '0') }
+              })
+              results = results.filter((t: any) => {
+                const p = ctx.productList.find((pp: any) => pp.id === t.product_id)
+                return parsedCodes.some((c: any) => p?.code?.toUpperCase() === c.productCode && t.todo_number === c.todoNum)
+              })
+            } else if (input.code) {
               const [productCode, todoNumStr] = String(input.code).toUpperCase().split('-')
               const todoNum = parseInt(todoNumStr || '0')
               results = results.filter((t: any) => {
