@@ -55,12 +55,28 @@ export async function createProject(data: {
   return { project }
 }
 
+export async function getAdminProjects() {
+  try {
+    await assertAdmin()
+  } catch (e: any) {
+    return { error: e.message as string, projects: [] as any[] }
+  }
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('projects')
+    .select('id, name, code, description, is_shared, sort_order, created_by')
+    .order('sort_order')
+  if (error) return { error: error.message, projects: [] as any[] }
+  return { projects: data ?? [] }
+}
+
 export async function updateProject(id: string, data: {
   name?: string
   code?: string | null
   description?: string | null
   color?: string | null
   sort_order?: number
+  is_shared?: boolean
 }) {
   try {
     await assertAdmin()

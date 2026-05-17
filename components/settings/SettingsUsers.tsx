@@ -311,47 +311,55 @@ export default function SettingsUsers() {
                 <div className="text-xs text-muted">{user.email}</div>
               </div>
 
-              {isSuperAdmin ? (
-                <span className="text-sm shrink-0" style={{ color: 'var(--success)', fontWeight: 'var(--fw-medium)', whiteSpace: 'nowrap' }}>
-                  {roleName(user.role_id)}
-                </span>
-              ) : (
-                <select
-                  value={user.role_id}
-                  onChange={async e => {
-                    const { error: err } = await updateUser(user.id, { role_id: Number(e.target.value) })
-                    if (err) { toast.error(err); return }
-                    toast.success('Role updated.')
-                    load()
-                  }}
-                  style={{ ...selectStyle(), width: 'auto', minWidth: '90px', maxWidth: '130px', fontSize: 'var(--fs-sm)' }}
-                  title="Change user role"
-                >
-                  {assignableRoles.map(role => (
-                    <option key={role.id} value={role.id}>{role.name}</option>
-                  ))}
-                </select>
-              )}
+              {/* Role Column with fixed width */}
+              <div style={{ width: '130px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+                {isSuperAdmin ? (
+                  <span className="text-sm" style={{ color: 'var(--success)', fontWeight: 'var(--fw-medium)', whiteSpace: 'nowrap' }}>
+                    {roleName(user.role_id)}
+                  </span>
+                ) : (
+                  <select
+                    value={user.role_id}
+                    onChange={async e => {
+                      const { error: err } = await updateUser(user.id, { role_id: Number(e.target.value) })
+                      if (err) { toast.error(err); return }
+                      toast.success('Role updated.')
+                      load()
+                    }}
+                    style={{ ...selectStyle(), width: '100%', fontSize: 'var(--fs-sm)', margin: 0 }}
+                    title="Change user role"
+                  >
+                    {assignableRoles.map(role => (
+                      <option key={role.id} value={role.id}>{role.name}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
 
-              {!isSuperAdmin && (
-                <div className="settings-row-actions flex-center" style={{ gap: '2px' }}>
-                  <Link href={`/settings/users/${user.id}`} className="btn-row-action" style={{ textDecoration: 'none' }}>
-                    View Projects
-                  </Link>
-                  {!protectedUser && (
-                    <button className="btn-row-action" onClick={() => startEdit(user)} title="Edit user name and role">Edit</button>
-                  )}
-                  {!protectedUser && (
-                    <button
-                      className="btn-row-action btn-row-delete"
-                      onClick={() => { setConfirmDeleteId(user.id); setEditingId(null) }}
-                      title="Delete this user"
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-              )}
+              {/* Actions Column with fixed width */}
+              <div style={{ width: '220px', flexShrink: 0, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '4px' }}>
+                {!isSuperAdmin ? (
+                  <div className="settings-row-actions flex-center" style={{ gap: '2px', width: '100%', justifyContent: 'flex-end' }}>
+                    <Link href={`/settings/users/${user.id}`} className="btn-row-action" style={{ textDecoration: 'none' }}>
+                      View Projects
+                    </Link>
+                    {!protectedUser && (
+                      <button className="btn-row-action" onClick={() => startEdit(user)} title="Edit user name and role">Edit</button>
+                    )}
+                    {!protectedUser && (
+                      <button
+                        className="btn-row-action btn-row-delete"
+                        onClick={() => { setConfirmDeleteId(user.id); setEditingId(null) }}
+                        title="Delete this user"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ width: '100%' }} />
+                )}
+              </div>
             </div>
           )
         })}

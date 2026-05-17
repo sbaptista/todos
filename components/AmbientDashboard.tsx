@@ -125,6 +125,8 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
     const [isMobile, setIsMobile]                 = useState(false)
     const [userName, setUserName]                 = useState<string>('')
     const [userFullName, setUserFullName]         = useState<string>('')
+    const [isNewUser, setIsNewUser]               = useState(false)
+    const welcomeDismissedRef                     = useRef(false)
 
     useEffect(() => {
         setIsMobile(window.matchMedia('(hover: none) and (pointer: coarse)').matches)
@@ -164,6 +166,18 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                 }
             } catch { /* ignore corrupted storage */ }
         }
+    }, [])
+
+    // Detect new user: no prior conversation, no products, welcome not yet dismissed
+    const WELCOME_KEY = 'todos_welcome_shown'
+    useEffect(() => {
+        const alreadyShown = localStorage.getItem(WELCOME_KEY)
+        if (alreadyShown) return
+        const hasSavedConvo = !!sessionStorage.getItem(SS_CONVERSATION)
+        if (hasSavedConvo) return
+        // Mark new user — show welcome once products load (handled below)
+        setIsNewUser(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     // Persist conversation to sessionStorage
@@ -256,6 +270,15 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
         }
         load()
     }, [supabase])
+
+    // Pre-fill welcome message once we have the user's first name
+    useEffect(() => {
+        if (!isNewUser || welcomeDismissedRef.current) return
+        if (!userFullName) return // wait for name to load
+        const firstName = userFullName.split(' ')[0] || 'there'
+        const welcome = `Hi ${firstName}! I'm Orb. Thanks for joining the pre-alpha. Press Return or tap the send button → to get started.`
+        setInput(prev => prev || welcome)
+    }, [isNewUser, userFullName])
 
     useEffect(() => {
         supabase.from('priorities').select('value, label, color, is_urgent').order('value').then(({ data }) => {
@@ -375,16 +398,46 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [products])
 
+    // Handle welcome submission — fires hardcoded onboarding reply, free (no Claude call)
+    function handleWelcomeSubmit(text: string) {
+        welcomeDismissedRef.current = true
+        localStorage.setItem(WELCOME_KEY, '1')
+        setIsNewUser(false)
+        setInput('')
+        sessionStorage.removeItem(SS_INPUT)
+        setMessages(prev => [
+            ...prev,
+            { id: genId(), type: 'user', text },
+            { id: genId(), type: 'orb', text: `Here's how to get started:
+
+• Add a task: "Add task: review the onboarding flow"
+• See your list: "Show my open tasks"
+• Create a project: "Create a project called Work"
+You also have access to a shared project called Orb Feedback — use it to tell me what's working and what isn't:
+• "Add task to Orb Feedback: the send button is hard to tap on iPhone"
+
+Type /? anytime for a full command list. What would you like to work on?` },
+        ])
+        setConversationActive(true)
+        resetInactivity()
+    }
+
     async function handleSubmit(value?: string) {
         const text = (value ?? input).trim()
         if (!text || submitting) return
+
+        // Intercept the welcome message before anything else
+        if (isNewUser && !welcomeDismissedRef.current) {
+            handleWelcomeSubmit(text)
+            return
+        }
 
         if (!selectedId) {
             toast.neutral('Add a project first.')
             return
         }
 
-        if (text === '?') {
+        if (text === '?' || text === '/?') {
             setShowHelp(true)
             setInput('')
             return
@@ -397,8 +450,25 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
             const [cmd, ...args] = text.split(' ')
             if (cmd === '/settings') {
                 router.push('/settings')
-            } else if (cmd === '/help') {
+            } else if (cmd === '/help' || cmd === '/?') {
                 setShowHelp(true)
+            } else if (cmd === '/tasks') {
+                // Shorthand for showing open tasks in current project
+                handleSubmit(`Show my open tasks in ${selected?.code ?? selected?.name ?? 'this project'}`)
+            } else if (cmd === '/projects') {
+                setMessages(prev => [
+                    ...prev,
+                    { id: genId(), type: 'user', text },
+                    { id: genId(), type: 'orb', text: products.length === 0
+                        ? 'You have no projects yet. Say "Create a project called [name]" to add one.'
+                        : `Your projects:\n${products.map(p => `• ${p.code ?? p.name}${p.description ? ' — ' + p.description : ''}`).join('\n')}` },
+                ])
+                setConversationActive(true)
+                resetInactivity()
+            } else if (cmd === '/clear') {
+                setMessages([])
+                setConversationActive(false)
+                sessionStorage.removeItem(SS_CONVERSATION)
             } else if (cmd === '/switch') {
                 const target = args.join(' ')
                 const t = products.find(p => 
@@ -424,7 +494,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                 setMessages(prev => [
                     ...prev,
                     { id: genId(), type: 'user', text },
-                    { id: genId(), type: 'orb', text: 'I\'m the orb — your conversational interface to Orb.\n• Create: "Add a high priority todo to [project]"\n• Query: "What\'s most urgent?"\n• Update: "Mark the invoice task as done"\n• Navigate: "Switch to [project]" or "Open settings"\nType ? for full help.' },
+                    { id: genId(), type: 'orb', text: 'I\'m the orb — your conversational interface to Orb.\n• Create: "Add a high priority todo to [project]"\n• Query: "What\'s most urgent?"\n• Update: "Mark the invoice task as done"\n• Navigate: "Switch to [project]" or "Open settings"\nType /? for full help.' },
                 ])
                 setConversationActive(true)
                 resetInactivity()

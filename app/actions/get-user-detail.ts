@@ -26,7 +26,7 @@ export async function getUserDetail(targetUserId: string) {
 
   const { data: target, error: targetErr } = await admin
     .from('users')
-    .select('first_name, last_name, email, role_id')
+    .select('first_name, last_name, email, role_id, release_stage, program_joined_at')
     .eq('id', targetUserId)
     .single()
 
@@ -37,7 +37,16 @@ export async function getUserDetail(targetUserId: string) {
     return { error: 'Access denied', profile: null }
   }
 
-  return { error: null, profile: { first_name: target.first_name, last_name: target.last_name, email: target.email } }
+  return {
+    error: null,
+    profile: {
+      first_name: target.first_name,
+      last_name: target.last_name,
+      email: target.email,
+      release_stage: target.release_stage as 'pre-alpha' | 'alpha' | 'beta' | null,
+      program_joined_at: target.program_joined_at as string | null,
+    },
+  }
 }
 
 export async function getUserProjects(targetUserId: string) {

@@ -27,12 +27,19 @@ export async function deleteUser(userId: string) {
     if (target.role_id === SUPER_ADMIN_ROLE_ID) return { error: 'Cannot delete Super Admin' }
     if (PROTECTED_EMAILS.includes(target.email)) return { error: 'This test user cannot be deleted' }
 
-    const { error } = await supabase
+    // Delete from public.users table
+    const { error: dbError } = await supabase
       .from('users')
-      .update({ deleted_at: new Date().toISOString() })
+      .delete()
       .eq('id', userId)
 
-    if (error) throw error
+    if (dbError) throw dbError
+
+    // Also delete from Supabase Auth so they can be re-invited cleanly
+    const { error: authError } = await supabase.auth.admin.deleteUser(userId)
+    if (authError) {
+      console.warn('[deleteUser] Warning: Auth user deletion failed or already deleted:', authError.message)
+    }
 
     await logAuditEvent({
       action: 'user_delete',

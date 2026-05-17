@@ -3,42 +3,37 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertAdmin } from '@/lib/auth'
 import { logAuditEvent } from '@/lib/audit'
+import { headers } from 'next/headers'
 
-export async function inviteUser(email: string, firstName: string, lastName: string, roleId: number) {
+export async function inviteUser(email: string, _firstName: string, _lastName: string, _roleId: number) {
   try {
     await assertAdmin()
   } catch (e: any) {
     return { error: e.message }
   }
 
+  // Build the redirect URL from the incoming request's host header
+  const headersList = await headers()
+  const host = headersList.get('host') ?? 'localhost:3001'
+  const origin = `https://${host}`
+
   const supabase = createAdminClient()
 
   try {
-    const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
-      email,
-      email_confirm: true,
+    // inviteUserByEmail sends a real email and routes the tester through
+    // /auth/callback → create-account (where they fill in their own name)
+    const { data: authData, error: authErr } = await supabase.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${origin}/auth/callback`,
     })
 
     if (authErr) throw authErr
-    if (!authData.user) return { error: 'Failed to create user' }
-
-    const { error: userErr } = await supabase
-      .from('users')
-      .insert({
-        id: authData.user.id,
-        email,
-        first_name: firstName,
-        last_name: lastName,
-        role_id: roleId,
-      })
-
-    if (userErr) throw userErr
+    if (!authData.user) return { error: 'Failed to send invite' }
 
     await logAuditEvent({
       action: 'user_invite',
       table_name: 'users',
       record_id: authData.user.id,
-      after: { email, first_name: firstName, last_name: lastName, role_id: roleId },
+      after: { email },
     })
 
     return { ok: true }
@@ -47,3 +42,4 @@ export async function inviteUser(email: string, firstName: string, lastName: str
     return { error: err.message }
   }
 }
+

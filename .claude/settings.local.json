@@ -108,7 +108,9 @@
       "Bash(curl -s -X POST https://orb-eight-lake.vercel.app/api/tasks -H 'Authorization: __CMDSUB_OUTPUT__')",
       "Bash(psql --version)",
       "Bash(brew --version)",
-      "Bash(ls ~/Downloads/orb-handoff-*.md 2>/dev/null | tail -3)"
+      "Bash(ls ~/Downloads/orb-handoff-*.md 2>/dev/null | tail -3)",
+      "Bash(curl -s 'https://livwkbnkdlrbmzgythys.supabase.co/rest/v1/knowledge_repo?select=title,content,created_at&order=created_at.desc&limit=10' -H 'apikey: __CMDSUB_OUTPUT__')",
+      "Bash(curl -s 'https://livwkbnkdlrbmzgythys.supabase.co/rest/v1/priorities?select=value,is_urgent&is_urgent=eq.true' -H 'apikey: __CMDSUB_OUTPUT__')"
     ]
   }
 }

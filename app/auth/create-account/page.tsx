@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { completeOnboarding } from '@/app/actions/complete-onboarding'
 
 export default function CreateAccountPage() {
   const [firstName, setFirstName] = useState('')
@@ -16,24 +16,13 @@ export default function CreateAccountPage() {
     setLoading(true)
     setError('')
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { error: onboardingError } = await completeOnboarding(
+      firstName.trim(),
+      lastName.trim()
+    )
 
-    if (!user) {
-      setError('Session expired. Please sign in again.')
-      setLoading(false)
-      return
-    }
-
-    const { error } = await supabase.from('users').insert({
-      id: user.id,
-      email: user.email,
-      first_name: firstName,
-      last_name: lastName,
-    })
-
-    if (error) {
-      setError(error.message)
+    if (onboardingError) {
+      setError(onboardingError)
       setLoading(false)
       return
     }

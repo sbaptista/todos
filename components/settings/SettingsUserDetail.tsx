@@ -5,6 +5,7 @@ import { useVisibilityRefetch } from '@/lib/hooks/useVisibilityRefetch'
 import { useToast } from '@/components/ui/Toast'
 import { getUserDetail, getUserProjects } from '@/app/actions/get-user-detail'
 import { createProject, updateProject, deleteProject } from '@/app/actions/manage-project'
+import { updateUserStage } from '@/app/actions/manage-user'
 import { useUnsavedChanges } from '@/lib/hooks/useUnsavedChanges'
 import Link from 'next/link'
 
@@ -133,10 +134,18 @@ export default function SettingsUserDetail({ userId }: { userId: string }) {
   const toast = useToast()
   const { setDirty } = useUnsavedChanges()
 
-  const [userProfile, setUserProfile] = useState<{ first_name: string | null; last_name: string | null; email: string } | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
-  const [todoCounts, setTodoCounts] = useState<Record<string, number>>({})
-  const [loading, setLoading] = useState(true)
+  const [userProfile, setUserProfile] = useState<{
+    first_name: string | null
+    last_name: string | null
+    email: string
+    release_stage: 'pre-alpha' | 'alpha' | 'beta' | null
+    program_joined_at: string | null
+  } | null>(null)
+  const [products, setProducts]         = useState<Product[]>([])
+  const [todoCounts, setTodoCounts]     = useState<Record<string, number>>({})
+  const [loading, setLoading]           = useState(true)
+  const [stageValue, setStageValue]     = useState<'pre-alpha' | 'alpha' | 'beta' | ''>('')
+  const [stageSaving, setStageSaving]   = useState(false)
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<ItemForm>(EMPTY_FORM)
@@ -162,6 +171,7 @@ export default function SettingsUserDetail({ userId }: { userId: string }) {
     }
 
     setUserProfile(userRes.profile)
+    setStageValue(userRes.profile?.release_stage ?? '')
     setProducts(projRes.projects as Product[])
     setTodoCounts(projRes.todoCounts)
     setLoading(false)
@@ -204,6 +214,16 @@ export default function SettingsUserDetail({ userId }: { userId: string }) {
     if (res.project) { toast.success('Project saved.'); setProducts(prev => prev.map(p => p.id === id ? res.project as Product : p)) }
     setEditingId(null)
     setDirty(false)
+  }
+
+  async function handleStageSave() {
+    setStageSaving(true)
+    const res = await updateUserStage(userId, stageValue || null)
+    setStageSaving(false)
+    if (res.error) { toast.error(res.error); return }
+    const joined = stageValue && !userProfile?.program_joined_at ? new Date().toISOString() : userProfile?.program_joined_at ?? null
+    setUserProfile(prev => prev ? { ...prev, release_stage: stageValue || null, program_joined_at: joined } : prev)
+    toast.success('Program stage updated.')
   }
 
   async function handleAdd() {
@@ -289,6 +309,40 @@ export default function SettingsUserDetail({ userId }: { userId: string }) {
             + Add Project
           </button>
         )}
+      </div>
+
+      {/* Program stage */}
+      <div className="s-card" style={{ marginBottom: 'var(--sp-xl)', padding: 'var(--sp-lg) var(--sp-xl)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-lg)', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '200px' }}>
+            <p className="label" style={{ marginBottom: '4px' }}>Release Program</p>
+            <select
+              className="input"
+              style={{ width: '180px' }}
+              value={stageValue}
+              onChange={e => setStageValue(e.target.value as any)}
+            >
+              <option value="">— None (production)</option>
+              <option value="pre-alpha">pre-alpha</option>
+              <option value="alpha">alpha</option>
+              <option value="beta">beta</option>
+            </select>
+          </div>
+          {userProfile.program_joined_at && (
+            <div style={{ minWidth: '160px' }}>
+              <p className="label" style={{ marginBottom: '4px' }}>First enrolled</p>
+              <p className="text-sm text-muted">{new Date(userProfile.program_joined_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</p>
+            </div>
+          )}
+          <button
+            className="btn-outline"
+            onClick={handleStageSave}
+            disabled={stageSaving}
+            style={{ alignSelf: 'flex-end' }}
+          >
+            {stageSaving ? 'Saving…' : 'Save Stage'}
+          </button>
+        </div>
       </div>
 
       {error && <p className="s-error">{error}</p>}

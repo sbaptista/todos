@@ -258,11 +258,15 @@ export default function OrbConversation({
     const [slashIndex, setSlashIndex] = useState(0)
 
     const SLASH_COMMANDS = [
-        { cmd: '/switch [project]', desc: 'e.g. [project]' },
-        { cmd: '/edit', desc: 'Edit current project' },
-        { cmd: '/edit [project]', desc: 'Switch and edit' },
-        { cmd: '/settings', desc: 'Open settings panel' },
+        { cmd: '/?', desc: 'Show help overlay' },
         { cmd: '/help', desc: 'Show help overlay' },
+        { cmd: '/tasks', desc: 'Show open tasks in current project' },
+        { cmd: '/projects', desc: 'List all your projects' },
+        { cmd: '/clear', desc: 'Clear the conversation' },
+        { cmd: '/switch [project]', desc: 'Switch to a project' },
+        { cmd: '/edit', desc: 'Edit current project' },
+        { cmd: '/edit [project]', desc: 'Switch and edit a project' },
+        { cmd: '/settings', desc: 'Open settings panel' },
         { cmd: '/orb', desc: 'What can the orb do?' },
     ]
 
