@@ -136,7 +136,7 @@ ${ctx.currentUser ? `\nUSER CONTEXT: You are talking to ${ctx.currentUser.email}
 ${ORB_INTEGRITY_RULES}
 
 VALID VALUES: Statuses: ${statusNames} | Priorities: ${priorityInfo}
-SCOPE: ${req.scopeToProduct ? `Scoped to ${ctx.current?.code ?? ctx.current?.name}. Only discuss or query this project's todos unless the user explicitly asks about another project or says "all". IMPORTANT: When creating a todo, ALWAYS pass product_code="${ctx.current?.code}" explicitly — never omit it.` : 'All projects visible.'}
+SCOPE: ${req.scopeToProduct ? `Scoped to ${ctx.current?.code ?? ctx.current?.name}. Only discuss or query this project's todos unless the user explicitly asks about another project or says "all". IMPORTANT: When creating a todo, ALWAYS pass product_code="${ctx.current?.code}" explicitly — never omit it. When querying, ALWAYS pass product_code explicitly — the tool does NOT auto-scope. For cross-project insight follow-ups, omit product_code to search all projects.` : 'All projects visible.'}
 BACKLOG:
 ${ctx.contextString}
 
@@ -144,7 +144,7 @@ KNOWLEDGE BASE (Recent):
 ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.title}: ${k.content.slice(0, 100)}...`).join('\n')}
 (Note: Use the 'search_knowledge' tool to query the full repository if the answer isn't here.)
 
-INSIGHTS (computed from live data across all projects):
+INSIGHTS (computed across ALL projects — not scoped to current project):
 ${ctx.insightReport.summary}
 ${ctx.insightReport.insights.length > 0 ? ctx.insightReport.insights.map((i: any) => `- [${i.severity.toUpperCase()}] ${i.message}`).join('\n') : '- No patterns worth flagging right now.'}
 
@@ -267,8 +267,6 @@ FEEDBACK TONE:
               if (input.product_code) {
                 const p = ctx.productList.find((pp: any) => pp.code?.toUpperCase() === String(input.product_code).toUpperCase())
                 if (p) results = results.filter((t: any) => t.product_id === p.id)
-              } else if (req.scopeToProduct) {
-                results = results.filter((t: any) => t.product_id === req.productId)
               }
               if (input.text_match) {
                 const q = String(input.text_match).toLowerCase()
