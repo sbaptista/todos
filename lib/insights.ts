@@ -40,7 +40,9 @@ export function computeInsights(
   auditEvents: AuditEvent[],
 ): InsightReport {
   const closedStatuses = new Set(statuses.filter(s => s.is_closed).map(s => s.name))
+  const parkedStatuses = new Set(['on hold', 'deferred'])
   const openTodos = todos.filter(t => !closedStatuses.has(t.status))
+  const activeTodos = openTodos.filter(t => !parkedStatuses.has(t.status))
   const insights: Insight[] = []
 
   const productCode = (pid: string) => products.find(p => p.id === pid)?.code ?? '???'
@@ -64,17 +66,17 @@ export function computeInsights(
     })
   }
 
-  // ── Priority distribution ──
-  const urgentTodos = openTodos.filter(t => t.priority_value !== null && t.priority_value <= 2)
-  const lowTodos = openTodos.filter(t => t.priority_value === null || t.priority_value >= 4)
+  // ── Priority distribution (active only — on hold/deferred are parked) ──
+  const urgentTodos = activeTodos.filter(t => t.priority_value !== null && t.priority_value <= 2)
+  const lowTodos = activeTodos.filter(t => t.priority_value === null || t.priority_value >= 4)
 
   if (urgentTodos.length >= 4) {
     insights.push({
       type: 'priority_overload',
       severity: 'warning',
-      message: `${urgentTodos.length} tasks at P1/P2. That's a heavy urgent queue — consider whether all of them are truly urgent.`,
+      message: `${urgentTodos.length} active tasks at P1/P2. That's a heavy urgent queue — consider whether all of them are truly urgent.`,
     })
-  } else if (openTodos.length > 0 && urgentTodos.length === 0 && lowTodos.length === openTodos.length) {
+  } else if (activeTodos.length > 0 && urgentTodos.length === 0 && lowTodos.length === activeTodos.length) {
     insights.push({
       type: 'all_low_priority',
       severity: 'info',
@@ -104,12 +106,12 @@ export function computeInsights(
   }
 
   // ── Focus gap (nothing in progress) ──
-  const inProgress = openTodos.filter(t => t.status === 'in progress')
-  if (openTodos.length >= 3 && inProgress.length === 0) {
+  const inProgress = activeTodos.filter(t => t.status === 'in progress')
+  if (activeTodos.length >= 3 && inProgress.length === 0) {
     insights.push({
       type: 'focus_gap',
       severity: 'nudge',
-      message: `${openTodos.length} open tasks but nothing is "in progress". Want to pick one to focus on?`,
+      message: `${activeTodos.length} active tasks but nothing is "in progress". Want to pick one to focus on?`,
     })
   }
 
@@ -158,14 +160,16 @@ export function computeInsights(
   // ── Build summary ──
   const warnings = insights.filter(i => i.severity === 'warning')
   const nudges = insights.filter(i => i.severity === 'nudge')
+  const parkedCount = openTodos.length - activeTodos.length
+  const parkedNote = parkedCount > 0 ? ` (${parkedCount} on hold/deferred)` : ''
   let summary: string
 
   if (insights.length === 0) {
-    summary = `${openTodos.length} open tasks across ${productsWithOpenTodos.size} projects. No patterns worth flagging.`
+    summary = `${openTodos.length} open tasks${parkedNote} across ${productsWithOpenTodos.size} projects. No patterns worth flagging.`
   } else if (warnings.length > 0) {
-    summary = `${openTodos.length} open tasks. ${warnings.length} warning${warnings.length > 1 ? 's' : ''}, ${nudges.length} nudge${nudges.length > 1 ? 's' : ''}.`
+    summary = `${openTodos.length} open tasks${parkedNote}. ${warnings.length} warning${warnings.length > 1 ? 's' : ''}, ${nudges.length} nudge${nudges.length > 1 ? 's' : ''}.`
   } else {
-    summary = `${openTodos.length} open tasks. ${nudges.length} nudge${nudges.length > 1 ? 's' : ''} worth mentioning.`
+    summary = `${openTodos.length} open tasks${parkedNote}. ${nudges.length} nudge${nudges.length > 1 ? 's' : ''} worth mentioning.`
   }
 
   return { insights, summary }
