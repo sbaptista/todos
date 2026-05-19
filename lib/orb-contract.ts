@@ -112,7 +112,7 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
   },
   {
     "name": "query_todos",
-    "description": "[Confidence: well-tested] Find todos matching criteria. Use code for single-todo lookup (e.g. \"ORB-73\"), or codes for multi-todo lookup (e.g. [\"ORB-102\", \"ORB-103\"]). Otherwise filters by status, product, priority, or text. Returns non-closed tasks by default (includes deferred/on-hold). To get only active tasks, check status in results: active = open + in progress. Pass status to filter by a specific status, or status=\"any\" for all including closed.",
+    "description": "[Confidence: well-tested] Find todos matching criteria. Use code for single-todo lookup (e.g. \"ORB-73\"), or codes for multi-todo lookup (e.g. [\"ORB-102\", \"ORB-103\"]). Otherwise filters by status_group, status, product, priority, or text. Returns non-closed tasks by default (includes deferred/on-hold). Use status_group=\"active\" for open + in progress only, or status_group=\"parked\" for deferred + on hold only. Pass status for a specific status, or status=\"any\" for all including closed.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -128,6 +128,11 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
         "product_code": {
           "type": "string"
         },
+        "status_group": {
+          "type": "string",
+          "enum": ["active", "parked"],
+          "description": "Filter by status group: \"active\" = open + in progress, \"parked\" = deferred + on hold. Takes precedence over status. Omit for default (all non-closed)."
+        },
         "status": {
           "type": "string"
         },
@@ -138,7 +143,12 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
           "type": "string"
         },
         "max_results": {
-          "type": "integer"
+          "type": "integer",
+          "description": "Max items to return (default 100)."
+        },
+        "show_results": {
+          "type": "boolean",
+          "description": "Whether to display results in the UI (default true). Set false when querying for counts or internal verification — the user won't see a list."
         }
       }
     }

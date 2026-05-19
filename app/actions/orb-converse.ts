@@ -5,9 +5,9 @@ import { createStreamableValue } from 'ai/rsc'
 import { getAuthContext, type AuthContext } from '@/lib/auth'
 import { logAuditEvent } from '@/lib/audit'
 import { ORB_TOOLS, ORB_TOOL_LABELS, ORB_INTEGRITY_RULES } from '@/lib/orb-contract'
-import { computeInsights, type InsightReport } from '@/lib/insights'
+// computeInsights suspended — code preserved in lib/insights.ts for future use
 import { visibleProjectsQuery } from '@/lib/projects'
-import { isActive } from '@/lib/status-groups'
+import { isActive, isParked } from '@/lib/status-groups'
 
 // ──────────────────────────────────────────────────────────────────────────
 // Types
@@ -44,10 +44,16 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
 // Tool Context & Helpers
 // ──────────────────────────────────────────────────────────────────────────
 
+function todoCode(todo: any, productList: any[]): string {
+  const p = productList.find((pp: any) => pp.id === todo.product_id)
+  return `${p?.code ?? p?.name ?? '???'}-${todo.todo_number}`
+}
+
 async function buildContext(supabase: any, auth: AuthContext, currentProductId: string | null, scopeToProduct: boolean = true) {
   const fourteenDaysAgo = new Date(Date.now() - 14 * 86_400_000).toISOString()
   const [
     { data: products },
+    { data: dormantProducts },
     { data: todos },
     { data: statuses },
     { data: priorities },
@@ -55,6 +61,7 @@ async function buildContext(supabase: any, auth: AuthContext, currentProductId: 
     { data: recentAudit }
   ] = await Promise.all([
     visibleProjectsQuery(supabase, 'id, name, code, description, created_by'),
+    auth.isAdmin ? supabase.from('projects').select('id, name, code').eq('is_dormant', true).order('sort_order') : Promise.resolve({ data: [] }),
     supabase.from('todos').select('id, todo_number, title, description, status, priority_value, product_id, created_at, updated_at, closed_at, resolution_notes').is('deleted_at', null),
     supabase.from('statuses').select('*').order('sort_order'),
     supabase.from('priorities').select('*').order('value'),
@@ -65,15 +72,15 @@ async function buildContext(supabase: any, auth: AuthContext, currentProductId: 
   const currentUser = { id: auth.user.id, email: auth.user.email, roles: { name: auth.role } }
 
   const productList  = (products   ?? [])
-  const todoList     = (todos      ?? [])
+  const dormantList  = (dormantProducts ?? [])
+  const visibleProductIds = new Set(productList.map((p: any) => p.id))
+  const todoList     = (todos      ?? []).filter((t: any) => visibleProductIds.has(t.product_id))
   const statusList   = (statuses   ?? [])
   const priorityList = (priorities ?? [])
   const knowledgeList = (knowledge   ?? [])
   const todoIds = new Set(todoList.map((t: any) => t.id))
   const auditList    = (recentAudit ?? []).filter((a: any) => todoIds.has(a.record_id))
   const current = productList.find((p: any) => p.id === currentProductId)
-
-  const insightReport = computeInsights(todoList, productList, statusList, auditList, auth.user.id, auth.isAdmin)
 
   const byProduct = productList.map((p: any) => {
     const header = `${p.code ?? p.name}${p.description ? ` (${p.description})` : ''}`
@@ -83,11 +90,11 @@ async function buildContext(supabase: any, auth: AuthContext, currentProductId: 
     const pTodos = todoList.filter((t: any) => t.product_id === p.id && !statusList.find((s: any) => s.name === t.status)?.is_closed)
     const activeLine = pTodos
       .filter((t: any) => isActive(t.status))
-      .map((t: any) => `  ${p.code ?? p.name}-${t.todo_number} [P${t.priority_value ?? '-'}] [${t.status}] ${t.title}`)
+      .map((t: any) => `  ${todoCode(t, productList)} [P${t.priority_value ?? '-'}] [${t.status}] ${t.title}`)
       .join('\n')
     const parkedLine = pTodos
       .filter((t: any) => !isActive(t.status))
-      .map((t: any) => `  ${p.code ?? p.name}-${t.todo_number} [P${t.priority_value ?? '-'}] [${t.status}] ${t.title}`)
+      .map((t: any) => `  ${todoCode(t, productList)} [P${t.priority_value ?? '-'}] [${t.status}] ${t.title}`)
       .join('\n')
     let body = ''
     if (activeLine) body += `  ACTIVE:\n${activeLine}`
@@ -95,7 +102,11 @@ async function buildContext(supabase: any, auth: AuthContext, currentProductId: 
     return `${header}:\n${body || '  (none active)'}`
   }).join('\n\n')
 
-  return { productList, todoList, statusList, priorityList, knowledgeList, auditList, current, currentUser, contextString: byProduct, insightReport }
+  const dormantSection = dormantList.length > 0
+    ? `\n\nDORMANT (hidden from active views, no CRUD — use set_dormancy to wake):\n${dormantList.map((p: any) => `  ${p.code ?? p.name}`).join(', ')}`
+    : ''
+
+  return { productList, dormantList, todoList, statusList, priorityList, knowledgeList, auditList, current, currentUser, contextString: byProduct + dormantSection }
 }
 
 export async function orbConverse(req: OrbRequest) {
@@ -137,29 +148,18 @@ ${ORB_INTEGRITY_RULES}
 VALID VALUES: Statuses: ${statusNames} | Priorities: ${priorityInfo}
 STATUS LANGUAGE: "active" = open + in progress ONLY. "parked" = deferred + on hold. Never count parked tasks as active. When reporting counts, active count excludes parked. The BACKLOG below separates ACTIVE from PARKED — use this split, not your own filtering. When the user asks "how many tasks" or "my tasks" without specifying, report the ACTIVE count. If parked tasks exist, mention them separately (e.g. "5 active, 3 parked"). "open" as a status means status=open specifically — if the user says "open tasks", query status=open.
 SCOPE: ${req.scopeToProduct ? `Scoped to ${ctx.current?.code ?? ctx.current?.name}. Only discuss or query this project's todos unless the user explicitly asks about another project or says "all". IMPORTANT: When creating a todo, ALWAYS pass product_code="${ctx.current?.code}" explicitly — never omit it. When querying, ALWAYS pass product_code explicitly — the tool does NOT auto-scope. For cross-project insight follow-ups, omit product_code to search all projects.` : 'All projects visible.'}
-BACKLOG:
+BACKLOG (includes DORMANT section if any exist — answer dormant project questions from here, do not query):
 ${ctx.contextString}
 
 KNOWLEDGE BASE (Recent):
 ${ctx.knowledgeList.slice(0, 5).map((k: any) => `- [${k.projects?.code}] ${k.title}: ${k.content.slice(0, 100)}...`).join('\n')}
 (Note: Use the 'search_knowledge' tool to query the full repository if the answer isn't here.)
 
-INSIGHTS (computed across ALL projects — not scoped to current project):
-${ctx.insightReport.summary}
-${ctx.insightReport.insights.length > 0 ? ctx.insightReport.insights.map((i: any) => `- [${i.severity.toUpperCase()}] ${i.message}`).join('\n') : '- No patterns worth flagging right now.'}
-
-PROACTIVE BEHAVIOR:
-- When insights are present, weave the most relevant one into your response naturally — don't list them all.
-- After a mutation (close, create, update), briefly note if it changes the picture (e.g. "That clears the urgent queue.").
-- If the user asks "why?" or "what changed?" without specifying, assume they mean the orb's current state.
-- The user can tune your insight scope conversationally: "only report on ORB", "include everything", "skip JUNKAP". Respect their preference for the rest of the session.
-- Default: report across all projects unless the user narrows it.
-
 SCOPE TRANSPARENCY (mandatory):
 - Every response that references task counts, priorities, or insight data MUST state what scope it covers. Never present numbers without scope.
 - Cross-project: say "across all projects" or name the specific projects involved (e.g. "across ORB, HELM, and CAN26").
 - Single-project: say "in ORB" or "in HELM" etc.
-- If a number comes from INSIGHTS (cross-project) but the conversation is scoped to one project, make the scope difference explicit.
+- If a number covers multiple projects but the conversation is scoped to one project, make the scope difference explicit.
 - Examples: "6 urgent tasks across all projects" / "2 open in ORB" / "Across ORB and HELM, 18 opened this week."
 
 AI ATTRIBUTION (mandatory):
@@ -266,7 +266,11 @@ FEEDBACK TONE:
                 return p?.code?.toUpperCase() === productCode && t.todo_number === todoNum
               })
             } else {
-              if (input.status && input.status !== 'any') {
+              if (input.status_group === 'active') {
+                results = results.filter((t: any) => isActive(t.status))
+              } else if (input.status_group === 'parked') {
+                results = results.filter((t: any) => isParked(t.status))
+              } else if (input.status && input.status !== 'any') {
                 results = results.filter((t: any) => t.status === input.status)
               } else {
                 const closed = ctx.statusList.filter((s: any) => s.is_closed).map((s: any) => s.name)
@@ -286,16 +290,16 @@ FEEDBACK TONE:
               results.sort((a: any, b: any) => (a.priority_value ?? 99) - (b.priority_value ?? 99))
             }
 
-            const limit = input.max_results ?? 10
+            const limit = input.max_results ?? 100
             const returned = results.slice(0, limit).map((t: any) => {
-              const p = ctx.productList.find((pp: any) => pp.id === t.product_id)
-              const out: any = { id: t.id, code: `${p?.code ?? p?.name}-${t.todo_number}`, title: t.title, status: t.status, priority_value: t.priority_value }
+              const out: any = { id: t.id, code: todoCode(t, ctx.productList), title: t.title, status: t.status, priority_value: t.priority_value }
               if (t.description) out.description = t.description
               if (t.resolution_notes) out.resolution_notes = t.resolution_notes
               return out
             })
             output = { count: results.length, returned }
-            stream.update({ speech: accumulatedSpeech, thought: `Found ${results.length} items`, results: returned, queryLabel: req.input })
+            const showInUI = input.show_results !== false
+            stream.update({ speech: accumulatedSpeech, thought: `Found ${results.length} items`, ...(showInUI ? { results: returned, queryLabel: req.input } : {}) })
           } else if (tc.name === 'update_todo') {
             const productCode = input.code?.split('-')[0]
             const todoNum = parseInt(input.code?.split('-')[1] || '0')
@@ -474,7 +478,7 @@ FEEDBACK TONE:
                 if (error) {
                   output = { error: error.message }
                 } else {
-                  const oldCode = `${sourceProject?.code}-${todo.todo_number}`
+                  const oldCode = `${sourceProject?.code ?? '???'}-${todo.todo_number}`
                   const newCode = `${targetProject.code}-${nextNum}`
                   output = { ok: true, old_code: oldCode, new_code: newCode }
                   stream.update({ speech: accumulatedSpeech, thought: `Moved ${oldCode} → ${newCode}`, refresh: true, mutatedProductId: sourceProject?.id, mutationType: 'update' })
@@ -645,17 +649,16 @@ export async function orbGreeting(productId: string | null): Promise<string | nu
   try {
     const auth = await getAuthContext()
     const ctx = await buildContext(auth.supabase, auth, productId, false)
-    const report = ctx.insightReport
 
-    if (report.insights.length === 0) return null
+    if (ctx.todoList.length === 0) return null
 
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 200,
-      system: `You are the voice of the orb. Generate a brief, ambient opening observation (1-3 sentences) based on the insights below. Plain text, no markdown. Factual tone — no cheerleading. If only info-level insights exist, keep it to one sentence. Address the user directly ("you"). Do not greet them or say hello. SCOPE TRANSPARENCY: Every number you cite must state its scope — say "across all projects" or name the specific projects. Never present a count without saying where it comes from.`,
+      system: `You are the voice of the orb. Generate a brief, ambient opening observation (1-2 sentences) based on the backlog below. Plain text, no markdown. Factual tone — no cheerleading. Address the user directly ("you"). Do not greet them or say hello. SCOPE TRANSPARENCY: Every number you cite must state its scope — say "across all projects" or name the specific projects. Never present a count without saying where it comes from. Only state facts visible in the backlog — do not infer patterns or compute statistics.`,
       messages: [{
         role: 'user',
-        content: `Current state: ${report.summary}\n\nInsights:\n${report.insights.map(i => `[${i.severity}] ${i.message}`).join('\n')}`,
+        content: `Backlog:\n${ctx.contextString}`,
       }],
     })
 
