@@ -1,9 +1,8 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/auth'
 import { logAuditEvent } from '@/lib/audit'
 import { revalidatePath } from 'next/cache'
-import { assertAdmin } from '@/lib/auth'
 
 export async function saveKnowledge(params: {
   product_id: string
@@ -11,11 +10,10 @@ export async function saveKnowledge(params: {
   title: string
   content: string
 }) {
-  await assertAdmin()
-  const supabase = createAdminClient()
+  const ctx = await requireAdmin()
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await ctx.admin
       .from('knowledge_repo')
       .insert(params)
       .select()
@@ -23,8 +21,8 @@ export async function saveKnowledge(params: {
 
     if (error) throw error
 
-    await logAuditEvent({ 
-      action: 'knowledge_distill', 
+    await logAuditEvent({
+      action: 'knowledge_distill',
       table_name: 'knowledge_repo',
       record_id: data.id,
       after: { title: data.title, todo_id: params.origin_todo_id }

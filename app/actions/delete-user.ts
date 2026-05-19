@@ -1,7 +1,6 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { assertAdmin } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { logAuditEvent } from '@/lib/audit'
 
 const SUPER_ADMIN_ROLE_ID = 3
@@ -9,7 +8,7 @@ const PROTECTED_EMAILS = ['dev@localhost.me', 'owner@test.local']
 
 export async function deleteUsers(userIds: string[]) {
   try {
-    await assertAdmin()
+    await requireAdmin()
   } catch (e: any) {
     return { error: e.message }
   }
@@ -21,16 +20,15 @@ export async function deleteUsers(userIds: string[]) {
 }
 
 export async function deleteUser(userId: string) {
+  let ctx
   try {
-    await assertAdmin()
+    ctx = await requireAdmin()
   } catch (e: any) {
     return { error: e.message }
   }
 
-  const supabase = createAdminClient()
-
   try {
-    const { data: target } = await supabase
+    const { data: target } = await ctx.admin
       .from('users')
       .select('role_id, email')
       .eq('id', userId)
@@ -40,32 +38,14 @@ export async function deleteUser(userId: string) {
     if (target.role_id === SUPER_ADMIN_ROLE_ID) return { error: 'Cannot delete Super Admin' }
     if (PROTECTED_EMAILS.includes(target.email)) return { error: 'This test user cannot be deleted' }
 
-    // Reassign shared projects to super admin before cascade delete
-    const { data: superAdmin } = await supabase
-      .from('users')
-      .select('id')
-      .eq('role_id', SUPER_ADMIN_ROLE_ID)
-      .limit(1)
-      .single()
-
-    if (superAdmin) {
-      await supabase
-        .from('projects')
-        .update({ created_by: superAdmin.id })
-        .eq('created_by', userId)
-        .eq('is_shared', true)
-    }
-
-    // Delete user — cascades to their non-shared projects, todos, groups, etc.
-    const { error: dbError } = await supabase
+    const { error: dbError } = await ctx.admin
       .from('users')
       .delete()
       .eq('id', userId)
 
     if (dbError) throw dbError
 
-    // Also delete from Supabase Auth so they can be re-invited cleanly
-    const { error: authError } = await supabase.auth.admin.deleteUser(userId)
+    const { error: authError } = await ctx.admin.auth.admin.deleteUser(userId)
     if (authError) {
       console.warn('[deleteUser] Warning: Auth user deletion failed or already deleted:', authError.message)
     }

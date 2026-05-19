@@ -1,26 +1,24 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { assertAdmin } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 
 export async function diagnoseAudit() {
+  let ctx
   try {
-    await assertAdmin()
+    ctx = await requireAdmin()
   } catch (e: any) {
     return { error: e.message }
   }
-  const supabase = createAdminClient()
+
   const result: any = {}
 
-  // 1. Can we count rows?
-  const { count, error: countError } = await supabase
+  const { count, error: countError } = await ctx.admin
     .from('audit_log')
     .select('*', { count: 'exact', head: true })
   result.rowCount = count
   result.countError = countError?.message ?? null
 
-  // 2. Bad probe — null record_id (system-level event shape)
-  const { data: badData, error: badError } = await supabase
+  const { data: badData, error: badError } = await ctx.admin
     .from('audit_log')
     .insert({
       action: 'diagnostic_probe_null_record',
@@ -36,8 +34,7 @@ export async function diagnoseAudit() {
     inserted: !!badData
   }
 
-  // 3. Good probe — valid record_id (typical mutation event shape)
-  const { data: goodData, error: goodError } = await supabase
+  const { data: goodData, error: goodError } = await ctx.admin
     .from('audit_log')
     .insert({
       action: 'diagnostic_probe_with_record',
@@ -54,8 +51,7 @@ export async function diagnoseAudit() {
     columns: goodData ? Object.keys(goodData) : null
   }
 
-  // 4. Final row count
-  const { count: finalCount } = await supabase
+  const { count: finalCount } = await ctx.admin
     .from('audit_log')
     .select('*', { count: 'exact', head: true })
   result.finalRowCount = finalCount

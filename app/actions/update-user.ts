@@ -1,7 +1,6 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { assertAdmin } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { logAuditEvent } from '@/lib/audit'
 
 const SUPER_ADMIN_ROLE_ID = 3
@@ -12,16 +11,15 @@ export async function updateUser(userId: string, data: {
   last_name?: string
   role_id?: number
 }) {
+  let ctx
   try {
-    await assertAdmin()
+    ctx = await requireAdmin()
   } catch (e: any) {
     return { error: e.message }
   }
 
-  const supabase = createAdminClient()
-
   try {
-    const { data: target } = await supabase
+    const { data: target } = await ctx.admin
       .from('users')
       .select('role_id, email')
       .eq('id', userId)
@@ -39,7 +37,7 @@ export async function updateUser(userId: string, data: {
 
     if (Object.keys(update).length === 0) return { error: 'No changes to apply' }
 
-    const { error } = await supabase
+    const { error } = await ctx.admin
       .from('users')
       .update(update)
       .eq('id', userId)

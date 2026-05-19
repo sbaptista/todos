@@ -1,7 +1,7 @@
 'use server'
 
+import { requireAdmin, getAuthContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { assertAdmin } from '@/lib/auth'
 
 export type Invitation = {
     id: string
@@ -15,9 +15,8 @@ export type Invitation = {
 }
 
 export async function getInvitations(status?: string) {
-    await assertAdmin()
-    const admin = createAdminClient()
-    let query = admin.from('invitations').select('*').order('invited_at', { ascending: false })
+    const ctx = await requireAdmin()
+    let query = ctx.admin.from('invitations').select('*').order('invited_at', { ascending: false })
     if (status) query = query.eq('status', status)
     const { data, error } = await query
     if (error) {
@@ -28,14 +27,13 @@ export async function getInvitations(status?: string) {
 }
 
 export async function resendInvitation(invitationId: string) {
-    await assertAdmin()
-    const admin = createAdminClient()
+    const ctx = await requireAdmin()
 
-    const { data: inv, error: fetchErr } = await admin
+    const { data: inv, error: fetchErr } = await ctx.admin
         .from('invitations').select('email').eq('id', invitationId).single()
     if (fetchErr || !inv) return { error: fetchErr?.message ?? 'Invitation not found' }
 
-    const { error: authErr } = await admin.auth.admin.inviteUserByEmail(inv.email, {
+    const { error: authErr } = await ctx.admin.auth.admin.inviteUserByEmail(inv.email, {
         redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://localhost:3001'}/auth/callback`,
     })
     if (authErr) return { error: authErr.message }
@@ -43,9 +41,8 @@ export async function resendInvitation(invitationId: string) {
 }
 
 export async function deleteInvitation(invitationId: string) {
-    await assertAdmin()
-    const admin = createAdminClient()
-    const { error } = await admin.from('invitations').delete().eq('id', invitationId)
+    const ctx = await requireAdmin()
+    const { error } = await ctx.admin.from('invitations').delete().eq('id', invitationId)
     if (error) {
         console.error('deleteInvitation error:', error)
         return { error: error.message }
@@ -54,9 +51,8 @@ export async function deleteInvitation(invitationId: string) {
 }
 
 export async function deleteInvitations(ids: string[]) {
-    await assertAdmin()
-    const admin = createAdminClient()
-    const { error } = await admin.from('invitations').delete().in('id', ids)
+    const ctx = await requireAdmin()
+    const { error } = await ctx.admin.from('invitations').delete().in('id', ids)
     if (error) {
         console.error('deleteInvitations error:', error)
         return { error: error.message }

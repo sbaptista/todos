@@ -5,6 +5,7 @@ import { readStreamableValue } from 'ai/rsc'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { visibleProjectsQuery } from '@/lib/projects'
 import AddProductModal from './AddProductModal'
 import QueryResultsModal from './QueryResultsModal'
 import OrbHelp from './OrbHelp'
@@ -216,7 +217,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                 }
                 return
             }
-            const { data } = await supabase.from('projects').select('id, name, code, description, created_by').order('sort_order')
+            const { data } = await visibleProjectsQuery(supabase, 'id, name, code, description, created_by')
             const list = (data ?? []) as Product[]
             setProducts(list)
             if (list.length > 0) {
@@ -496,8 +497,8 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
 • Add a task: "Add task: review the onboarding flow"
 • See your list: "Show my open tasks"
 • Create a project: "Create a project called Work"
-You also have access to a shared project called Orb Feedback — use it to tell me what's working and what isn't:
-• "Add task to Orb Feedback: the send button is hard to tap on iPhone"
+
+If you run into a bug or have a suggestion, just tell me — I'll log a ticket automatically. You can also say things like "I have a suggestion" or "something's broken" and I'll capture it.
 
 Type /? anytime for a full command list. What would you like to work on?` },
         ])
@@ -644,7 +645,14 @@ Type /? anytime for a full command list. What would you like to work on?` },
                 if (chunk.refresh) {
                     setPulse(true)
                     setTimeout(() => setPulse(false), 420)
-                    if (chunk.mutationType === 'project_create' && chunk.newProject) {
+                    if (chunk.mutationType === 'dormancy') {
+                        const { data: freshProjects } = await visibleProjectsQuery(supabase, 'id, name, code, description, created_by')
+                        const list = (freshProjects ?? []) as Product[]
+                        setProducts(list)
+                        if (list.length > 0 && !list.find(p => p.id === selectedId)) {
+                            setSelectedId(list[0].id)
+                        }
+                    } else if (chunk.mutationType === 'project_create' && chunk.newProject) {
                         setProducts(prev => [...prev, chunk.newProject!])
                         orbSwitchingRef.current = true
                         setSelectedId(chunk.newProject.id)

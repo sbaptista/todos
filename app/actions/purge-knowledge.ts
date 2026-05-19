@@ -1,26 +1,24 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 import { logAuditEvent } from '@/lib/audit'
-import { assertAdmin } from '@/lib/auth'
 
 export async function purgeKnowledge(ids: string[]) {
-  await assertAdmin()
-  const supabase = createAdminClient()
+  const ctx = await requireAdmin()
 
   try {
-    const { error } = await supabase
+    const { error } = await ctx.admin
       .from('knowledge_repo')
       .delete()
       .in('id', ids)
 
     if (error) throw error
 
-    await logAuditEvent({ 
-      action: 'knowledge_purge', 
+    await logAuditEvent({
+      action: 'knowledge_purge',
       table_name: 'knowledge_repo',
-      before: { count: ids.length } 
+      before: { count: ids.length }
     })
 
     revalidatePath('/settings/knowledge')

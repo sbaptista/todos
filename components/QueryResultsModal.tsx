@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { visibleProjectsQuery } from '@/lib/projects'
 import type { OrbResponse } from '@/app/actions/orb-converse'
 import type { Todo, Product, Priority, StatusDef } from './TodoView'
 
@@ -157,7 +158,7 @@ export default function QueryResultsModal({
   async function openTodo(item: ResultItem) {
     const [todoRes, prodRes, priRes, statRes] = await Promise.all([
       supabase.from('todos').select('*').eq('id', item.id).single(),
-      supabase.from('projects').select('id, name, color, code').order('sort_order'),
+      visibleProjectsQuery(supabase, 'id, name, color, code'),
       supabase.from('priorities').select('value, label').order('value'),
       supabase.from('statuses').select('id, name, sort_order, is_closed, is_open').order('sort_order'),
     ])

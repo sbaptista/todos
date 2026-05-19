@@ -1,7 +1,7 @@
 'use client'
 
 import SettingsCrudList from './SettingsCrudList'
-import { getAdminProjects, createProject, deleteProject, deleteProjects, updateProject } from '@/app/actions/manage-project'
+import { getAdminProjects, getUserProjects, createProject, deleteProject, deleteProjects, updateProject } from '@/app/actions/manage-project'
 import { listUsers } from '@/app/actions/list-users'
 
 type Project = {
@@ -9,7 +9,7 @@ type Project = {
   name: string
   code: string
   description: string | null
-  is_shared: boolean
+  is_dormant: boolean
   sort_order: number
   created_by: string
 }
@@ -18,13 +18,13 @@ type ProjectForm = {
   name: string
   code: string
   description: string
-  is_shared: boolean
+  is_dormant: boolean
   ownerId: string
 }
 
-const EMPTY_FORM: ProjectForm = { name: '', code: '', description: '', is_shared: false, ownerId: '' }
+const EMPTY_FORM: ProjectForm = { name: '', code: '', description: '', is_dormant: false, ownerId: '' }
 
-export default function SettingsProjects() {
+export default function SettingsProjects({ isAdmin = false }: { isAdmin?: boolean }) {
   return (
     <SettingsCrudList<Project, ProjectForm>
       config={{
@@ -52,18 +52,20 @@ export default function SettingsProjects() {
           { label: 'Code',        width: '10%', sortKey: 'code',  sortValue: (p: Project) => p.code ?? '' },
           { label: 'Name',        width: '20%', sortKey: 'name',  sortValue: (p: Project) => p.name },
           { label: 'Description', width: '25%' },
-          { label: 'Owner',       width: '17%', sortKey: 'owner', sortValue: (p: Project, extra: any) => {
-            const owner = extra.users?.find((u: any) => u.id === p.created_by)
-            return owner ? [owner.first_name, owner.last_name].filter(Boolean).join(' ') || owner.email : ''
-          }},
-          { label: 'Shared',      width: '10%', align: 'center' },
-          { label: 'Actions',     width: '18%', align: 'right' },
+          ...(isAdmin ? [
+            { label: 'Owner',     width: '15%', sortKey: 'owner', sortValue: (p: Project, extra: any) => {
+              const owner = extra.users?.find((u: any) => u.id === p.created_by)
+              return owner ? [owner.first_name, owner.last_name].filter(Boolean).join(' ') || owner.email : ''
+            }},
+          ] : []),
+          { label: 'Status',      width: '12%', align: 'center' as const },
+          { label: 'Actions',     width: '18%', align: 'right' as const },
         ],
 
         load: async (_supabase) => {
           const [projectsRes, usersRes] = await Promise.all([
-            getAdminProjects(),
-            listUsers(),
+            isAdmin ? getAdminProjects() : getUserProjects(),
+            isAdmin ? listUsers() : Promise.resolve({ users: [] }),
           ])
           return {
             items: (projectsRes.projects ?? []) as Project[],
@@ -84,7 +86,7 @@ export default function SettingsProjects() {
           name: form.name.trim(),
           code: form.code.trim().toUpperCase().replace(/[^A-Z0-9]/g, ''),
           description: form.description.trim() || null,
-          is_shared: form.is_shared,
+          is_dormant: form.is_dormant,
           created_by: form.ownerId || null,
         }),
 
@@ -92,7 +94,7 @@ export default function SettingsProjects() {
           name: item.name,
           code: item.code ?? '',
           description: item.description ?? '',
-          is_shared: item.is_shared ?? false,
+          is_dormant: item.is_dormant ?? false,
           ownerId: item.created_by ?? '',
         }),
 
@@ -118,7 +120,7 @@ export default function SettingsProjects() {
         ),
 
         bulkDelete: {
-          canSelect: (item: Project) => !item.is_shared,
+          canSelect: () => true,
           confirmMessage: (count: number) => `Permanently delete ${count} project${count > 1 ? 's' : ''} and all their todos? This cannot be undone.`,
           onDelete: async (_supabase: any, items: Project[]) => {
             const res = await deleteProjects(items.map(p => p.id))
@@ -160,32 +162,34 @@ export default function SettingsProjects() {
                 placeholder="Optional description"
               />
             </div>
-            <div style={{ marginBottom: '12px' }}>
-              <label className="label">Owner</label>
-              <select
-                className="input"
-                style={{ width: '100%', padding: '6px var(--sp-sm)', height: '40px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 'var(--r)' }}
-                value={form.ownerId}
-                onChange={e => onChange({ ...form, ownerId: e.target.value })}
-              >
-                <option value="">— Select Owner (defaults to you)</option>
-                {extra.users?.map((u: any) => (
-                  <option key={u.id} value={u.id}>
-                    {[u.first_name, u.last_name].filter(Boolean).join(' ') || u.email}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {isAdmin && (
+              <div style={{ marginBottom: '12px' }}>
+                <label className="label">Owner</label>
+                <select
+                  className="input"
+                  style={{ width: '100%', padding: '6px var(--sp-sm)', height: '40px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 'var(--r)' }}
+                  value={form.ownerId}
+                  onChange={e => onChange({ ...form, ownerId: e.target.value })}
+                >
+                  <option value="">— Select Owner (defaults to you)</option>
+                  {extra.users?.map((u: any) => (
+                    <option key={u.id} value={u.id}>
+                      {[u.first_name, u.last_name].filter(Boolean).join(' ') || u.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <input
                 type="checkbox"
-                id="proj-is-shared"
-                checked={form.is_shared}
-                onChange={e => onChange({ ...form, is_shared: e.target.checked })}
+                id="proj-is-dormant"
+                checked={form.is_dormant}
+                onChange={e => onChange({ ...form, is_dormant: e.target.checked })}
                 style={{ width: '16px', height: '16px', cursor: 'pointer' }}
               />
-              <label htmlFor="proj-is-shared" className="label" style={{ margin: 0, cursor: 'pointer' }}>
-                Shared — visible to all program participants (pre-alpha, alpha, beta)
+              <label htmlFor="proj-is-dormant" className="label" style={{ margin: 0, cursor: 'pointer' }}>
+                Dormant — hidden from project strip and insights
               </label>
             </div>
             <div className="flex-row gap-sm">
@@ -198,7 +202,7 @@ export default function SettingsProjects() {
         ),
 
         renderRow: ({ item, onEdit, onDelete, extra, checkbox }) => (
-          <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
+          <tr key={item.id} style={{ borderBottom: '1px solid var(--border)', opacity: item.is_dormant ? 0.5 : 1 }}>
             {checkbox}
             <td className="audit-td" style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--text2)', fontSize: '12px' }}>
               {item.code}
@@ -209,24 +213,26 @@ export default function SettingsProjects() {
             <td className="audit-td" style={{ color: 'var(--muted)', fontSize: '12px' }}>
               {item.description ?? <span style={{ opacity: 0.4 }}>—</span>}
             </td>
-            <td className="audit-td" style={{ color: 'var(--text)', fontSize: '12px' }}>
-              {(() => {
-                const owner = extra.users?.find((u: any) => u.id === item.created_by)
-                if (!owner) return <span style={{ opacity: 0.4 }}>—</span>
-                return [owner.first_name, owner.last_name].filter(Boolean).join(' ') || owner.email
-              })()}
-            </td>
+            {isAdmin && (
+              <td className="audit-td" style={{ color: 'var(--text)', fontSize: '12px' }}>
+                {(() => {
+                  const owner = extra.users?.find((u: any) => u.id === item.created_by)
+                  if (!owner) return <span style={{ opacity: 0.4 }}>—</span>
+                  return [owner.first_name, owner.last_name].filter(Boolean).join(' ') || owner.email
+                })()}
+              </td>
+            )}
             <td className="audit-td" style={{ textAlign: 'center' }}>
-              {item.is_shared ? (
+              {item.is_dormant ? (
                 <span style={{
                   padding: '2px 8px',
                   borderRadius: '10px',
                   fontSize: '11px',
-                  background: 'var(--pill-active-bg)',
-                  color: 'var(--pill-active-color)',
+                  background: 'var(--bg-hover)',
+                  color: 'var(--muted)',
                   textTransform: 'uppercase',
                   letterSpacing: '0.04em',
-                }}>Shared</span>
+                }}>Dormant</span>
               ) : (
                 <span style={{ fontSize: '12px', color: 'var(--muted)' }}>—</span>
               )}

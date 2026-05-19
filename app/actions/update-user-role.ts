@@ -1,23 +1,20 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { assertAdmin, getSessionRole } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { logAuditEvent } from '@/lib/audit'
 
 const SUPER_ADMIN_ROLE_ID = 3
 
 export async function updateUserRole(userId: string, roleId: number) {
+  let ctx
   try {
-    await assertAdmin()
+    ctx = await requireAdmin()
   } catch (e: any) {
     return { error: e.message }
   }
 
-  const supabase = createAdminClient()
-
   try {
-    // Check if target is a Super Admin — immutable
-    const { data: target } = await supabase
+    const { data: target } = await ctx.admin
       .from('users')
       .select('role_id')
       .eq('id', userId)
@@ -27,7 +24,7 @@ export async function updateUserRole(userId: string, roleId: number) {
       return { error: 'Cannot change role of Super Admin' }
     }
 
-    const { error } = await supabase
+    const { error } = await ctx.admin
       .from('users')
       .update({ role_id: roleId })
       .eq('id', userId)

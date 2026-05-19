@@ -20,7 +20,7 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { title, description, status, priority_value, resolution_notes, urls } = body
+  const { title, description, status, priority_value, resolution_notes, urls, product_code } = body
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
 
@@ -39,6 +39,29 @@ export async function PATCH(
   }
 
   const supabase = createServiceClient()
+
+  if (product_code !== undefined) {
+    const { data: targetProject } = await supabase
+      .from('projects')
+      .select('id')
+      .ilike('code', String(product_code))
+      .maybeSingle()
+
+    if (!targetProject) {
+      return NextResponse.json({ error: `Project "${product_code}" not found` }, { status: 404 })
+    }
+
+    const { data: maxRow } = await supabase
+      .from('todos')
+      .select('todo_number')
+      .eq('product_id', targetProject.id)
+      .order('todo_number', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    updates.product_id = targetProject.id
+    updates.todo_number = (maxRow?.todo_number ?? 0) + 1
+  }
 
   if (status !== undefined) {
     const { data: statusDef } = await supabase

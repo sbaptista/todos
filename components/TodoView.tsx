@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { visibleProjectsQuery } from '@/lib/projects'
 import { useVisibilityRefetch } from '@/lib/hooks/useVisibilityRefetch'
 import { VERSION } from '@/lib/version'
 import TodoPanel from './TodoPanel'
@@ -50,7 +51,7 @@ export default function TodoView({ productId }: { productId: string }) {
   const [statuses, setStatuses] = useState<StatusDef[]>([])
   const [loading, setLoading]   = useState(true)
 
-  const [filterStatus,   setFilterStatus]   = useState('active') // 'active' hides done by default
+  const [filterStatus,   setFilterStatus]   = useState('open') // 'open' hides done by default
   const [filterPriority, setFilterPriority] = useState('all')
   const [showFilters,    setShowFilters]    = useState(false)
 
@@ -84,7 +85,7 @@ export default function TodoView({ productId }: { productId: string }) {
 
       const [, productsRes, prioritiesRes, statusesRes] = await Promise.all([
         fetchTodos(),
-        supabase.from('projects').select('id, name, color, icon, code').order('sort_order'),
+        visibleProjectsQuery(supabase, 'id, name, color, icon, code'),
         supabase.from('priorities').select('value, label').order('value'),
         supabase.from('statuses').select('id, name, sort_order, is_closed, is_open').order('sort_order'),
       ])
@@ -202,13 +203,13 @@ export default function TodoView({ productId }: { productId: string }) {
 
 
   const filtered = todos.filter(t => {
-    if (filterStatus === 'active' && isClosed(t.status)) return false
-    if (filterStatus !== 'active' && filterStatus !== 'all' && t.status !== filterStatus) return false
+    if (filterStatus === 'open' && isClosed(t.status)) return false
+    if (filterStatus !== 'open' && filterStatus !== 'all' && t.status !== filterStatus) return false
     if (filterPriority !== 'all' && String(t.priority_value) !== filterPriority) return false
     return true
   })
 
-  const doneTodos = filterStatus === 'active'
+  const doneTodos = filterStatus === 'open'
     ? todos.filter(t => {
         if (!isClosed(t.status)) return false
         if (filterPriority !== 'all' && String(t.priority_value) !== filterPriority) return false
@@ -308,7 +309,7 @@ export default function TodoView({ productId }: { productId: string }) {
             className="tv-select"
             aria-label="Filter by status"
           >
-            <option value="active">Active only</option>
+            <option value="open">Open only</option>
             <option value="all">All statuses</option>
             {statuses.map(s => (
               <option key={s.id} value={s.name}>{s.name.charAt(0).toUpperCase() + s.name.slice(1)}</option>
@@ -339,7 +340,7 @@ export default function TodoView({ productId }: { productId: string }) {
           </p>
         ) : filtered.length === 0 ? (
           <p className="text-sm text-muted" style={{ textAlign: 'center', padding: 'var(--sp-3xl) 0' }}>
-            {filterStatus === 'active' ? 'Nothing open — you\'re clear.' : 'No todos found.'}
+            {filterStatus === 'open' ? 'Nothing open — you\'re clear.' : 'No todos found.'}
           </p>
         ) : (
           <div className="tv-list-card">
@@ -442,8 +443,8 @@ export default function TodoView({ productId }: { productId: string }) {
           </div>
         )}
 
-        {/* Done section — collapsed by default, only shown in active filter mode */}
-        {filterStatus === 'active' && doneTodos.length > 0 && (
+        {/* Done section — collapsed by default, only shown in open filter mode */}
+        {filterStatus === 'open' && doneTodos.length > 0 && (
           <div className="tv-done-section">
             <button
               className="tv-done-header"

@@ -16,18 +16,33 @@ export default function CreateAccountPage() {
     setLoading(true)
     setError('')
 
-    const result = await completeOnboarding(
-      firstName.trim(),
-      lastName.trim()
-    )
-
-    if (result.error) {
-      setError(result.error)
+    if (!navigator.onLine) {
+      setError('You appear to be offline. Check your connection and try again.')
       setLoading(false)
       return
     }
 
-    router.push('/dashboard')
+    try {
+      const result = await completeOnboarding(
+        firstName.trim(),
+        lastName.trim()
+      )
+
+      if (result.error) {
+        setError(result.error)
+        setLoading(false)
+        return
+      }
+
+      router.push('/dashboard')
+    } catch (err: any) {
+      if (!navigator.onLine || err?.message?.includes('fetch')) {
+        setError('You appear to be offline. Check your connection and try again.')
+      } else {
+        setError(err?.message || 'Something went wrong. Please try again.')
+      }
+      setLoading(false)
+    }
   }
 
   return (

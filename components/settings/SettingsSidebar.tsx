@@ -16,7 +16,7 @@ const NAV: SidebarItem[] = [
 export default function SettingsSidebar({ isAdmin }: { isAdmin?: boolean }) {
   const pathname = usePathname()
   const items = NAV
-    .filter(item => !(['users', 'tickets', 'projects', 'invitations'].includes(item.id)) || isAdmin)
+    .filter(item => !(['users', 'tickets', 'invitations'].includes(item.id)) || isAdmin)
     .map(item => ({ ...item, active: pathname === item.href || pathname.startsWith(item.href + '/') }))
   return <CollapsibleSidebar items={items} />
 }

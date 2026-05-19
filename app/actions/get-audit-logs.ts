@@ -1,22 +1,20 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { assertAdmin } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 
 export async function getAuditLogs(page: number = 0, pageSize: number = 50) {
-  await assertAdmin()
-  const supabase = createAdminClient()
-  
+  const ctx = await requireAdmin()
+
   try {
     const from = page * pageSize
     const to = from + pageSize - 1
-    
-    const { data, error, count } = await supabase
+
+    const { data, error, count } = await ctx.admin
       .from('audit_log')
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, to)
-    
+
     if (error) throw error
     return { ok: true, data, count }
   } catch (err: any) {

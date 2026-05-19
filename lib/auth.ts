@@ -1,9 +1,20 @@
+'use server'
+
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 const ADMIN_ROLE_IDS = [1, 3] // Admin, Super Admin
 
-export async function assertAdmin() {
+export type AuthContext = {
+  user: { id: string; email: string }
+  role: string
+  roleId: number
+  isAdmin: boolean
+  supabase: Awaited<ReturnType<typeof createClient>>
+  admin: ReturnType<typeof createAdminClient>
+}
+
+export async function getAuthContext(): Promise<AuthContext> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Not authenticated')
@@ -11,30 +22,25 @@ export async function assertAdmin() {
   const admin = createAdminClient()
   const { data } = await admin
     .from('users')
-    .select('role_id')
+    .select('role_id, roles(name)')
     .eq('id', user.id)
     .single()
 
-  if (!data || !ADMIN_ROLE_IDS.includes(data.role_id)) {
-    throw new Error('Admin access required')
+  const roleId = data?.role_id ?? 0
+  const roleName = (data as any)?.roles?.name ?? 'unknown'
+
+  return {
+    user: { id: user.id, email: user.email ?? '' },
+    role: roleName,
+    roleId,
+    isAdmin: ADMIN_ROLE_IDS.includes(roleId),
+    supabase: supabase as any,
+    admin,
   }
 }
 
-export async function getCurrentUserId(): Promise<string | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  return user?.id ?? null
-}
-
-export async function getSessionRole(): Promise<number | null> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const admin = createAdminClient()
-  const { data } = await admin
-    .from('users')
-    .select('role_id')
-    .eq('id', user.id)
-    .single()
-  return data?.role_id ?? null
+export async function requireAdmin(): Promise<AuthContext> {
+  const ctx = await getAuthContext()
+  if (!ctx.isAdmin) throw new Error('Admin access required')
+  return ctx
 }

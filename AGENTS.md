@@ -56,7 +56,7 @@ Version bumps happen on every local change — no exceptions. `package.json` is 
 In addition to the shared integrity rules, these are specific to the Orb API:
 
 **Known limitations:**
-- PATCH does not accept `product_code` — you cannot move a task between products. Workaround: POST a new task in the target product, then DELETE the original.
+- PATCH accepts `product_code` to move a task between projects. The task gets a new `todo_number` in the target project.
 - PATCH does not accept `todo_number` or `created_at` — these are immutable.
 - DELETE is a soft delete (`deleted_at` timestamp). There is no hard delete.
 - `closed_at` is managed automatically by the server based on `status`. Do not try to set it directly.

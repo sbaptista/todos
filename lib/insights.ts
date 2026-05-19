@@ -41,15 +41,16 @@ export function computeInsights(
 ): InsightReport {
   const closedStatuses = new Set(statuses.filter(s => s.is_closed).map(s => s.name))
   const parkedStatuses = new Set(['on hold', 'deferred'])
-  const openTodos = todos.filter(t => !closedStatuses.has(t.status))
-  const activeTodos = openTodos.filter(t => !parkedStatuses.has(t.status))
+  const nonClosedTodos = todos.filter(t => !closedStatuses.has(t.status))
+  const openTodos = nonClosedTodos.filter(t => !parkedStatuses.has(t.status))
+  const parkedTodos = nonClosedTodos.filter(t => parkedStatuses.has(t.status))
   const insights: Insight[] = []
 
   const productCode = (pid: string) => products.find(p => p.id === pid)?.code ?? '???'
   const todoCode = (t: Todo) => `${productCode(t.product_id)}-${t.todo_number}`
 
-  // ── Stale tasks (open 30+ days, no updates in 14+ days) ──
-  const staleTasks = openTodos.filter(t => {
+  // ── Stale tasks (not closed, 30+ days old, no updates in 14+ days) ──
+  const staleTasks = nonClosedTodos.filter(t => {
     const age = daysSince(t.created_at)
     const lastTouch = daysSince(t.updated_at)
     return age >= 30 && lastTouch >= 14
@@ -66,17 +67,17 @@ export function computeInsights(
     })
   }
 
-  // ── Priority distribution (active only — on hold/deferred are parked) ──
-  const urgentTodos = activeTodos.filter(t => t.priority_value !== null && t.priority_value <= 2)
-  const lowTodos = activeTodos.filter(t => t.priority_value === null || t.priority_value >= 4)
+  // ── Priority distribution (open only — excludes on hold/deferred) ──
+  const urgentTodos = openTodos.filter(t => t.priority_value !== null && t.priority_value <= 2)
+  const lowTodos = openTodos.filter(t => t.priority_value === null || t.priority_value >= 4)
 
   if (urgentTodos.length >= 4) {
     insights.push({
       type: 'priority_overload',
       severity: 'warning',
-      message: `${urgentTodos.length} active tasks at P1/P2. That's a heavy urgent queue — consider whether all of them are truly urgent.`,
+      message: `${urgentTodos.length} open tasks at P1/P2. That's a heavy urgent queue — consider whether all of them are truly urgent.`,
     })
-  } else if (activeTodos.length > 0 && urgentTodos.length === 0 && lowTodos.length === activeTodos.length) {
+  } else if (openTodos.length > 0 && urgentTodos.length === 0 && lowTodos.length === openTodos.length) {
     insights.push({
       type: 'all_low_priority',
       severity: 'info',
@@ -106,12 +107,12 @@ export function computeInsights(
   }
 
   // ── Focus gap (nothing in progress) ──
-  const inProgress = activeTodos.filter(t => t.status === 'in progress')
-  if (activeTodos.length >= 3 && inProgress.length === 0) {
+  const inProgress = openTodos.filter(t => t.status === 'in progress')
+  if (openTodos.length >= 3 && inProgress.length === 0) {
     insights.push({
       type: 'focus_gap',
       severity: 'nudge',
-      message: `${activeTodos.length} active tasks but nothing is "in progress". Want to pick one to focus on?`,
+      message: `${openTodos.length} open tasks but nothing is "in progress". Want to pick one to focus on?`,
     })
   }
 
@@ -128,15 +129,15 @@ export function computeInsights(
   }
 
   // ── Neglected projects (no activity in 14+ days) ──
-  const activeProductIds = new Set<string>()
+  const recentlyTouchedProductIds = new Set<string>()
   for (const e of auditEvents) {
     if (e.created_at >= fourteenDaysAgo) {
       const todo = todos.find(t => t.id === e.record_id)
-      if (todo) activeProductIds.add(todo.product_id)
+      if (todo) recentlyTouchedProductIds.add(todo.product_id)
     }
   }
-  const productsWithOpenTodos = new Set(openTodos.map(t => t.product_id))
-  const neglected = products.filter(p => productsWithOpenTodos.has(p.id) && !activeProductIds.has(p.id))
+  const productsWithOpenTodos = new Set(nonClosedTodos.map(t => t.product_id))
+  const neglected = products.filter(p => productsWithOpenTodos.has(p.id) && !recentlyTouchedProductIds.has(p.id))
   if (neglected.length > 0) {
     const names = neglected.map(p => p.code ?? p.name).join(', ')
     insights.push({
@@ -160,8 +161,7 @@ export function computeInsights(
   // ── Build summary ──
   const warnings = insights.filter(i => i.severity === 'warning')
   const nudges = insights.filter(i => i.severity === 'nudge')
-  const parkedCount = openTodos.length - activeTodos.length
-  const parkedNote = parkedCount > 0 ? ` (${parkedCount} on hold/deferred)` : ''
+  const parkedNote = parkedTodos.length > 0 ? `, ${parkedTodos.length} on hold/deferred` : ''
   let summary: string
 
   if (insights.length === 0) {

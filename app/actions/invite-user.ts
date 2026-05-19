@@ -1,10 +1,8 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/admin'
-import { assertAdmin, getCurrentUserId } from '@/lib/auth'
+import { requireAdmin } from '@/lib/auth'
 import { logAuditEvent } from '@/lib/audit'
 import { sendInviteEmail } from '@/lib/email'
-import { headers } from 'next/headers'
 
 export async function inviteUser(
   email: string,
@@ -14,20 +12,17 @@ export async function inviteUser(
   originInput?: string,
   releaseStage?: string
 ) {
+  let ctx
   try {
-    await assertAdmin()
+    ctx = await requireAdmin()
   } catch (e: any) {
     return { error: e.message }
   }
 
   const origin = originInput || (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://orb-eight-lake.vercel.app')
 
-  const supabase = createAdminClient()
-  const adminId = await getCurrentUserId()
-
   try {
-    // Block inviting existing users — this would replace their auth identity
-    const { data: existingUser } = await supabase
+    const { data: existingUser } = await ctx.admin
       .from('users')
       .select('id')
       .eq('email', email)
@@ -37,8 +32,7 @@ export async function inviteUser(
       return { error: 'This email is already a registered user.' }
     }
 
-    // Block duplicate pending invitations
-    const { data: existingInvite } = await supabase
+    const { data: existingInvite } = await ctx.admin
       .from('invitations')
       .select('id')
       .eq('email', email)
@@ -49,14 +43,13 @@ export async function inviteUser(
       return { error: 'This email already has a pending invitation.' }
     }
 
-    // Clean up any stale auth entry so generateLink can create a fresh one
-    const { data: existingAuthUsers } = await supabase.auth.admin.listUsers()
+    const { data: existingAuthUsers } = await ctx.admin.auth.admin.listUsers()
     const existingAuth = existingAuthUsers?.users?.find(u => u.email === email)
     if (existingAuth) {
-      await supabase.auth.admin.deleteUser(existingAuth.id)
+      await ctx.admin.auth.admin.deleteUser(existingAuth.id)
     }
 
-    const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+    const { data: linkData, error: linkErr } = await ctx.admin.auth.admin.generateLink({
       type: 'invite',
       email,
       options: { redirectTo: `${origin}/auth/callback` },
@@ -68,8 +61,7 @@ export async function inviteUser(
     const inviteLink = `${origin}/auth/callback?token_hash=${linkData.properties.hashed_token}&type=invite`
     console.log('[inviteUser] Generated custom invite link:', inviteLink)
 
-    // Create invitation record (user record is NOT created until acceptance)
-    const { data: invitation, error: invErr } = await supabase
+    const { data: invitation, error: invErr } = await ctx.admin
       .from('invitations')
       .insert({
         email,
@@ -77,7 +69,7 @@ export async function inviteUser(
         last_name: lastName,
         role_id: roleId,
         release_stage: releaseStage ?? 'pre-alpha',
-        invited_by: adminId ?? null,
+        invited_by: ctx.user.id,
       })
       .select('id')
       .single()
@@ -86,7 +78,6 @@ export async function inviteUser(
 
     const declineLink = `${origin}/invite/decline?id=${invitation.id}`
 
-    // Send the custom invite email via Resend
     const emailResult = await sendInviteEmail({
       to: email,
       firstName,

@@ -183,9 +183,6 @@ components:
       type: object
       description: |
         All fields are optional. Only provided fields are updated.
-        IMPORTANT: There is NO product_code field. You cannot move
-        a task between products via PATCH. To move a task, create a
-        new task in the target product and delete the original.
       properties:
         title:
           type: string
@@ -201,6 +198,12 @@ components:
           type: integer
         resolution_notes:
           type: string
+        product_code:
+          type: string
+          description: |
+            Move the task to a different project by providing the
+            target project code (e.g. "HELM"). The task gets a new
+            todo_number in the target project.
         urls:
           oneOf:
             - type: array
@@ -310,7 +313,7 @@ paths:
         name: update_todo
         confidence: well-tested
         description: |
-          Update an existing todo by task code (e.g. ORB-73). Supports: title, status, priority, description, resolution_notes, urls. Cannot: move a task between products, change todo_number, set closed_at directly (closed_at is managed automatically when status changes to a closing state). If the user asks to move a task between products, explain the limitation and offer to create a new task in the target product + delete the original as a workaround.
+          Update an existing todo by task code (e.g. ORB-73). Supports: title, status, priority, description, resolution_notes, urls. Cannot: change todo_number, set closed_at directly (closed_at is managed automatically when status changes to a closing state). To move a task between projects, use move_todo instead.
         parameters:
           - name: code
             in: custom

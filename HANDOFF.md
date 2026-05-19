@@ -7,7 +7,7 @@
 
 ## App State
 
-- **Version:** v0.4.82 (canonical in [package.json](file:///Users/stanleybaptista/Projects/orb/package.json))
+- **Version:** v0.4.84 (canonical in [package.json](file:///Users/stanleybaptista/Projects/orb/package.json))
 - **Branch:** main
 - **Dev server:** user-started on localhost:3001
 - **Live URL:** https://orb-eight-lake.vercel.app
@@ -16,71 +16,106 @@
 
 ## Last Session Completed
 
-**Proactive Insight Engine + Source-of-Truth Analysis — 2026-05-18**
+**ORB-112, ORB-110, ORB-114, ORB-115, ORB-113 (partial) — 2026-05-18/19**
 
-### Built (pushed to production)
-- **Insight Engine** (`lib/insights.ts`) — pure server-side computation (zero AI cost) analyzing todos + audit trail for 7 pattern types: stale tasks, priority overload, churn, focus gaps, velocity, neglected projects, stagnant urgent tasks
-- **System prompt injection** — insights injected into Claude's system prompt alongside BACKLOG, with PROACTIVE BEHAVIOR and FEEDBACK TONE instruction blocks
-- **Login greeting** (`orbGreeting()` in `orb-converse.ts`) — cross-project AI-generated observation on session start
-- **Project switch summary** — client-side instant message with open/closed/priority/in-progress counts
-- **Urgency transition** — explains mood changes within same project, suppressed during project switches
-- **Classic Editor nav shortcut** (ORB-106) — verified and pushed from prior Antigravity session
+Massive multi-session push covering 5 tickets. All committed and pushed as v0.4.84.
 
-### Fixed (this commit, v0.4.82)
-- **ORB-111**: Insight engine was counting on-hold/deferred tasks as urgent. Introduced `activeTodos` (excludes parked statuses) for priority distribution, focus gap, and summary calculations. Parked count now shown in summary.
+### ORB-112 — Fix multiple sources of truth (CLOSED)
+- Removed silent scoping from `query_todos`
+- Scope transparency mandatory block in system prompt
+- Every Orb response declares what scope its numbers come from
 
-### Identified but NOT yet built
-- **CRITICAL: Multiple sources of truth** — The system has three data paths that independently scope the same data and can contradict each other. See "Next Priorities" below.
+### Scope transparency + "active" → "open" rename
+- Replaced constructed "active" status with "open" everywhere
+- `lib/insights.ts`: split into `nonClosedTodos` + `openTodos` + `parkedTodos`
+
+### ORB-110 — Project dormancy (CLOSED)
+- Migration: `is_dormant boolean` column on `projects`
+- `lib/projects.ts`: `visibleProjectsQuery()` — single source of truth for dormancy filtering
+- `lib/orb-contract.ts`: new `set_dormancy` tool
+- Settings UI: dormancy checkbox, dormant rows at 50% opacity
+- Projects tab visible to all users
+
+### ORB-114 — Remove ORBFDBK and is_shared (CLOSED)
+- Migration: deleted ORBFDBK project, recreated RLS policies without `is_shared`, dropped column
+- Updated invite email to reference ticketing instead of ORBFDBK
+
+### ORB-115 — Network loss handling (CLOSED)
+- `components/ui/OfflineBanner.tsx`: global offline banner in root layout
+- Auth pages (login, verify-otp, create-account): navigator.onLine pre-check + try/catch
+
+### ORB-113 — Move tasks between projects + auth consolidation (IN PROGRESS)
+- **Auth consolidation:** Centralized all authorization into `getAuthContext()` / `requireAdmin()` in `lib/auth.ts`. Refactored ~15 server actions. Eliminated 6 scattered auth mechanisms.
+- **canWrite gate removed:** Non-admins can now create, update, delete, and move their own todos through the Orb (RLS enforces ownership).
+- **move_todo tool:** Added to Orb contract and `orb-converse.ts`. Parses code, finds target project, assigns new `todo_number` via MAX+1.
+- **REST API:** PATCH handler accepts `product_code` to move tasks between projects.
+- **Data leakage fix:** Application-level audit filtering (`todoIds.has(a.record_id)`) prevents non-admins from seeing other users' audit data.
+- **orb-converse.ts fully refactored:** Both `orbConverse` and `orbGreeting` use `getAuthContext()`. All tool handlers use `auth.admin` instead of `createAdminClient()`. Both `createClient` and `createAdminClient` imports removed.
+- **Migrations run:** `20260518_project_dormancy.sql` and `20260518_remove_shared_projects.sql` executed.
+- **Needs testing** — see test plan below.
+
+---
+
+## Test Plan (ORB-113)
+
+### Domain 1: Non-admin via Orb
+Log in as non-admin who owns 2+ projects with tasks.
+1. "Create a todo called Test in [PROJECT]" → succeeds
+2. "Move [PROJECT]-X to [OTHER_PROJECT]" → succeeds, new number
+3. "Delete [PROJECT]-X" → succeeds
+4. "Move [PROJECT]-X to ORB" → RLS error (don't own ORB)
+5. Greeting on login → counts match only their own tasks
+
+### Domain 2: Admin via Orb
+6. "Move ORB-113 to HELM" → succeeds
+7. "Move HELM-XX back to ORB" → succeeds
+8. "Move ORB-113 to ORB" → error: already in that project
+9. "Move ORB-999 to HELM" → error: todo not found
+10. "Move ORB-113 to ZZZZ" → error: project not found
+
+### Domain 3: REST API
+11. POST + PATCH with product_code + verify + DELETE (curl)
+
+### Regression: Data leakage
+12. Non-admin greeting → only their own task counts
+13. Non-admin audit trail query → only their own events
 
 ---
 
 ## Uncommitted Changes
 
-_(none — all committed this session)_
+None — all committed in v0.4.84.
 
 ---
 
 ## Key Decisions
 
-*   **Email is the stable identity, not auth UUID.** Supabase can replace auth UUIDs on invite/re-invite. All user lookups now go through `resolveUser()` which queries by email first.
-*   **Atomic ID reconciliation via Postgres function.** Supabase JS client can't do multi-statement transactions, so FK migration uses a server-side `reconcile_user_id()` function called via `rpc()`.
-*   **Shared project access is read+create for users, full access for admins.** Prevents invited users from modifying/deleting feedback they didn't create, while still allowing them to contribute.
-*   **Lazy SDK initialization in server actions.** Module-scope SDK constructors crash Vercel function chunks when env vars are missing. Always use lazy getClient() pattern.
-*   **Shared projects survive user deletion.** Reassigned to super admin in application code before CASCADE fires. Business rule kept in server action, not DB trigger.
-*   **SettingsCrudList for complex tables only.** Statuses and Priorities (short fixed lists) don't need sorting/search/bulk — keep them simple.
-*   **Insight engine is zero-cost.** Pure computation on server — no AI calls. Only the greeting uses a Claude call.
-*   **Conversational tuning over settings UI.** User tells the Orb "only report on ORB" and AI respects it for the session. No config needed.
+*   **Email is the stable identity, not auth UUID.** Supabase can replace auth UUIDs on invite/re-invite.
+*   **Atomic ID reconciliation via Postgres function.** Supabase JS client can't do multi-statement transactions.
+*   **Lazy SDK initialization in server actions.** Module-scope SDK constructors crash Vercel function chunks.
+*   **Insight engine is zero-cost.** Pure computation on server — no AI calls.
+*   **Conversational tuning over settings UI.** User tells the Orb scope preferences, AI respects them.
+*   **Single source of truth for dormancy filtering.** `visibleProjectsQuery()` in `lib/projects.ts`.
+*   **"Open" not "active".** Replaced misleading "active" (included on-hold/deferred) with "open".
+*   **Database is the source of truth — period.** No silent scoping, no in-memory divergence.
+*   **Single auth authority.** `getAuthContext()` / `requireAdmin()` in `lib/auth.ts` is the only path. Exceptions: `complete-onboarding.ts` (bootstrap), `friction-actions.ts` / `ticket-actions.ts` (system-level), REST API routes (shared secret).
+*   **RLS is the safety net.** Regular Supabase client for user operations, admin client only for intentional cross-user access.
 
 ---
 
 ## Next Priorities
 
-1.  **CRITICAL — Fix multiple sources of truth in `orb-converse.ts`**
-    The Orb has three data paths that silently apply different scopes to the same database, causing contradictions:
-
-    | Path | Scope | Location |
-    |------|-------|----------|
-    | BACKLOG (system prompt text) | Current project only (others show "not in scope") | `buildContext()` lines 82-91 |
-    | INSIGHTS (insight engine) | All projects, always | `computeInsights()` gets full `todoList` at line 80 |
-    | `query_todos` tool | Silently scoped to current project when no `product_code` passed | Lines 270-271 |
-
-    **Example failure:** Greeting says "6 at P1/P2" (cross-project). User asks "show me". `query_todos` silently scopes to current project, returns 1. User sees contradiction.
-
-    **Approved fix (3 changes):**
-    1. **Remove silent scoping from `query_todos`** — delete the `else if (req.scopeToProduct)` block at lines 270-271. Let the Orb pass `product_code` explicitly.
-    2. **Update SCOPE system prompt** — instruct the Orb to always pass `product_code` for project-scoped queries, and omit it when following up on cross-project insights.
-    3. **Annotate INSIGHTS block** — add "(computed across all projects)" so the Orb knows the scope boundary.
-
-    **User directive:** "The database has to be the source of truth. That can never happen. Period."
-
-2.  **ORB-105 remaining items** — review if any sub-items remain after bulk edit decision.
-3.  **Monitor production** — verify Settings pages and insight engine work correctly after deploy.
+1. **Test ORB-113** — Run the test plan above against the live deploy.
+2. **Close ORB-113** — Write resolution notes + knowledge repo entry after tests pass.
+3. **Fix RLS on audit_log** — Database-level fix (app-level filter is a stopgap). SELECT policy currently checks "is a user" not "owns this data".
+4. **ORB-116** — Build Helm-style offline page to replace OfflineBanner.
+5. **ORB-109** — Session persistence.
 
 ---
 
 ## AI Tool Used Last Session
 
-`2026-05-18 — Claude Code (claude-opus-4-6)`
+`2026-05-19 — Claude Code (claude-opus-4-6)`
 
 ---
 

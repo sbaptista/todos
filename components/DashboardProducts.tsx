@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { visibleProjectsQuery } from '@/lib/projects'
 import { useVisibilityRefetch } from '@/lib/hooks/useVisibilityRefetch'
 import { VERSION } from '@/lib/version'
 
@@ -157,7 +158,7 @@ export default function DashboardProducts() {
 
   const load = useCallback(async () => {
     const [prodRes, todoRes] = await Promise.all([
-      supabase.from('projects').select('*').order('sort_order'),
+      visibleProjectsQuery(supabase),
       supabase.from('todos').select('product_id'),
     ])
     setProducts(prodRes.data ?? [])

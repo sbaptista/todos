@@ -44,7 +44,7 @@ export async function sendInviteEmail({
   <p style="font-size: 14px; color: #555;">Orb works on most modern browsers: Safari, Chrome, Firefox, Edge, and Comet. On iPhone or iPad, you can install it as an app — open the link above in Safari, then tap Share → Add to Home Screen.</p>
 
   <h3 style="margin-top: 28px; margin-bottom: 12px;">How to give feedback:</h3>
-  <p>Just tell Orb. Say <em>"Add task to Orb Feedback: [your observation]."</em> That's it — it goes straight to me.</p>
+  <p>Just tell Orb. Say something like <em>"I have a suggestion"</em> or <em>"something's broken"</em> — it'll log a ticket automatically and it goes straight to me.</p>
 
   <p style="margin-top: 28px;"><strong>Not interested?</strong><br/>No pressure — <a href="${declineLink}" style="color: #666;">click here to decline</a>.</p>
 

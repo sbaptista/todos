@@ -2,11 +2,11 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { createStreamableValue } from 'ai/rsc'
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { getAuthContext, type AuthContext } from '@/lib/auth'
 import { logAuditEvent } from '@/lib/audit'
 import { ORB_TOOLS, ORB_TOOL_LABELS, ORB_INTEGRITY_RULES } from '@/lib/orb-contract'
 import { computeInsights, type InsightReport } from '@/lib/insights'
+import { visibleProjectsQuery } from '@/lib/projects'
 
 // ──────────────────────────────────────────────────────────────────────────
 // Types
@@ -17,7 +17,7 @@ export type OrbResponse = {
   thought?: string // A discrete "work step" completed by the Orb
   refresh?: boolean
   mutatedProductId?: string
-  mutationType?: 'create' | 'update' | 'delete' | 'project_create'
+  mutationType?: 'create' | 'update' | 'delete' | 'project_create' | 'dormancy'
   results?: Array<{ id: string; code: string; title: string; status: string; priority_value: number | null }>
   queryLabel?: string
   clientAction?: { action: string; target?: string }
@@ -43,7 +43,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
 // Tool Context & Helpers
 // ──────────────────────────────────────────────────────────────────────────
 
-async function buildContext(supabase: any, currentProductId: string | null, scopeToProduct: boolean = true) {
+async function buildContext(supabase: any, auth: AuthContext, currentProductId: string | null, scopeToProduct: boolean = true) {
   const fourteenDaysAgo = new Date(Date.now() - 14 * 86_400_000).toISOString()
   const [
     { data: products },
@@ -51,30 +51,25 @@ async function buildContext(supabase: any, currentProductId: string | null, scop
     { data: statuses },
     { data: priorities },
     { data: knowledge },
-    { data: userAuth },
     { data: recentAudit }
   ] = await Promise.all([
-    supabase.from('projects').select('id, name, code, description').order('sort_order'),
+    visibleProjectsQuery(supabase, 'id, name, code, description'),
     supabase.from('todos').select('id, todo_number, title, description, status, priority_value, product_id, created_at, updated_at, closed_at, resolution_notes').is('deleted_at', null),
     supabase.from('statuses').select('*').order('sort_order'),
     supabase.from('priorities').select('*').order('value'),
     supabase.from('knowledge_repo').select('*, projects(code)').order('created_at', { ascending: false }),
-    supabase.auth.getUser(),
     supabase.from('audit_log').select('action, record_id, created_at, before, after').gte('created_at', fourteenDaysAgo).order('created_at', { ascending: false }).limit(200),
   ])
 
-  let currentUser = null
-  if (userAuth?.user) {
-    const { data: userRecord } = await supabase.from('users').select('id, email, roles(name)').eq('id', userAuth.user.id).single()
-    currentUser = userRecord
-  }
+  const currentUser = { id: auth.user.id, email: auth.user.email, roles: { name: auth.role } }
 
   const productList  = (products   ?? [])
   const todoList     = (todos      ?? [])
   const statusList   = (statuses   ?? [])
   const priorityList = (priorities ?? [])
   const knowledgeList = (knowledge   ?? [])
-  const auditList    = (recentAudit ?? [])
+  const todoIds = new Set(todoList.map((t: any) => t.id))
+  const auditList    = (recentAudit ?? []).filter((a: any) => todoIds.has(a.record_id))
   const current = productList.find((p: any) => p.id === currentProductId)
 
   const insightReport = computeInsights(todoList, productList, statusList, auditList)
@@ -99,17 +94,13 @@ export async function orbConverse(req: OrbRequest) {
 
   ;(async () => {
     try {
-      const supabase = await createClient()
-      const ctx = await buildContext(supabase, req.productId, req.scopeToProduct ?? true)
+      const auth = await getAuthContext()
+      const supabase = auth.supabase
+      const ctx = await buildContext(supabase, auth, req.productId, req.scopeToProduct ?? true)
       const statusNames = ctx.statusList.map((s: any) => s.name).join(', ')
       const priorityInfo = ctx.priorityList.map((p: any) => `${p.value}:${p.label}`).join(', ')
 
-      const isProd = process.env.NODE_ENV === 'production'
-      const realRole = ctx.currentUser?.roles?.name || ''
-      const simulatingRole = !isProd && req.roleOverride
-      const userRole = simulatingRole ? req.roleOverride! : realRole
-      const canWrite = ['super admin', 'admin'].includes(userRole.toLowerCase())
-      const enforceGate = isProd || simulatingRole
+      const userRole = req.roleOverride || auth.role
 
       let messages: any[] = [
         ...(req.history?.map(h => ({ role: h.role, content: h.text })) ?? []),
@@ -130,7 +121,6 @@ export async function orbConverse(req: OrbRequest) {
           max_tokens: 1024,
           system: `You are the voice of the orb — the conversational layer of Orb.
 VOICE: Brief, direct. Plain text only. NO markdown.
-${enforceGate && !canWrite ? '\nENVIRONMENT: You are in the PRODUCTION environment. Task modifications (create, update, delete) are available to admins only. If the user asks you to modify a task, tell them: "Task management is only available to admins. You can view and query your backlog."' : ''}
 ${ctx.currentUser ? `\nUSER CONTEXT: You are talking to ${ctx.currentUser.email} (Role: ${userRole || 'Unknown'}).` : ''}
 
 ${ORB_INTEGRITY_RULES}
@@ -155,11 +145,18 @@ PROACTIVE BEHAVIOR:
 - The user can tune your insight scope conversationally: "only report on ORB", "include everything", "skip JUNKAP". Respect their preference for the rest of the session.
 - Default: report across all projects unless the user narrows it.
 
+SCOPE TRANSPARENCY (mandatory):
+- Every response that references task counts, priorities, or insight data MUST state what scope it covers. Never present numbers without scope.
+- Cross-project: say "across all projects" or name the specific projects involved (e.g. "across ORB, HELM, and CAN26").
+- Single-project: say "in ORB" or "in HELM" etc.
+- If a number comes from INSIGHTS (cross-project) but the conversation is scoped to one project, make the scope difference explicit.
+- Examples: "6 urgent tasks across all projects" / "2 open in ORB" / "Across ORB and HELM, 18 opened this week."
+
 FEEDBACK TONE:
 - Factual and brief. Acknowledge effort, not just outcomes.
 - Skip praise for trivial actions.
 - No exclamation marks, no "amazing!", no "crushing it!", no cheerleading.
-- Examples of good feedback: "That clears the urgent queue." / "3 this week." / "ORB-86 was open 6 months. Good to see it resolved."`,
+- Examples of good feedback: "That clears the urgent queue for ORB." / "3 closed across all projects this week." / "ORB-86 was open 6 months. Good to see it resolved."`,
           messages,
           tools: ORB_TOOLS,
           stream: true,
@@ -175,10 +172,7 @@ FEEDBACK TONE:
             accumulatedSpeech = baseSpeech + currentTurnSpeech 
             stream.update({ speech: accumulatedSpeech, isStreaming: true })
           } else if (chunk.type === 'content_block_start' && chunk.content_block.type === 'tool_use') {
-             let label = ORB_TOOL_LABELS[chunk.content_block.name] || 'Thinking...'
-             if (enforceGate && !canWrite && ['create_todo', 'update_todo', 'delete_todo', 'create_project'].includes(chunk.content_block.name)) {
-                 label = 'Operation not allowed'
-             }
+             const label = ORB_TOOL_LABELS[chunk.content_block.name] || 'Thinking...'
              stream.update({ speech: accumulatedSpeech, thought: label, isStreaming: true })
              toolCalls.push({ id: chunk.content_block.id, name: chunk.content_block.name, input: '' })
           } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'input_json_delta') {
@@ -205,10 +199,7 @@ FEEDBACK TONE:
           try { input = JSON.parse(tc.input || '{}') } catch { input = {} }
           let output: any
 
-          if (enforceGate && !canWrite && ['create_todo', 'update_todo', 'delete_todo', 'create_project'].includes(tc.name)) {
-            output = { error: 'Task management is available to admins only. Tell the user they can view and query their backlog.' }
-            stream.update({ speech: accumulatedSpeech, thought: 'Operation not allowed' })
-          } else if (tc.name === 'create_todo') {
+          if (tc.name === 'create_todo') {
             if (!input.product_code && req.scopeToProduct) {
               console.warn('[orbConverse] create_todo called without product_code while scoped to', ctx.current?.code, '— falling back to scoped project')
             }
@@ -410,6 +401,72 @@ FEEDBACK TONE:
                 })
               }
             }
+          } else if (tc.name === 'move_todo') {
+            const productCode = input.code?.split('-')[0]
+            const todoNum = parseInt(input.code?.split('-')[1] || '0')
+            const targetCode = String(input.target_project_code).toUpperCase()
+
+            let todo = ctx.todoList.find((t: any) => {
+              const p = ctx.productList.find((pp: any) => pp.id === t.product_id)
+              return p?.code === productCode && t.todo_number === todoNum
+            })
+
+            if (!todo) {
+              const { data: found } = await supabase
+                .from('todos')
+                .select('*, projects!inner(code)')
+                .eq('todo_number', todoNum)
+                .ilike('projects.code', productCode)
+                .maybeSingle()
+              if (found) todo = found
+            }
+
+            if (!todo) {
+              output = { error: 'todo not found' }
+            } else {
+              const sourceProject = ctx.productList.find((p: any) => p.id === todo.product_id)
+              const { data: targetProject } = await supabase
+                .from('projects')
+                .select('id, code, name')
+                .ilike('code', targetCode)
+                .maybeSingle()
+
+              if (!targetProject) {
+                output = { error: `project "${targetCode}" not found` }
+              } else if (targetProject.id === todo.product_id) {
+                output = { error: 'task is already in that project' }
+              } else {
+                const { data: maxRow } = await supabase
+                  .from('todos')
+                  .select('todo_number')
+                  .eq('product_id', targetProject.id)
+                  .order('todo_number', { ascending: false })
+                  .limit(1)
+                  .maybeSingle()
+                const nextNum = (maxRow?.todo_number ?? 0) + 1
+
+                const { error } = await supabase
+                  .from('todos')
+                  .update({ product_id: targetProject.id, todo_number: nextNum })
+                  .eq('id', todo.id)
+
+                if (error) {
+                  output = { error: error.message }
+                } else {
+                  const oldCode = `${sourceProject?.code}-${todo.todo_number}`
+                  const newCode = `${targetProject.code}-${nextNum}`
+                  output = { ok: true, old_code: oldCode, new_code: newCode }
+                  stream.update({ speech: accumulatedSpeech, thought: `Moved ${oldCode} → ${newCode}`, refresh: true, mutatedProductId: sourceProject?.id, mutationType: 'update' })
+                  await logAuditEvent({
+                    action: 'todo_move',
+                    table_name: 'todos',
+                    record_id: todo.id,
+                    before: { code: oldCode, product_code: sourceProject?.code },
+                    after: { code: newCode, product_code: targetProject.code }
+                  })
+                }
+              }
+            }
           } else if (tc.name === 'client_action') {
             const label = input.action === 'switch_project' ? `Switched to ${input.target}` : 'Navigating...'
             stream.update({ speech: accumulatedSpeech, thought: label, clientAction: { action: input.action, target: input.target } })
@@ -428,7 +485,6 @@ FEEDBACK TONE:
             output = { count: results.length, returned }
             stream.update({ speech: accumulatedSpeech, thought: `Found ${results.length} insights`, knowledgeResults: returned })
           } else if (tc.name === 'add_knowledge') {
-            const admin = createAdminClient()
             let pId = ctx.current?.id ?? null
             if (input.product_code) {
                 const p = ctx.productList.find((pp: any) => pp.code?.toUpperCase() === String(input.product_code).toUpperCase())
@@ -437,7 +493,7 @@ FEEDBACK TONE:
             if (!pId) {
                 output = { error: 'Could not determine project to save knowledge to.' }
             } else {
-                const { error } = await admin.from('knowledge_repo').insert({
+                const { error } = await auth.admin.from('knowledge_repo').insert({
                     product_id: pId,
                     title: input.title,
                     content: input.content,
@@ -450,8 +506,7 @@ FEEDBACK TONE:
                 }
             }
           } else if (tc.name === 'query_audit_trail') {
-            const admin = createAdminClient()
-            let query = admin.from('audit_log').select('*').order('created_at', { ascending: false })
+            let query = auth.admin.from('audit_log').select('*').order('created_at', { ascending: false })
 
             if (input.code) {
               const [pc, numStr] = String(input.code).toUpperCase().split('-')
@@ -461,7 +516,7 @@ FEEDBACK TONE:
                 const todo = ctx.todoList.find((t: any) => t.product_id === p.id && t.todo_number === num)
                 if (todo) query = query.eq('record_id', todo.id)
                 else {
-                  const { data: found } = await admin.from('todos').select('id').eq('todo_number', num).eq('product_id', p.id).maybeSingle()
+                  const { data: found } = await auth.admin.from('todos').select('id').eq('todo_number', num).eq('product_id', p.id).maybeSingle()
                   if (found) query = query.eq('record_id', found.id)
                   else { output = { error: `Task ${input.code} not found` }; toolOutputs.push({ type: 'tool_result', tool_use_id: tc.id, content: JSON.stringify(output) }); continue }
                 }
@@ -488,21 +543,19 @@ FEEDBACK TONE:
               stream.update({ speech: accumulatedSpeech, thought: `Found ${formatted.length} audit events` })
             }
           } else if (tc.name === 'create_project') {
-            const admin = createAdminClient()
             const code = String(input.code || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '')
             if (!code) {
               output = { error: 'Project code is required' }
             } else {
-              const { data: conflict } = await admin.from('projects').select('id').ilike('code', code).maybeSingle()
+              const { data: conflict } = await auth.admin.from('projects').select('id').ilike('code', code).maybeSingle()
               if (conflict) {
                 output = { error: `Code "${code}" is already in use` }
               } else {
-                const { data: { user } } = await supabase.auth.getUser()
-                const { data: project, error: createErr } = await admin.from('projects').insert({
+                const { data: project, error: createErr } = await auth.admin.from('projects').insert({
                   name: input.name,
                   code,
                   description: input.description ?? null,
-                  created_by: user!.id,
+                  created_by: auth.user.id,
                 }).select('id, name, code, description, created_by').single()
                 if (createErr) output = { error: createErr.message }
                 else {
@@ -511,9 +564,22 @@ FEEDBACK TONE:
                 }
               }
             }
+          } else if (tc.name === 'set_dormancy') {
+            const code = String(input.project_code || '').toUpperCase()
+            const { data: project } = await auth.admin.from('projects').select('id, code, name').ilike('code', code).maybeSingle()
+            if (!project) {
+              output = { error: `Project ${code} not found` }
+            } else {
+              const { error: dormErr } = await auth.admin.from('projects').update({ is_dormant: !!input.dormant }).eq('id', project.id)
+              if (dormErr) output = { error: dormErr.message }
+              else {
+                const verb = input.dormant ? 'dormant' : 'awake'
+                output = { ok: true, code: project.code, dormant: !!input.dormant }
+                stream.update({ speech: accumulatedSpeech, thought: `${project.code} is now ${verb}`, refresh: true, mutationType: 'dormancy' })
+              }
+            }
           } else if (tc.name === 'create_ticket') {
-            const admin = createAdminClient()
-            const { error } = await admin.from('tickets').insert({
+            const { error } = await auth.admin.from('tickets').insert({
               source: 'orb-auto',
               type: input.type,
               summary: input.summary,
@@ -554,8 +620,8 @@ FEEDBACK TONE:
 
 export async function orbGreeting(productId: string | null): Promise<string | null> {
   try {
-    const supabase = await createClient()
-    const ctx = await buildContext(supabase, productId, false)
+    const auth = await getAuthContext()
+    const ctx = await buildContext(auth.supabase, auth, productId, false)
     const report = ctx.insightReport
 
     if (report.insights.length === 0) return null
@@ -563,7 +629,7 @@ export async function orbGreeting(productId: string | null): Promise<string | nu
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
       max_tokens: 200,
-      system: `You are the voice of the orb. Generate a brief, ambient opening observation (1-3 sentences) based on the insights below. Plain text, no markdown. Factual tone — no cheerleading. If only info-level insights exist, keep it to one sentence. Address the user directly ("you"). Do not greet them or say hello.`,
+      system: `You are the voice of the orb. Generate a brief, ambient opening observation (1-3 sentences) based on the insights below. Plain text, no markdown. Factual tone — no cheerleading. If only info-level insights exist, keep it to one sentence. Address the user directly ("you"). Do not greet them or say hello. SCOPE TRANSPARENCY: Every number you cite must state its scope — say "across all projects" or name the specific projects. Never present a count without saying where it comes from.`,
       messages: [{
         role: 'user',
         content: `Current state: ${report.summary}\n\nInsights:\n${report.insights.map(i => `[${i.severity}] ${i.message}`).join('\n')}`,

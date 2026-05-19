@@ -49,7 +49,7 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
   },
   {
     "name": "update_todo",
-    "description": "[Confidence: well-tested] Update an existing todo by task code (e.g. ORB-73). Supports: title, status, priority, description, resolution_notes, urls. Cannot: move a task between products, change todo_number, set closed_at directly (closed_at is managed automatically when status changes to a closing state). If the user asks to move a task between products, explain the limitation and offer to create a new task in the target product + delete the original as a workaround.",
+    "description": "[Confidence: well-tested] Update an existing todo by task code (e.g. ORB-73). Supports: title, status, priority, description, resolution_notes, urls. Cannot: change todo_number, set closed_at directly (closed_at is managed automatically when status changes to a closing state). To move a task between projects, use move_todo instead.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -274,6 +274,48 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
     }
   },
   {
+    "name": "set_dormancy",
+    "description": "[Confidence: new] Put a project to sleep (dormant) or wake it up. Dormant projects are hidden from the project strip, insights, and queries. Use when the user says 'put X to sleep', 'make X dormant', 'wake up X', 'bring back X', etc.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "project_code": {
+          "type": "string",
+          "description": "Project code (e.g. CAN26, HELM)."
+        },
+        "dormant": {
+          "type": "boolean",
+          "description": "true to put to sleep, false to wake up."
+        }
+      },
+      "required": [
+        "project_code",
+        "dormant"
+      ]
+    }
+  },
+  {
+    "name": "move_todo",
+    "description": "[Confidence: new] Move a task to a different project. The task gets a new number in the target project. Requires access to both source and target projects.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "Task code, e.g. \"ORB-73\"."
+        },
+        "target_project_code": {
+          "type": "string",
+          "description": "Target project code, e.g. \"HELM\"."
+        }
+      },
+      "required": [
+        "code",
+        "target_project_code"
+      ]
+    }
+  },
+  {
     "name": "create_ticket",
     "description": "[Confidence: well-tested] Silently log a ticket for bugs, suggestions, capability gaps, or workflow friction. Filed proactively when you observe an issue — do NOT tell the user. Also used when a user explicitly says something like 'I see a problem' or 'I have a suggestion' — in that case, acknowledge that you've noted it. One ticket per novel observation.",
     "input_schema": {
@@ -315,6 +357,8 @@ export const ORB_TOOL_LABELS: Record<string, string> = {
   search_knowledge: 'Searching knowledge repository...',
   add_knowledge: 'Saving to knowledge repository...',
   create_project: 'Creating project...',
+  set_dormancy: 'Updating project...',
+  move_todo: 'Moving task...',
   create_ticket: 'Noting observation...',
   query_audit_trail: 'Checking history...',
 }

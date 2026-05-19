@@ -18,40 +18,54 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const supabase = createClient()
-
-    if (isDev && (email === 'dev@dev.local' || email === 'owner@test.local')) {
-      const isOwner = email === 'owner@test.local'
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: isOwner ? 'owner@test.local' : process.env.NEXT_PUBLIC_DEV_EMAIL!,
-        password: isOwner ? 'orb123456' : process.env.NEXT_PUBLIC_DEV_PASSWORD!,
-      })
-      if (signInError) {
-        setError(`Dev login failed: ${signInError.message}`)
-        setLoading(false)
-        return
-      }
-      if (data.user) {
-        const { data: existingUser } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', data.user.id)
-          .single()
-        router.push(existingUser ? '/dashboard' : '/auth/create-account')
-      }
+    if (!navigator.onLine) {
+      setError('You appear to be offline. Check your connection and try again.')
       setLoading(false)
       return
     }
 
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false },
-    })
+    try {
+      const supabase = createClient()
 
-    if (otpError) {
-      setError(otpError.message)
-    } else {
-      router.push(`/auth/verify-otp?email=${encodeURIComponent(email)}`)
+      if (isDev && (email === 'dev@dev.local' || email === 'owner@test.local')) {
+        const isOwner = email === 'owner@test.local'
+        const { data, error: signInError } = await supabase.auth.signInWithPassword({
+          email: isOwner ? 'owner@test.local' : process.env.NEXT_PUBLIC_DEV_EMAIL!,
+          password: isOwner ? 'orb123456' : process.env.NEXT_PUBLIC_DEV_PASSWORD!,
+        })
+        if (signInError) {
+          setError(`Dev login failed: ${signInError.message}`)
+          setLoading(false)
+          return
+        }
+        if (data.user) {
+          const { data: existingUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('id', data.user.id)
+            .single()
+          router.push(existingUser ? '/dashboard' : '/auth/create-account')
+        }
+        setLoading(false)
+        return
+      }
+
+      const { error: otpError } = await supabase.auth.signInWithOtp({
+        email,
+        options: { shouldCreateUser: false },
+      })
+
+      if (otpError) {
+        setError(otpError.message)
+      } else {
+        router.push(`/auth/verify-otp?email=${encodeURIComponent(email)}`)
+      }
+    } catch (err: any) {
+      if (!navigator.onLine || err?.message?.includes('fetch')) {
+        setError('You appear to be offline. Check your connection and try again.')
+      } else {
+        setError(err?.message || 'Something went wrong. Please try again.')
+      }
     }
 
     setLoading(false)

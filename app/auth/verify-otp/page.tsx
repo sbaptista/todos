@@ -18,19 +18,34 @@ function VerifyOtpContent() {
     setLoading(true)
     setError('')
 
-    const supabase = createClient()
-
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: otp,
-      type: 'email',
-    })
-
-    if (error) {
-      setError(error.message)
+    if (!navigator.onLine) {
+      setError('You appear to be offline. Check your connection and try again.')
       setLoading(false)
-    } else {
-      router.push('/dashboard')
+      return
+    }
+
+    try {
+      const supabase = createClient()
+
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp,
+        type: 'email',
+      })
+
+      if (error) {
+        setError(error.message)
+        setLoading(false)
+      } else {
+        router.push('/dashboard')
+      }
+    } catch (err: any) {
+      if (!navigator.onLine || err?.message?.includes('fetch')) {
+        setError('You appear to be offline. Check your connection and try again.')
+      } else {
+        setError(err?.message || 'Something went wrong. Please try again.')
+      }
+      setLoading(false)
     }
   }
 
