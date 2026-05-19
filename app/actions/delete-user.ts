@@ -54,6 +54,8 @@ export async function deleteUser(userId: string) {
       action: 'user_delete',
       table_name: 'users',
       record_id: userId,
+      actor: 'admin-ui',
+      user_id: ctx.user.id,
     })
 
     return { ok: true }

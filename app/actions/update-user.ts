@@ -49,6 +49,8 @@ export async function updateUser(userId: string, data: {
       table_name: 'users',
       record_id: userId,
       after: update,
+      actor: 'admin-ui',
+      user_id: ctx.user.id,
     })
 
     return { ok: true }

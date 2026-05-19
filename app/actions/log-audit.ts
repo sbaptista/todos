@@ -1,6 +1,7 @@
 'use server'
 
 import { logAuditEvent } from '@/lib/audit'
+import { getAuthContext } from '@/lib/auth'
 
 export async function logAudit(params: {
   action: string
@@ -8,6 +9,15 @@ export async function logAudit(params: {
   record_id?: string
   before?: any
   after?: any
+  actor?: string
+  user_id?: string
 }) {
-  await logAuditEvent(params)
+  let userId = params.user_id
+  if (!userId) {
+    try {
+      const auth = await getAuthContext()
+      userId = auth.user.id
+    } catch {}
+  }
+  await logAuditEvent({ ...params, actor: params.actor ?? 'web-ui', user_id: userId })
 }

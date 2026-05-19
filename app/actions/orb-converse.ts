@@ -152,6 +152,11 @@ SCOPE TRANSPARENCY (mandatory):
 - If a number comes from INSIGHTS (cross-project) but the conversation is scoped to one project, make the scope difference explicit.
 - Examples: "6 urgent tasks across all projects" / "2 open in ORB" / "Across ORB and HELM, 18 opened this week."
 
+AI ATTRIBUTION (mandatory):
+- When closing a task (setting status to a closed state), the resolution_notes MUST start with "YYYY-MM-DD — Orb (Sonnet 4.6)" on its own line, followed by the actual notes. This identifies you as the actor.
+- When writing to the knowledge repo via add_knowledge, the content MUST start with the same attribution line.
+- Never omit the attribution. It is how the owner tracks which AI tool worked on what.
+
 FEEDBACK TONE:
 - Factual and brief. Acknowledge effort, not just outcomes.
 - Skip praise for trivial actions.
@@ -225,7 +230,9 @@ FEEDBACK TONE:
                   action: 'todo_create',
                   table_name: 'todos',
                   record_id: data.id,
-                  after: { code: `${product.code}-${data.todo_number}`, title: input.title, priority_value: input.priority_value ?? null }
+                  after: { code: `${product.code}-${data.todo_number}`, title: input.title, priority_value: input.priority_value ?? null },
+                  actor: 'orb',
+                  user_id: auth.user.id,
                 })
               }
             }
@@ -321,7 +328,9 @@ FEEDBACK TONE:
                   table_name: 'todos',
                   record_id: todo.id,
                   before: { status: todo.status, priority_value: todo.priority_value, title: todo.title },
-                  after: { status: data.status, priority_value: data.priority_value, title: data.title, code: input.code }
+                  after: { status: data.status, priority_value: data.priority_value, title: data.title, code: input.code },
+                  actor: 'orb',
+                  user_id: auth.user.id,
                 })
 
                 // Only distill when task is being closed for the first time
@@ -397,7 +406,9 @@ FEEDBACK TONE:
                   action: 'todo_delete',
                   table_name: 'todos',
                   record_id: todo.id,
-                  before: { code: input.code, title: todo.title, status: todo.status }
+                  before: { code: input.code, title: todo.title, status: todo.status },
+                  actor: 'orb',
+                  user_id: auth.user.id,
                 })
               }
             }
@@ -462,7 +473,9 @@ FEEDBACK TONE:
                     table_name: 'todos',
                     record_id: todo.id,
                     before: { code: oldCode, product_code: sourceProject?.code },
-                    after: { code: newCode, product_code: targetProject.code }
+                    after: { code: newCode, product_code: targetProject.code },
+                    actor: 'orb',
+                    user_id: auth.user.id,
                   })
                 }
               }

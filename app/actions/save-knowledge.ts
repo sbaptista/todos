@@ -25,7 +25,9 @@ export async function saveKnowledge(params: {
       action: 'knowledge_distill',
       table_name: 'knowledge_repo',
       record_id: data.id,
-      after: { title: data.title, todo_id: params.origin_todo_id }
+      after: { title: data.title, todo_id: params.origin_todo_id },
+      actor: 'admin-ui',
+      user_id: ctx.user.id,
     })
 
     revalidatePath('/settings/knowledge')

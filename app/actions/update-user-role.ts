@@ -36,6 +36,8 @@ export async function updateUserRole(userId: string, roleId: number) {
       table_name: 'users',
       record_id: userId,
       after: { role_id: roleId },
+      actor: 'admin-ui',
+      user_id: ctx.user.id,
     })
 
     return { ok: true }

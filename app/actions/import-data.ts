@@ -86,7 +86,9 @@ export async function importData(payload: any) {
     await logAuditEvent({
       action: 'data_import',
       table_name: 'system',
-      after: { tables: Object.keys(payload) }
+      after: { tables: Object.keys(payload) },
+      actor: 'admin-ui',
+      user_id: ctx.user.id,
     })
 
     revalidatePath('/settings/data')

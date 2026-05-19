@@ -18,7 +18,9 @@ export async function purgeKnowledge(ids: string[]) {
     await logAuditEvent({
       action: 'knowledge_purge',
       table_name: 'knowledge_repo',
-      before: { count: ids.length }
+      before: { count: ids.length },
+      actor: 'admin-ui',
+      user_id: ctx.user.id,
     })
 
     revalidatePath('/settings/knowledge')

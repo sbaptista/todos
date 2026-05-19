@@ -5,10 +5,12 @@ export async function logAuditEvent(params: {
   table_name?: string,
   record_id?: string,
   before?: any,
-  after?: any
+  after?: any,
+  actor?: string,
+  user_id?: string,
 }) {
   const supabase = createAdminClient()
-  
+
   try {
     const { error } = await supabase
       .from('audit_log')
@@ -18,6 +20,8 @@ export async function logAuditEvent(params: {
         record_id: params.record_id,
         before: params.before,
         after: params.after,
+        actor: params.actor ?? null,
+        user_id: params.user_id ?? null,
         created_at: new Date().toISOString()
       })
     

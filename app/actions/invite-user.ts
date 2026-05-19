@@ -92,6 +92,8 @@ export async function inviteUser(
       table_name: 'users',
       record_id: linkData.user.id,
       after: { email, release_stage: releaseStage ?? 'pre-alpha' },
+      actor: 'admin-ui',
+      user_id: ctx.user.id,
     })
 
     return { ok: true }

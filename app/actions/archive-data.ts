@@ -60,7 +60,9 @@ export async function purgeArchivedTasks(ids: string[]) {
   await logAuditEvent({
     action: 'task_purge',
     table_name: 'todos',
-    before: { count: ids.length }
+    before: { count: ids.length },
+    actor: 'admin-ui',
+    user_id: ctx.user.id,
   })
 
   return { success: true }
