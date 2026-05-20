@@ -7,7 +7,7 @@
 
 ## App State
 
-- **Version:** v0.4.93 (canonical in [package.json](file:///Users/stanleybaptista/Projects/orb/package.json))
+- **Version:** v0.4.94 (canonical in [package.json](file:///Users/stanleybaptista/Projects/orb/package.json))
 - **Branch:** main
 - **Dev server:** user-started on localhost:3001
 - **Live URL:** https://orb-eight-lake.vercel.app
@@ -37,6 +37,11 @@
 4. **Dynamic Welcome Message for Invitees**
    - Fetched the user's `release_stage` on dashboard mount and stored it in state.
    - Prefilled the welcome conversation prompt dynamically using the user's release stage (e.g. `alpha`, `beta`, `pre-alpha`) rather than hardcoding `"pre-alpha"`.
+5. **Helm-style Offline Page Overlay (ORB-116)**
+   - Created the `/api/health` API endpoint to monitor connection health.
+   - Created the `useOnlineStatus` hook to poll health and handle offline event listeners.
+   - Built a premium, full-screen `OfflinePage` component featuring background stars, twinkling animations, diagonal shooting meteors, and rotating concentric planetary orbits centered around a pulsing glowing Orb.
+   - Integrated into `OfflineBanner` as an overlay so that the main application state and form/draft inputs are preserved in the DOM while offline.
 
 ---
 
