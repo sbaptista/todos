@@ -251,15 +251,17 @@ export default function OfflinePage() {
         }
 
         .orb-wordmark {
+          position: absolute;
+          top: calc(50% + 52px); /* 40px for sphere radius + 12px offset */
           font-family: var(--font-ui), sans-serif;
           font-weight: 500;
           font-size: 12px;
           letter-spacing: 0.3em;
           text-transform: uppercase;
           color: #a2bca2;
-          margin-bottom: 24px;
           opacity: 0;
           animation: orbFadeUp 0.8s ease forwards 0.2s;
+          pointer-events: none;
         }
 
         .orb-headline {
@@ -402,11 +404,11 @@ export default function OfflinePage() {
             aria-hidden="true"
           />
           <div className="orb-moonlight-sphere" />
+          <div className="orb-wordmark">Orb</div>
         </div>
 
         {/* Content Panel */}
         <main className="orb-content-layer">
-          <div className="orb-wordmark">Orb</div>
           
           <h1 className="orb-headline">Taking a breather</h1>
           
