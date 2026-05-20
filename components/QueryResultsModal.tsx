@@ -50,6 +50,8 @@ function InlineTodoEditor({
         description: form.description || null,
         resolution_notes: form.resolution_notes || null,
         urls,
+        due_at: form.due_at || null,
+        reminded_at: form.due_at !== todo.due_at ? null : todo.reminded_at,
         closed_at: isDone ? (todo.closed_at ?? new Date().toISOString()) : null,
       })
       .eq('id', todo.id)
@@ -89,6 +91,16 @@ function InlineTodoEditor({
             {priorities.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </div>
+      </div>
+
+      <div className="pf-field">
+        <label className="pf-label">Due Date</label>
+        <input
+          type="datetime-local"
+          className="pf-input"
+          value={form.due_at ?? ''}
+          onChange={e => setForm(f => ({ ...f, due_at: e.target.value || null }))}
+        />
       </div>
 
       <div className="pf-field">

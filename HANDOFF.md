@@ -7,7 +7,7 @@
 
 ## App State
 
-- **Version:** v0.4.90 (canonical in [package.json](file:///Users/stanleybaptista/Projects/orb/package.json))
+- **Version:** v0.4.92 (canonical in [package.json](file:///Users/stanleybaptista/Projects/orb/package.json))
 - **Branch:** main
 - **Dev server:** user-started on localhost:3001
 - **Live URL:** https://orb-eight-lake.vercel.app
@@ -18,25 +18,25 @@
 
 **Single source of truth for Orb AI — 2026-05-19**
 
-1. **Stop Processing button built (ORB-118)**
-   - Exposed `onStop` callback prop from `AmbientDashboard` to `OrbConversation`.
-   - Replaced Send button with a red pulsing Stop button when `submitting` is true.
-   - Handled stream cancellation gracefully by breaking the chunk loop, resetting loading state immediately, and preventing error notifications when aborted by the user.
-2. **Restored building rule in AGENTS.md**
-   - Added rule to `AGENTS.md` to prevent building/implementing changes without explicit permission/confirmation from Stan.
-3. **Bumped version**
-   - Bumped to `0.4.90` in `package.json` and `lib/version.ts`.
-
----
-
-## Uncommitted Changes
-
-- **[AGENTS.md](file:///Users/stanleybaptista/Projects/orb/AGENTS.md)**: Added rule to never build/implement changes without explicit permission from Stan.
-- **[components/OrbConversation.tsx](file:///Users/stanleybaptista/Projects/orb/components/OrbConversation.tsx)**: Added stop button layout & styling and destructured `onStop`.
-- **[components/AmbientDashboard.tsx](file:///Users/stanleybaptista/Projects/orb/components/AmbientDashboard.tsx)**: Handled stop control refs, `handleStop` function, and chunk loop exit.
-- **[package.json](file:///Users/stanleybaptista/Projects/orb/package.json)**: Bumped version to `0.4.90`.
-- **[lib/version.ts](file:///Users/stanleybaptista/Projects/orb/lib/version.ts)**: Bumped version to `v0.4.90`.
-- **[.claude/settings.local.json](file:///Users/stanleybaptista/Projects/orb/.claude/settings.local.json)**: Local settings updated.
+1. **Timezone-Agnostic Due Dates & Reminders (ORB-96 / ORB-97)**
+   - Added `todos.due_at` (`timestamp without time zone`) and `todos.reminded_at` (`timestamp with time zone`) columns.
+   - Added `users.urgency_threshold_hours` (`integer`) and `users.timezone` (`text`) columns.
+   - Created datetime-local input fields across task edit forms/modals to modify due dates.
+   - Configured dynamic timezone detection on mount to keep `users.timezone` synchronized.
+   - Updated the warning check condition to trigger when `now >= dueUTC - urgency_threshold_hours` to dispatch warning emails ahead of time.
+   - Refactored email template delivery to use a custom Resend template for invitations and warning reminders.
+   - Created a Vercel cron endpoint `/api/cron/reminders` running every 10 minutes.
+2. **Settings Urgency Custom Subpage**
+   - Created `/settings/urgency` and `SettingsUrgency.tsx` for managing warning thresholds.
+   - Structured styling with high-fidelity select controls and icons.
+3. **Slash Commands Discovery Dialog & Fixes**
+   - Created a `/` toggle button and `/` + `[Enter]` listener to open an interactive commands dialog box above the input field.
+   - Moved all autocomplete menus and dialogs outside the `overflow: hidden` boundaries of `.oc-input-border` to the parent `.oc-input-wrap` relative container to prevent clipping on all viewports.
+   - Fixed focus loss / text selection race conditions using `onMouseDown={(e) => e.preventDefault()}` on all interactive dialog controls.
+   - Set the toolbar `/` button to automatically populate `/` into the chat textarea.
+4. **Dynamic Welcome Message for Invitees**
+   - Fetched the user's `release_stage` on dashboard mount and stored it in state.
+   - Prefilled the welcome conversation prompt dynamically using the user's release stage (e.g. `alpha`, `beta`, `pre-alpha`) rather than hardcoding `"pre-alpha"`.
 
 ---
 
@@ -57,16 +57,14 @@
 *   **Admin insights split "yours" vs "all".** Admins see all users' data via RLS bypass — insights summary separates own-project counts from cross-user totals so numbers align with the Orb surface.
 *   **INSIGHTS suspended from AI prompt.** `computeInsights()` code preserved in `lib/insights.ts` but not injected into system prompt. Value didn't override the trust cost — AI parroted unverifiable numbers. Greeting and conversation now use the same backlog context as the single data path.
 *   **query_todos is the AI's single verification path.** `status_group`, `show_results`, and raised default limit ensure the AI can reproduce any number it states.
+*   **Outer container layout for floating menus.** Interactive absolute-positioned dropdowns must live outside overflow-clipped cards to prevent clipping, positioned relatively to the parent container wrapper.
 
 ---
 
 ## Next Priorities
 
 1. **Test count consistency** — Verify Orb greeting, conversation, and query_todos all report matching numbers after deploy.
-2. **Close ORB-113** — move_todo + auth consolidation was completed but not formally closed. Write resolution notes + knowledge repo entry.
-3. **ORB-109** — Session persistence.
-4. **ORB-116** — Build Helm-style offline page.
-5. **Re-evaluate INSIGHTS** — If a future use case emerges (e.g., pattern detection as a separate tool the AI can choose to call), the code is ready in `lib/insights.ts`.
+2. **Re-evaluate INSIGHTS** — If a future use case emerges (e.g., pattern detection as a separate tool the AI can choose to call), the code is ready in `lib/insights.ts`.
 
 ---
 

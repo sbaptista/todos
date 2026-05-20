@@ -258,6 +258,7 @@ export default function OrbConversation({
     const [historyIndex, setHistoryIndex] = useState<number>(-1)
 
     const [slashIndex, setSlashIndex] = useState(0)
+    const [showCommandsDialog, setShowCommandsDialog] = useState(false)
 
     const SLASH_COMMANDS = [
         { cmd: '/?', desc: 'Show help overlay' },
@@ -273,7 +274,23 @@ export default function OrbConversation({
     ]
 
     const activeSlashCommands = SLASH_COMMANDS.filter(c => c.cmd.toLowerCase().startsWith(input.toLowerCase()))
-    const showSlashMenu = inputFocused && input.startsWith('/') && activeSlashCommands.length > 0 && historyIndex === -1 && !slashMenuDismissed.current
+    const showSlashMenu = inputFocused && input.startsWith('/') && activeSlashCommands.length > 0 && historyIndex === -1 && !slashMenuDismissed.current && !showCommandsDialog
+
+    function handleFormSubmit(e?: React.FormEvent, overrideValue?: string) {
+        e?.preventDefault()
+        const value = (overrideValue ?? textareaRef.current?.value ?? input).trim()
+        if (!value || submitting) return
+
+        const newHist = [...history]
+        if (newHist[newHist.length - 1] !== value) {
+            newHist.push(value)
+            setHistory(newHist)
+            sessionStorage.setItem('todos_orb_cmd_hist', JSON.stringify(newHist))
+        }
+        setHistoryIndex(-1)
+
+        onSubmit(value)
+    }
 
     function fillCommand(cmd: string) {
         slashMenuDismissed.current = true
@@ -287,6 +304,8 @@ export default function OrbConversation({
                 el.focus()
                 el.setSelectionRange(idx, idx + '[project]'.length)
             }, 0)
+        } else {
+            handleFormSubmit(undefined, cmd)
         }
     }
 
@@ -296,6 +315,12 @@ export default function OrbConversation({
             try { setHistory(JSON.parse(saved)) } catch {}
         }
     }, [])
+
+    useEffect(() => {
+        if (input && input !== '/' && showCommandsDialog) {
+            setShowCommandsDialog(false)
+        }
+    }, [input, showCommandsDialog])
 
     function handleHistoryUp() {
         if (history.length === 0) return
@@ -326,22 +351,6 @@ export default function OrbConversation({
     }, [])
 
     useEffect(() => { autoResize() }, [input, autoResize])
-
-    const handleFormSubmit = (e?: React.FormEvent) => {
-        e?.preventDefault()
-        const value = (textareaRef.current?.value ?? input).trim()
-        if (!value || submitting) return
-
-        const newHist = [...history]
-        if (newHist[newHist.length - 1] !== value) {
-            newHist.push(value)
-            setHistory(newHist)
-            sessionStorage.setItem('todos_orb_cmd_hist', JSON.stringify(newHist))
-        }
-        setHistoryIndex(-1)
-
-        onSubmit(value)
-    }
 
     function copyTranscript() {
         const transcript = messages.map(m => {
@@ -393,30 +402,64 @@ export default function OrbConversation({
                 </div>
             )}
 
-            <div className="oc-input-wrap">
+            <div className="oc-input-wrap" style={{ position: 'relative' }}>
+                {showSlashMenu && (
+                    <div className="oc-slash-menu">
+                        {activeSlashCommands.map((c, i) => (
+                            <div
+                                key={c.cmd}
+                                className="oc-slash-item"
+                                style={{ background: slashIndex === i ? 'var(--bg2)' : 'transparent' }}
+                                onMouseDown={(e) => {
+                                    e.preventDefault()
+                                    fillCommand(c.cmd)
+                                }}
+                            >
+                                <span style={{ fontFamily: 'monospace', fontSize: 'var(--fs-xs)', color: 'var(--text)', fontWeight: slashIndex === i ? 600 : 400 }}>{c.cmd}</span>
+                                <span style={{ fontSize: '10px', color: 'var(--muted)' }}>{c.desc}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {showCommandsDialog && (
+                    <div className="oc-commands-dialog">
+                        <div className="oc-commands-header">
+                            <span>Available Commands</span>
+                            <button 
+                                type="button" 
+                                className="oc-commands-close"
+                                onMouseDown={(e) => {
+                                    e.preventDefault()
+                                    setShowCommandsDialog(false)
+                                }}
+                            >
+                                &times;
+                            </button>
+                        </div>
+                        <div className="oc-commands-list">
+                            {SLASH_COMMANDS.map((c) => (
+                                <div
+                                    key={c.cmd}
+                                    className="oc-commands-item"
+                                    onMouseDown={(e) => {
+                                        e.preventDefault()
+                                        fillCommand(c.cmd)
+                                        setShowCommandsDialog(false)
+                                    }}
+                                >
+                                    <div className="oc-commands-cmd">{c.cmd}</div>
+                                    <div className="oc-commands-desc">{c.desc}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 <div className="oc-input-border" style={{
                     borderColor: inputFocused ? 'var(--border-focus)' : undefined,
                 }}>
-                    <form onSubmit={handleFormSubmit} style={{ position: 'relative' }}>
-                        {showSlashMenu && (
-                            <div className="oc-slash-menu">
-                                {activeSlashCommands.map((c, i) => (
-                                    <div
-                                        key={c.cmd}
-                                        className="oc-slash-item"
-                                        style={{ background: slashIndex === i ? 'var(--bg2)' : 'transparent' }}
-                                        onMouseDown={(e) => {
-                                            e.preventDefault()
-                                            fillCommand(c.cmd)
-                                        }}
-                                    >
-                                        <span style={{ fontFamily: 'monospace', fontSize: 'var(--fs-xs)', color: 'var(--text)', fontWeight: slashIndex === i ? 600 : 400 }}>{c.cmd}</span>
-                                        <span style={{ fontSize: '10px', color: 'var(--muted)' }}>{c.desc}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
+                    <form onSubmit={handleFormSubmit}>
                         {!input && !submitting && (
                             <div className="oc-placeholder">
                                 Ask the Orb...
@@ -432,7 +475,9 @@ export default function OrbConversation({
                             onKeyDown={e => {
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault()
-                                    if (showSlashMenu && activeSlashCommands[slashIndex]) {
+                                    if (input.trim() === '/') {
+                                        setShowCommandsDialog(true)
+                                    } else if (showSlashMenu && activeSlashCommands[slashIndex]) {
                                         fillCommand(activeSlashCommands[slashIndex].cmd)
                                     } else {
                                         handleFormSubmit()
@@ -452,18 +497,45 @@ export default function OrbConversation({
                                         handleHistoryDown()
                                     }
                                 } else if (e.key === 'Escape') {
-                                    if (showSlashMenu) {
+                                    if (showCommandsDialog) {
+                                        setShowCommandsDialog(false)
+                                    } else if (showSlashMenu) {
                                         onInputChange('')
                                     }
                                 }
                             }}
                             onFocus={() => setInputFocused(true)}
-                            onBlur={() => setInputFocused(false)}
+                            onBlur={() => {
+                                setInputFocused(false)
+                                // Close the dialog on blur so it doesn't float indefinitely
+                                setTimeout(() => setShowCommandsDialog(false), 150)
+                            }}
                             disabled={submitting}
                             placeholder=""
                         />
 
                         <div className="oc-toolbar">
+                            <button
+                                type="button"
+                                className="oc-tool-btn"
+                                onClick={() => {
+                                    const nextShow = !showCommandsDialog
+                                    setShowCommandsDialog(nextShow)
+                                    if (nextShow) {
+                                        if (!input.startsWith('/')) {
+                                            onInputChange('/')
+                                        }
+                                    }
+                                    textareaRef.current?.focus()
+                                }}
+                                onMouseDown={(e) => e.preventDefault()}
+                                title="Show commands (/)"
+                                aria-label="Show commands"
+                                style={{ fontWeight: 600, fontSize: 'var(--fs-sm)', minWidth: '20px' }}
+                            >
+                                /
+                            </button>
+
                             <button
                                 type="button"
                                 className="oc-tool-btn"
@@ -609,7 +681,6 @@ export default function OrbConversation({
                                         color: '#c00',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
-                                        animation: 'voice-pulse 1.2s ease-in-out infinite',
                                     }}
                                 >
                                     <span style={{

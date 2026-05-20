@@ -2,6 +2,7 @@
 
 import { requireAdmin, getAuthContext } from '@/lib/auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendInviteEmail } from '@/lib/email'
 
 export type Invitation = {
     id: string
@@ -30,13 +31,33 @@ export async function resendInvitation(invitationId: string) {
     const ctx = await requireAdmin()
 
     const { data: inv, error: fetchErr } = await ctx.admin
-        .from('invitations').select('email').eq('id', invitationId).single()
+        .from('invitations')
+        .select('email, first_name, last_name')
+        .eq('id', invitationId)
+        .single()
     if (fetchErr || !inv) return { error: fetchErr?.message ?? 'Invitation not found' }
 
-    const { error: authErr } = await ctx.admin.auth.admin.inviteUserByEmail(inv.email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://localhost:3001'}/auth/callback`,
+    const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://orb-eight-lake.vercel.app'
+
+    const { data: linkData, error: linkErr } = await ctx.admin.auth.admin.generateLink({
+        type: 'invite',
+        email: inv.email,
+        options: { redirectTo: `${origin}/auth/callback` },
     })
-    if (authErr) return { error: authErr.message }
+    if (linkErr) return { error: linkErr.message }
+    if (!linkData.user) return { error: 'Failed to generate invite link' }
+
+    const inviteLink = `${origin}/auth/callback?token_hash=${linkData.properties.hashed_token}&type=invite`
+    const declineLink = `${origin}/invite/decline?id=${invitationId}`
+
+    const emailResult = await sendInviteEmail({
+        to: inv.email,
+        firstName: inv.first_name ?? '',
+        inviteLink,
+        declineLink,
+    })
+
+    if (emailResult.error) return { error: emailResult.error }
     return { ok: true }
 }
 

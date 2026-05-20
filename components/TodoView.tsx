@@ -11,6 +11,7 @@ import TodoForm from './TodoForm'
 import ProductConfigPanel from './ProductConfigPanel'
 import DistillModal from './DistillModal'
 import { logAudit } from '@/app/actions/log-audit'
+import { checkReminders } from '@/app/actions/reminder-actions'
 import { ACTIVE_STATUSES, PARKED_STATUSES } from '@/lib/status-groups'
 
 export type Todo = {
@@ -30,11 +31,20 @@ export type Todo = {
   closed_at: string | null
   groups: { name: string } | null
   categories: { name: string } | null
+  due_at: string | null
+  reminded_at: string | null
 }
 
 export type Product  = { id: string; name: string; color: string | null; icon: string | null; code: string | null }
 export type Priority = { value: number; label: string }
 export type StatusDef = { id: string; name: string; sort_order: number; is_closed: boolean; is_open: boolean }
+
+function parseLocalDatetime(str: string): Date {
+  const [datePart, timePart] = str.split('T')
+  const [year, month, day] = datePart.split('-').map(Number)
+  const [hours, minutes] = timePart.split(':').map(Number)
+  return new Date(year, month - 1, day, hours, minutes)
+}
 
 const PRIORITY_DOT: Record<number, string> = {
   1: '#a05010',  // high — amber
@@ -76,6 +86,9 @@ export default function TodoView({ productId }: { productId: string }) {
     if (!isAll) todoQuery = todoQuery.eq('product_id', productId)
     const { data } = await todoQuery
     setTodos((data as Todo[]) ?? [])
+    
+    // Check and trigger email reminders in the background
+    checkReminders().catch(err => console.error('Reminder check failed:', err))
   }, [productId, isAll, supabase, sortAsc])
 
   useVisibilityRefetch(fetchTodos)
@@ -111,6 +124,29 @@ export default function TodoView({ productId }: { productId: string }) {
 
     return () => { supabase.removeChannel(channel) }
   }, [productId, isAll, supabase, fetchTodos])
+
+  useEffect(() => {
+    async function updateTimezone() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+      if (!tz) return
+
+      const { data: profile } = await supabase
+        .from('users')
+        .select('timezone')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (profile && profile.timezone !== tz) {
+        await supabase
+          .from('users')
+          .update({ timezone: tz })
+          .eq('id', user.id)
+      }
+    }
+    updateTimezone()
+  }, [supabase])
 
   async function handleToggleDone(e: React.MouseEvent, todo: Todo) {
     e.stopPropagation()
@@ -410,7 +446,7 @@ export default function TodoView({ productId }: { productId: string }) {
                   }} />
 
                   {/* Title + meta */}
-                  <div className="flex-1" style={{ minWidth: 0 }}>
+                  <div className="flex-1" style={{ minWidth: 0, marginRight: '12px' }}>
                     <p className="tv-todo-title" style={{
                       fontSize: 'var(--fs-base)',
                       color: isDone ? 'var(--muted)' : 'var(--text)',
@@ -425,6 +461,52 @@ export default function TodoView({ productId }: { productId: string }) {
                       </p>
                     )}
                   </div>
+
+                  {todo.due_at && (() => {
+                    const isOverdue = !isDone && parseLocalDatetime(todo.due_at) < new Date()
+                    const isDueToday = !isDone && parseLocalDatetime(todo.due_at).toDateString() === new Date().toDateString()
+                    return (
+                      <div className="tv-due-badge" style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '11px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: isOverdue 
+                          ? 'rgba(239, 68, 68, 0.1)' 
+                          : isDueToday 
+                            ? 'rgba(245, 158, 11, 0.1)' 
+                            : 'rgba(100, 116, 139, 0.1)',
+                        color: isOverdue 
+                          ? 'var(--error)' 
+                          : isDueToday 
+                            ? '#d97706' 
+                            : 'var(--muted)',
+                        border: `1px solid ${
+                          isOverdue 
+                            ? 'rgba(239, 68, 68, 0.2)' 
+                            : isDueToday 
+                              ? 'rgba(245, 158, 11, 0.2)' 
+                              : 'rgba(100, 116, 139, 0.15)'
+                        }`,
+                        marginRight: '8px',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                          <line x1="16" y1="2" x2="16" y2="6" />
+                          <line x1="8" y1="2" x2="8" y2="6" />
+                          <line x1="3" y1="10" x2="21" y2="10" />
+                        </svg>
+                        <span>
+                          {parseLocalDatetime(todo.due_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          {' at '}
+                          {parseLocalDatetime(todo.due_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    )
+                  })()}
 
                   {/* Done toggle — hidden in select mode */}
                   {!selectMode && (

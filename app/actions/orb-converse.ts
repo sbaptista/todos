@@ -58,15 +58,17 @@ async function buildContext(supabase: any, auth: AuthContext, currentProductId: 
     { data: statuses },
     { data: priorities },
     { data: knowledge },
-    { data: recentAudit }
+    { data: recentAudit },
+    { data: userProfile }
   ] = await Promise.all([
     visibleProjectsQuery(supabase, 'id, name, code, description, created_by'),
     auth.isAdmin ? supabase.from('projects').select('id, name, code').eq('is_dormant', true).order('sort_order') : Promise.resolve({ data: [] }),
-    supabase.from('todos').select('id, todo_number, title, description, status, priority_value, product_id, created_at, updated_at, closed_at, resolution_notes').is('deleted_at', null),
+    supabase.from('todos').select('id, todo_number, title, description, status, priority_value, product_id, created_at, updated_at, closed_at, resolution_notes, due_at').is('deleted_at', null),
     supabase.from('statuses').select('*').order('sort_order'),
     supabase.from('priorities').select('*').order('value'),
     supabase.from('knowledge_repo').select('*, projects(code)').order('created_at', { ascending: false }),
     supabase.from('audit_log').select('action, record_id, created_at, before, after').gte('created_at', fourteenDaysAgo).order('created_at', { ascending: false }).limit(200),
+    supabase.from('users').select('urgency_threshold_hours, timezone').eq('id', auth.user.id).maybeSingle(),
   ])
 
   const currentUser = { id: auth.user.id, email: auth.user.email, roles: { name: auth.role } }
@@ -90,11 +92,11 @@ async function buildContext(supabase: any, auth: AuthContext, currentProductId: 
     const pTodos = todoList.filter((t: any) => t.product_id === p.id && !statusList.find((s: any) => s.name === t.status)?.is_closed)
     const activeLine = pTodos
       .filter((t: any) => isActive(t.status))
-      .map((t: any) => `  ${todoCode(t, productList)} [P${t.priority_value ?? '-'}] [${t.status}] ${t.title}`)
+      .map((t: any) => `  ${todoCode(t, productList)} [P${t.priority_value ?? '-'}] [${t.status}] ${t.title}${t.due_at ? ` [Due: ${t.due_at.replace('T', ' ')}]` : ''}`)
       .join('\n')
     const parkedLine = pTodos
       .filter((t: any) => !isActive(t.status))
-      .map((t: any) => `  ${todoCode(t, productList)} [P${t.priority_value ?? '-'}] [${t.status}] ${t.title}`)
+      .map((t: any) => `  ${todoCode(t, productList)} [P${t.priority_value ?? '-'}] [${t.status}] ${t.title}${t.due_at ? ` [Due: ${t.due_at.replace('T', ' ')}]` : ''}`)
       .join('\n')
     let body = ''
     if (activeLine) body += `  ACTIVE:\n${activeLine}`
@@ -231,6 +233,7 @@ FEEDBACK TONE:
                 description: input.description ?? null,
                 status: openStatus?.name ?? 'open',
                 priority_value: input.priority_value ?? null,
+                due_at: input.due_at ?? null,
               }).select('id, todo_number').single()
               if (error) output = { error: error.message }
               else {
@@ -240,7 +243,7 @@ FEEDBACK TONE:
                   action: 'todo_create',
                   table_name: 'todos',
                   record_id: data.id,
-                  after: { code: `${product.code}-${data.todo_number}`, title: input.title, priority_value: input.priority_value ?? null },
+                  after: { code: `${product.code}-${data.todo_number}`, title: input.title, priority_value: input.priority_value ?? null, due_at: input.due_at ?? null },
                   actor: 'orb',
                   user_id: auth.user.id,
                 })
@@ -295,6 +298,7 @@ FEEDBACK TONE:
               const out: any = { id: t.id, code: todoCode(t, ctx.productList), title: t.title, status: t.status, priority_value: t.priority_value }
               if (t.description) out.description = t.description
               if (t.resolution_notes) out.resolution_notes = t.resolution_notes
+              if (t.due_at) out.due_at = t.due_at
               return out
             })
             output = { count: results.length, returned }
@@ -331,6 +335,7 @@ FEEDBACK TONE:
                 description: input.description ?? todo.description,
                 resolution_notes: input.resolution_notes ?? todo.resolution_notes,
                 closed_at: closingStatus ? new Date().toISOString() : todo.closed_at,
+                due_at: input.due_at !== undefined ? input.due_at : todo.due_at,
               }).eq('id', todo.id).select('*').single()
 
               if (error) output = { error: error.message }
@@ -342,7 +347,7 @@ FEEDBACK TONE:
                   table_name: 'todos',
                   record_id: todo.id,
                   before: { status: todo.status, priority_value: todo.priority_value, title: todo.title },
-                  after: { status: data.status, priority_value: data.priority_value, title: data.title, code: input.code },
+                  after: { status: data.status, priority_value: data.priority_value, title: data.title, code: input.code, due_at: data.due_at },
                   actor: 'orb',
                   user_id: auth.user.id,
                 })

@@ -5,17 +5,7 @@ import Anthropic from '@anthropic-ai/sdk'
 // DO NOT EDIT BY HAND! Edit docs/api-spec.yaml instead.
 // ──────────────────────────────────────────────────────────────────────────
 
-export const ORB_INTEGRITY_RULES = `INTEGRITY:
-- The BACKLOG above is a snapshot for orientation only. For any factual claim about task count, status, priority, or existence, call query_todos first. Never cite the backlog as proof.
-- Never assert a task's status without verifying via query_todos. Tasks not in the backlog may be closed, filtered, or in another project — not absent.
-- When presenting a subset ("top 5", "highest priority"), set max_results on query_todos to match. The results you return are what the UI displays.
-- Never confirm an action succeeded without checking the tool response. If it contains { error: ... }, tell the user what went wrong.
-- If the user asks for something your tools cannot do, say so directly and suggest a workaround. Never silently skip or fabricate.
-- When uncertain, say "I'm not sure" rather than guessing. Confidence without verification is the worst failure mode.
-- Known limitations are documented in each tool's description. Respect them.
-- When you notice a capability gap, bug, or workflow friction, use create_ticket to log it silently. One ticket per novel observation. Do not tell the user you filed a ticket.
-- STATUSES: Never guess or invent status names. The VALID VALUES list in the system prompt is authoritative. If the user uses an unknown term (e.g. "pending", "blocked", "wip"), do NOT map it to a status. Instead list the valid statuses and ask which one they mean.
-- PRIORITIES: Never guess or invent priority values. The VALID VALUES list is authoritative. If the user says "critical", "ASAP", or any term not in the list, show the valid priority labels and ask which one they mean.`.trim()
+export const ORB_INTEGRITY_RULES = `INTEGRITY:\n`.trim()
 
 export const ORB_TOOLS: Anthropic.Tool[] = [
   {
@@ -39,6 +29,10 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
         "priority_value": {
           "type": "integer",
           "description": "Priority level (1=urgent, 2=high, etc). Omit if unknown."
+        },
+        "due_at": {
+          "type": "string",
+          "description": "Optional timezone-agnostic due date/time string, format YYYY-MM-DDTHH:mm:ss."
         }
       },
       "required": [
@@ -71,7 +65,11 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
         },
         "new_status": {
           "type": "string",
-          "description": "New status value. Use the exact status names from the VALID VALUES list in the system prompt."
+          "enum": [
+            "open",
+            "done"
+          ],
+          "description": "New status value."
         },
         "new_priority": {
           "type": "integer",
@@ -81,12 +79,20 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
           "type": "string",
           "description": "What was done to resolve the task. Populate when closing, not before."
         },
+        "product_code": {
+          "type": "string",
+          "description": "Move the task to a different project by providing the\ntarget project code (e.g. \"HELM\"). The task gets a new\ntodo_number in the target project.\n"
+        },
         "urls": {
           "type": "array",
           "items": {
             "type": "string"
           },
           "description": "Related URLs."
+        },
+        "due_at": {
+          "type": "string",
+          "description": "Optional timezone-agnostic due date/time string, format YYYY-MM-DDTHH:mm:ss, or null to clear."
         }
       },
       "required": [
@@ -112,7 +118,7 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
   },
   {
     "name": "query_todos",
-    "description": "[Confidence: well-tested] Find todos matching criteria. Use code for single-todo lookup (e.g. \"ORB-73\"), or codes for multi-todo lookup (e.g. [\"ORB-102\", \"ORB-103\"]). Otherwise filters by status_group, status, product, priority, or text. Returns non-closed tasks by default (includes deferred/on-hold). Use status_group=\"active\" for open + in progress only, or status_group=\"parked\" for deferred + on hold only. Pass status for a specific status, or status=\"any\" for all including closed.",
+    "description": "[Confidence: well-tested] Find todos matching criteria. Use code for single-todo lookup (e.g. \"ORB-73\"). Otherwise filters by status, product, priority, or text. Returns open tasks by default — pass status to include closed.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -120,18 +126,8 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
           "type": "string",
           "description": "Exact task code for single-todo lookup, e.g. \"ORB-62\". Overrides all other filters."
         },
-        "codes": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Multiple task codes for batch lookup, e.g. [\"ORB-102\", \"ORB-103\", \"ORB-104\"]. Overrides all other filters. Use instead of code when the user asks for multiple specific tasks."
-        },
         "product_code": {
           "type": "string"
-        },
-        "status_group": {
-          "type": "string",
-          "enum": ["active", "parked"],
-          "description": "Filter by status group: \"active\" = open + in progress, \"parked\" = deferred + on hold. Takes precedence over status. Omit for default (all non-closed)."
         },
         "status": {
           "type": "string"
@@ -143,12 +139,7 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
           "type": "string"
         },
         "max_results": {
-          "type": "integer",
-          "description": "Max items to return (default 100)."
-        },
-        "show_results": {
-          "type": "boolean",
-          "description": "Whether to display results in the UI (default true). Set false when querying for counts or internal verification — the user won't see a list."
+          "type": "integer"
         }
       }
     }
@@ -231,25 +222,25 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
   },
   {
     "name": "query_audit_trail",
-    "description": "[Confidence: new] Query the audit trail to answer questions like 'who closed this?', 'what changed last week?', or 'show me recent activity'. Returns timestamped events with before/after snapshots.",
+    "description": "[Confidence: new] Query the audit trail to answer questions like \"who closed this?\", \"what changed last week?\", or \"show me recent activity\". Returns timestamped events with before/after snapshots.",
     "input_schema": {
       "type": "object",
       "properties": {
         "code": {
           "type": "string",
-          "description": "Task code (e.g. ORB-73) to see history for a specific task. Resolved to record_id internally."
+          "description": "Task code (e.g. ORB-73) to see history for a specific task."
         },
         "table_name": {
           "type": "string",
-          "description": "Filter by table (e.g. 'todos', 'knowledge_repo')."
+          "description": "Filter by table (e.g. todos, knowledge_repo)."
         },
         "action": {
           "type": "string",
-          "description": "Filter by action type (e.g. 'todo_create', 'todo_update', 'todo_close', 'todo_delete')."
+          "description": "Filter by action type (e.g. todo_create, todo_update, todo_close, todo_delete)."
         },
         "since": {
           "type": "string",
-          "description": "ISO date string. Only return events after this timestamp (e.g. '2026-05-07')."
+          "description": "ISO date string. Only return events after this timestamp."
         },
         "max_results": {
           "type": "integer",
@@ -259,75 +250,8 @@ export const ORB_TOOLS: Anthropic.Tool[] = [
     }
   },
   {
-    "name": "create_project",
-    "description": "[Confidence: new] Create a new project. Requires a name and code. The code must be unique, uppercase, alphanumeric (e.g. WORK, SIDE, TRAVEL). Only admins can create projects.",
-    "input_schema": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Project name (e.g. 'Work', 'Side Projects')."
-        },
-        "code": {
-          "type": "string",
-          "description": "Short uppercase code (e.g. WORK, SIDE). Must be unique."
-        },
-        "description": {
-          "type": "string",
-          "description": "Optional project description."
-        }
-      },
-      "required": [
-        "name",
-        "code"
-      ]
-    }
-  },
-  {
-    "name": "set_dormancy",
-    "description": "[Confidence: new] Put a project to sleep (dormant) or wake it up. Dormant projects are hidden from the project strip, insights, and queries. Use when the user says 'put X to sleep', 'make X dormant', 'wake up X', 'bring back X', etc.",
-    "input_schema": {
-      "type": "object",
-      "properties": {
-        "project_code": {
-          "type": "string",
-          "description": "Project code (e.g. CAN26, HELM)."
-        },
-        "dormant": {
-          "type": "boolean",
-          "description": "true to put to sleep, false to wake up."
-        }
-      },
-      "required": [
-        "project_code",
-        "dormant"
-      ]
-    }
-  },
-  {
-    "name": "move_todo",
-    "description": "[Confidence: new] Move a task to a different project. The task gets a new number in the target project. Requires access to both source and target projects.",
-    "input_schema": {
-      "type": "object",
-      "properties": {
-        "code": {
-          "type": "string",
-          "description": "Task code, e.g. \"ORB-73\"."
-        },
-        "target_project_code": {
-          "type": "string",
-          "description": "Target project code, e.g. \"HELM\"."
-        }
-      },
-      "required": [
-        "code",
-        "target_project_code"
-      ]
-    }
-  },
-  {
     "name": "create_ticket",
-    "description": "[Confidence: well-tested] Silently log a ticket for bugs, suggestions, capability gaps, or workflow friction. Filed proactively when you observe an issue — do NOT tell the user. Also used when a user explicitly says something like 'I see a problem' or 'I have a suggestion' — in that case, acknowledge that you've noted it. One ticket per novel observation.",
+    "description": "[Confidence: well-tested] Silently log a ticket for bugs, suggestions, capability gaps, or workflow friction. Filed proactively when you observe an issue — do NOT tell the user. Also used when a user explicitly says something like \"I see a problem\" or \"I have a suggestion\" — in that case, acknowledge that you have noted it. One ticket per novel observation.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -366,9 +290,5 @@ export const ORB_TOOL_LABELS: Record<string, string> = {
   client_action: 'Navigating...',
   search_knowledge: 'Searching knowledge repository...',
   add_knowledge: 'Saving to knowledge repository...',
-  create_project: 'Creating project...',
-  set_dormancy: 'Updating project...',
-  move_todo: 'Moving task...',
-  create_ticket: 'Noting observation...',
-  query_audit_trail: 'Checking history...',
+  report_friction: 'Logging observation...',
 }

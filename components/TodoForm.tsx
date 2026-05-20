@@ -27,6 +27,7 @@ export default function TodoForm({
   const [title,         setTitle]         = useState('')
   const [priorityValue, setPriorityValue] = useState<number | ''>('')
   const [selectedProduct, setSelectedProduct] = useState(defaultProductId)
+  const [dueAt,           setDueAt]           = useState('')
   const [saving,  setSaving]  = useState(false)
   const [error,   setError]   = useState('')
 
@@ -47,6 +48,7 @@ export default function TodoForm({
         resolution_notes: null,
         status:           openStatus?.name ?? 'open',
         priority_value:   priorityValue === '' ? null : priorityValue,
+        due_at:           dueAt || null,
         product_id:       selectedProduct,
         group_id:         null,
         category_id:      null,
@@ -103,6 +105,18 @@ export default function TodoForm({
                 {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             )}
+          </div>
+
+          <div style={{ marginTop: 'var(--sp-xs)' }}>
+            <label className="label text-xs text-muted" style={{ display: 'block', marginBottom: '4px' }}>Due Date</label>
+            <input
+              type="datetime-local"
+              value={dueAt}
+              onChange={e => setDueAt(e.target.value)}
+              className="pf-input"
+              style={{ width: '100%', margin: 0 }}
+              aria-label="Due Date"
+            />
           </div>
 
           {error && <p className="text-sm text-error">{error}</p>}

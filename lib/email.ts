@@ -9,7 +9,7 @@ function getResend() {
   return _resend
 }
 
-const FROM = 'Stan Baptista <noreply@stanbaptista.me>'
+export const FROM_EMAIL = 'Stan Baptista <noreply@stanbaptista.me>'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://orb-eight-lake.vercel.app'
 const ICON_URL = `${SITE_URL}/apple-icon`
 
@@ -55,7 +55,7 @@ export async function sendInviteEmail({
 </html>`
 
   const { data, error } = await getResend().emails.send({
-    from: FROM,
+    from: FROM_EMAIL,
     to,
     subject: 'An invitation to try Orb',
     html,

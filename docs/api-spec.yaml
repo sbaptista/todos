@@ -164,6 +164,10 @@ components:
           type: string
           format: date-time
           nullable: true
+        due_at:
+          type: string
+          description: "Optional timezone-agnostic due date/time string, format YYYY-MM-DDTHH:mm:ss."
+          nullable: true
 
     TaskCreate:
       type: object
@@ -178,6 +182,10 @@ components:
           type: string
         priority_value:
           type: integer
+        due_at:
+          type: string
+          description: "Optional timezone-agnostic due date/time string (e.g. YYYY-MM-DDTHH:mm:ss)."
+          nullable: true
 
     TaskUpdate:
       type: object
@@ -211,6 +219,10 @@ components:
                 type: string
             - type: string
               description: Newline-separated URLs, parsed server-side.
+        due_at:
+          type: string
+          description: "Optional timezone-agnostic due date/time string, or null to clear."
+          nullable: true
 
     Error:
       type: object
@@ -265,6 +277,8 @@ paths:
             description: "Priority level (1=urgent, 2=high, etc). Omit if unknown."
           description:
             description: "Task description."
+          due_at:
+            description: "Optional timezone-agnostic due date/time string, format YYYY-MM-DDTHH:mm:ss."
       requestBody:
         required: true
         content:
@@ -343,6 +357,8 @@ paths:
             description: "What was done to resolve the task. Populate when closing, not before."
           urls:
             description: "Related URLs."
+          due_at:
+            description: "Optional timezone-agnostic due date/time string, format YYYY-MM-DDTHH:mm:ss, or null to clear."
       requestBody:
         required: true
         content:

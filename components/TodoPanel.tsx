@@ -68,6 +68,8 @@ export default function TodoPanel({
         group_id:         form.group_id,
         category_id:      form.category_id,
         urls,
+        due_at:           form.due_at || null,
+        reminded_at:      form.due_at !== todo.due_at ? null : todo.reminded_at,
         closed_at: isDone
           ? (todo.closed_at ?? new Date().toISOString())
           : null,
@@ -224,6 +226,30 @@ export default function TodoPanel({
               </select>
             </div>
           )}
+
+          {/* Due Date */}
+          <div className="pf-field">
+            <div className="flex-row flex-center" style={{ justifyContent: 'space-between', marginBottom: '4px' }}>
+              <label htmlFor="tp-due-at" className="pf-label" style={{ margin: 0 }}>Due Date</label>
+              {form.due_at && (
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, due_at: null }))}
+                  className="text-btn"
+                  style={{ fontSize: '11px', color: 'var(--error)', padding: 0 }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <input
+              id="tp-due-at"
+              type="datetime-local"
+              className="pf-input"
+              value={form.due_at ?? ''}
+              onChange={e => setForm(f => ({ ...f, due_at: e.target.value || null }))}
+            />
+          </div>
 
           {/* Resolution Notes — only when done */}
           {isDone && (

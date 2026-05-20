@@ -21,7 +21,7 @@ import HScrollNav from '@/components/ui/HScrollNav'
 import { isActive } from '@/lib/status-groups'
 
 type Product  = { id: string; name: string; code: string | null; description: string | null; created_by: string }
-type Todo     = { id: string; title: string; status: string; priority_value: number | null }
+type Todo     = { id: string; title: string; status: string; priority_value: number | null; due_at: string | null }
 type Priority = { value: number; label: string; color: string; is_urgent: boolean }
 type Urgency  = 'calm' | 'busy' | 'urgent'
 
@@ -36,9 +36,26 @@ function genId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 }
 
-function computeUrgency(todos: Todo[], urgentValues: Set<number>): Urgency {
+function parseLocalDatetime(str: string): Date {
+    const [datePart, timePart] = str.split('T')
+    const [year, month, day] = datePart.split('-').map(Number)
+    const [hours, minutes] = timePart.split(':').map(Number)
+    return new Date(year, month - 1, day, hours, minutes)
+}
+
+function isDueWithinWarning(dueAtStr: string, warningHours: number): boolean {
+    const due = parseLocalDatetime(dueAtStr)
+    const now = new Date()
+    const thresholdMs = warningHours * 60 * 60 * 1000
+    return due.getTime() - now.getTime() <= thresholdMs
+}
+
+function computeUrgency(todos: Todo[], urgentValues: Set<number>, urgencyThreshold: number): Urgency {
     const active = todos.filter(t => isActive(t.status))
-    if (active.some(t => t.priority_value !== null && urgentValues.has(t.priority_value))) return 'urgent'
+    const hasUrgentPriority = active.some(t => t.priority_value !== null && urgentValues.has(t.priority_value))
+    const hasUrgentDueDate = active.some(t => t.due_at && isDueWithinWarning(t.due_at, urgencyThreshold))
+
+    if (hasUrgentPriority || hasUrgentDueDate) return 'urgent'
     if (active.length > 5) return 'busy'
     return 'calm'
 }
@@ -128,6 +145,8 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
     const [userName, setUserName]                 = useState<string>('')
     const [userFullName, setUserFullName]         = useState<string>('')
     const [isNewUser, setIsNewUser]               = useState(false)
+    const [urgencyThreshold, setUrgencyThreshold] = useState<number>(0)
+    const [releaseStage, setReleaseStage]         = useState<string>('pre-alpha')
     const welcomeDismissedRef                     = useRef(false)
 
     useEffect(() => {
@@ -274,7 +293,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
 
                 const { data: profile } = await supabase
                     .from('users')
-                    .select('first_name, last_name, onboarded_at')
+                    .select('first_name, last_name, onboarded_at, urgency_threshold_hours, release_stage')
                     .eq('id', user.id)
                     .single()
                 const userWelcomeKey = `todos_welcome_shown_${user.id}`
@@ -282,6 +301,8 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
                     const full = [profile.first_name, profile.last_name].filter(Boolean).join(' ')
                     setUserName(full || (user.email ?? ''))
                     setUserFullName(full)
+                    setUrgencyThreshold(profile.urgency_threshold_hours ?? 0)
+                    setReleaseStage(profile.release_stage ?? 'pre-alpha')
                     if (!profile.onboarded_at && !localStorage.getItem(userWelcomeKey)) {
                         setIsNewUser(true)
                     }
@@ -300,9 +321,9 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
     useEffect(() => {
         if (!isNewUser || welcomeDismissedRef.current) return
         const firstName = userFullName ? (userFullName.split(' ')[0] || 'there') : 'there'
-        const welcome = `Hi ${firstName}! I'm Orb. Thanks for joining the pre-alpha. Press Return or tap the send button → to get started.`
+        const welcome = `Hi ${firstName}! I'm Orb. Thanks for joining the ${releaseStage || 'pre-alpha'}. Press Return or tap the send button → to get started.`
         setInput(prev => prev || welcome)
-    }, [isNewUser, userFullName])
+    }, [isNewUser, userFullName, releaseStage])
 
     useEffect(() => {
         supabase.from('priorities').select('value, label, color, is_urgent').order('value').then(({ data }) => {
@@ -355,7 +376,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
         if (!selectedId) return
         const { data } = await supabase
             .from('todos')
-            .select('id, title, status, priority_value')
+            .select('id, title, status, priority_value, due_at')
             .eq('product_id', selectedId)
             .is('deleted_at', null)
         setTodos((data ?? []) as Todo[])
@@ -382,7 +403,7 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
     }, [selectedId, supabase, fetchTodos])
 
     const activeTodos = todos.filter(t => isActive(t.status))
-    const urgency   = moodOverride ?? computeUrgency(todos, urgentValues)
+    const urgency   = moodOverride ?? computeUrgency(todos, urgentValues, urgencyThreshold)
     const style     = ORB_STYLE[urgency]
     const speed     = ORB_SPEED[urgency]
     const selected  = products.find(p => p.id === selectedId)
@@ -399,12 +420,15 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
         projectSwitchingRef.current = false
 
         const active = activeTodos
-        const urgentCount = active.filter(t => t.priority_value !== null && urgentValues.has(t.priority_value)).length
+        const urgentCount = active.filter(t => 
+            (t.priority_value !== null && urgentValues.has(t.priority_value)) ||
+            (t.due_at !== null && isDueWithinWarning(t.due_at, urgencyThreshold))
+        ).length
         const inProgressCount = active.filter(t => t.status === 'in progress').length
 
         const parts: string[] = []
         parts.push(`${selected.code ?? selected.name} — ${active.length} active`)
-        if (urgentCount > 0) parts.push(`${urgentCount} at P1/P2`)
+        if (urgentCount > 0) parts.push(`${urgentCount} urgent`)
         if (inProgressCount > 0) parts.push(`${inProgressCount} in progress`)
         else if (active.length >= 3) parts.push('nothing in progress')
 
@@ -428,14 +452,17 @@ export default function AmbientDashboard({ initialProducts, isAdmin = false }: P
         if (prev === urgency) return
         prevUrgencyRef.current = urgency
 
-        const urgentCount = activeTodos.filter(t => t.priority_value !== null && urgentValues.has(t.priority_value)).length
+        const urgentCount = activeTodos.filter(t => 
+            (t.priority_value !== null && urgentValues.has(t.priority_value)) ||
+            (t.due_at !== null && isDueWithinWarning(t.due_at, urgencyThreshold))
+        ).length
         let explanation = ''
         if (prev === 'calm' && urgency === 'busy') {
             explanation = `Orb shifted busy — ${activeTodos.length} active tasks now.`
         } else if (prev === 'calm' && urgency === 'urgent') {
-            explanation = `Orb shifted urgent — ${urgentCount} high-priority task${urgentCount !== 1 ? 's' : ''} detected.`
+            explanation = `Orb shifted urgent — ${urgentCount} urgent task${urgentCount !== 1 ? 's' : ''} detected.`
         } else if (prev === 'busy' && urgency === 'urgent') {
-            explanation = `Orb shifted urgent — ${urgentCount} high-priority task${urgentCount !== 1 ? 's' : ''} in the queue.`
+            explanation = `Orb shifted urgent — ${urgentCount} urgent task${urgentCount !== 1 ? 's' : ''} in the queue.`
         } else if (prev === 'urgent' && urgency === 'busy') {
             explanation = 'Urgent queue cleared. Orb shifted back to busy.'
         } else if (prev === 'urgent' && urgency === 'calm') {
@@ -1019,18 +1046,18 @@ Type /? anytime for a full command list. What would you like to work on?` },
                                     </HScrollNav>
                                 )}
                                 <div className="dash-strip-actions">
-
-                                    {displayProducts.length > 0 && (
-                                        <span className="dash-separator">|</span>
-                                    )}
                                     <button
                                         type="button"
-                                        className={`strip-link${displayProducts.length === 0 ? ' strip-link-accent' : ''}`}
+                                        className="edit-btn"
                                         onClick={() => setShowAddProduct(true)}
                                         title="Add a new project"
-                                        style={{ padding: '0 0 0 8px' }}
+                                        aria-label="Add a new project"
+                                        style={displayProducts.length === 0 ? { borderColor: '#ED7654', color: '#ED7654' } : undefined}
                                     >
-                                        Add Project
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
                                     </button>
                                 </div>
                             </div>

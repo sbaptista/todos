@@ -20,7 +20,7 @@ export async function PATCH(
 
   const { id } = await params
   const body = await request.json()
-  const { title, description, status, priority_value, resolution_notes, urls, product_code } = body
+  const { title, description, status, priority_value, resolution_notes, urls, product_code, due_at } = body
 
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
 
@@ -28,6 +28,7 @@ export async function PATCH(
   if (description !== undefined) updates.description = description
   if (priority_value !== undefined) updates.priority_value = priority_value
   if (resolution_notes !== undefined) updates.resolution_notes = resolution_notes
+  if (due_at !== undefined) updates.due_at = due_at
   if (urls !== undefined) {
     updates.urls = typeof urls === 'string'
       ? urls.split('\n').map((u: string) => u.trim()).filter(Boolean)
@@ -77,7 +78,7 @@ export async function PATCH(
     .update(updates)
     .eq('id', id)
     .is('deleted_at', null)
-    .select('id, todo_number, title, description, status, priority_value, resolution_notes, urls, created_at, updated_at, closed_at')
+    .select('id, todo_number, title, description, status, priority_value, resolution_notes, urls, created_at, updated_at, closed_at, due_at')
     .single()
 
   if (error) {

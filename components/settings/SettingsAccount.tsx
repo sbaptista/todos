@@ -52,7 +52,7 @@ export default function SettingsAccount() {
           origFirstName.current = profile.first_name ?? ''
           origLastName.current = profile.last_name ?? ''
         }
-      } catch (err) {
+      } catch {
         console.warn('Auth check skipped due to lock contention')
       } finally {
         setLoading(false)
@@ -67,7 +67,10 @@ export default function SettingsAccount() {
 
     const { error: nameErr } = await supabase
       .from('users')
-      .update({ first_name: firstName.trim(), last_name: lastName.trim() })
+      .update({
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+      })
       .eq('id', userId)
     if (nameErr) { setSaving(false); toast.error('Failed to save. Try again.'); return }
 
@@ -135,6 +138,7 @@ export default function SettingsAccount() {
               A confirmation email will be sent to the new address.
             </p>
           </div>
+
 
           {error && <p className="text-sm text-error" style={{ margin: 0 }}>{error}</p>}
 
