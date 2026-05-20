@@ -7,7 +7,7 @@
 
 ## App State
 
-- **Version:** v0.4.92 (canonical in [package.json](file:///Users/stanleybaptista/Projects/orb/package.json))
+- **Version:** v0.4.93 (canonical in [package.json](file:///Users/stanleybaptista/Projects/orb/package.json))
 - **Branch:** main
 - **Dev server:** user-started on localhost:3001
 - **Live URL:** https://orb-eight-lake.vercel.app
@@ -25,7 +25,7 @@
    - Configured dynamic timezone detection on mount to keep `users.timezone` synchronized.
    - Updated the warning check condition to trigger when `now >= dueUTC - urgency_threshold_hours` to dispatch warning emails ahead of time.
    - Refactored email template delivery to use a custom Resend template for invitations and warning reminders.
-   - Created a Vercel cron endpoint `/api/cron/reminders` running every 10 minutes.
+   - Created a Vercel cron endpoint `/api/cron/reminders` running once per day.
 2. **Settings Urgency Custom Subpage**
    - Created `/settings/urgency` and `SettingsUrgency.tsx` for managing warning thresholds.
    - Structured styling with high-fidelity select controls and icons.
