@@ -7,7 +7,7 @@
 
 ## App State
 
-- **Version:** v0.5.5 (canonical in [package.json](file:///Users/stanleybaptista/Projects/orb/package.json))
+- **Version:** v0.5.6 (canonical in [package.json](file:///Users/stanleybaptista/Projects/orb/package.json))
 - **Branch:** main
 - **Dev server:** user-started on localhost:3001
 - **Live URL:** https://orb-eight-lake.vercel.app
@@ -33,19 +33,19 @@
 4. **Resolution of ORB-121**
    - Closed todo `ORB-121` (`"Push notifications: email first, SMS later"`) in the database, setting its status to `'closed'` and filling in detailed `resolution_notes`.
    - Populated the `knowledge_repo` with a comprehensive entry capturing the reusable event notification dispatcher, Next.js header parsing logic for dynamic host matching, and audit log mapping.
-5. **Version Bump**
-   - Bumped version to `v0.5.5` per the session update protocol.
+5. **Agent Documentation Updates (RLS/Keys)**
+   - Updated project-specific `AGENTS.md` and shared `/Users/stanleybaptista/Projects/shared/AGENTS.md` to add highly prominent warnings about Row Level Security (RLS) policies on publishable/anonymous Supabase keys.
+   - Explicitly instructed future agents to use the Service Role key (`SUPABASE_SECRET_KEY` or `SUPABASE_SERVICE_ROLE_KEY`) to ensure they retrieve the full repository contents rather than RLS-restricted empty sets or partial tables.
+6. **Version Bumps**
+   - Bumped version to `v0.5.6` per the session update protocol.
 
 ---
 
 ## Uncommitted Changes
 
-- **[package.json](file:///Users/stanleybaptista/Projects/orb/package.json) / [lib/version.ts](file:///Users/stanleybaptista/Projects/orb/lib/version.ts)**: Bumped patch version to `0.5.5`.
-- **[app/actions/invitation-actions.ts](file:///Users/stanleybaptista/Projects/orb/app/actions/invitation-actions.ts)**: Integrates acceptance and decline admin notification hooks (`dispatchNotification`), strengthens pending row update checks, and records audit trail events.
-- **[lib/resolve-user.ts](file:///Users/stanleybaptista/Projects/orb/lib/resolve-user.ts)**: Refactored onboarding callback to use `acceptInvitation` Server Action to ensure notifications and audit logging fire on acceptance, passing the new user's UUID.
-- **[lib/email.ts](file:///Users/stanleybaptista/Projects/orb/lib/email.ts)**: Implemented `sendInvitationAcceptedEmail` and `sendInvitationDeclinedEmail` templates with responsive, custom HTML designs and support for dynamic origin links.
-- **[lib/notifications.ts](file:///Users/stanleybaptista/Projects/orb/lib/notifications.ts)**: Core notification dispatch engine with database admin user resolver, dynamic request origin detection, and console logging.
-- **[scripts/agent-diagnostic-decline-email.ts](file:///Users/stanleybaptista/Projects/orb/scripts/agent-diagnostic-decline-email.ts)**: Utility script to manually test delivery.
+- **[package.json](file:///Users/stanleybaptista/Projects/orb/package.json) / [lib/version.ts](file:///Users/stanleybaptista/Projects/orb/lib/version.ts)**: Bumped patch version to `0.5.6`.
+- **[AGENTS.md](file:///Users/stanleybaptista/Projects/orb/AGENTS.md)**: Updated with instructions on service keys vs publishable keys.
+- **[HANDOFF.md](file:///Users/stanleybaptista/Projects/orb/HANDOFF.md)**: Live app state tracking.
 
 ---
 
